@@ -51,6 +51,13 @@ function move(dir){
 </template>
 <style scoped>
 
+ul ::v-deep{
+	li {
+		margin-top : 20px;
+	}
+	
+}
+
 
 #ens{
 	display: flex;

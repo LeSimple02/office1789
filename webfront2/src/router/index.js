@@ -1,7 +1,7 @@
 import { createRouter, createWebHistory } from 'vue-router'
-import HomeView from '../views/HomeView.vue'
-import MailView from '../views/MailView.vue'
-import AccountMView from '../views/AccountMView.vue'
+import HomeView from '@/views/HomeView.vue'
+import MailView from '@/views/MailView.vue'
+
 
 const router = createRouter({
   history: createWebHistory(process.env.BASE_URL),
@@ -54,28 +54,28 @@ const router = createRouter({
     },
     {
       path: '/chat',
-      name: 'chat/:user',
        children: [
       {
 	path: '',
+	name: 'chat',
 	component: () => import('../views/ChatView.vue')
       },
       {
 	path: ':user',
-	component: () => import('../views/ChatConvView.vue'),
+	component: () => import('../views/ChatView.vue'),
       }]
     },
     {
       path: '/account',
-      name: 'account',
       children: [
       {
 	path: '',
-	component: () => import('../views/AccountView.vue')
+	name: 'account',
+	component: ()=>import('../views/AccountView.vue')
       },
       {
 	path: 'edit',
-	component: AccountMView,
+	component: ()=>import('../views/AccountView.vue'),
       }]
     },
     {

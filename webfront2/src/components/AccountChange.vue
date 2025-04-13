@@ -72,17 +72,18 @@ function show2(){
 			else if(passwordt2.value=="text")
 				passwordt2.value="password"
 }
-
 </script>
+
 <template>
 <h1 id="title">{{$t('infop')}} :</h1>
-	<div id="enso">
+<div id="enso">
 		<li id="edit"><RouterLink id="edit" to="/account">⬅️</RouterLink></li>
 		<li id="pic"><img src="@/assets/napo.png" />{{$t('picturep')}}</li>
 		<div id="enso2">
 			<div id="lis">
 				<li>{{$t('username')}} :</li>
 				<li style="padding-top: 20px; padding-bottom: 20px;">{{$t('password')}} :</li>
+				<li>{{$t('doble')}} :</li>
 				<li>{{$t('domainy')}} :</li>
 				<li>{{$t('offery')}} :</li>
 				<li>{{$t('emaily')}} :</li>
@@ -94,6 +95,7 @@ function show2(){
 				<p class="pr" v-if="usernameR">{{$t('dejaUP')}}</p>
 				<li><input v-model="newusername" v-bind:placeholder="gls().username"/></li>
 				<li id="passc" style="display: grid;"><p v-if="passf1!=passf2 && passf2!=''" style="color: red; position: fixed; margin-top: -10px; font-size:10px;">{{$t('passwordd')}}</p><div><input v-bind:type="passwordt" v-model="passf1" v-bind:placeholder="$t('passwordN')"/><button type="button" v-on:click="show" id="show">👁</button></div><div><input v-model="passf2" style="margin-top: 10px;" v-bind:placeholder="$t('repassword')" v-bind:type="passwordt2"/><button type="button" v-on:click="show2" id="show">👁</button></div></li>
+				<li style="display: flex; gap :20px;">❌<button class="buttons">config</button></li>
 				<li><select><option>@office1789</option></select></li>
 				<li><select><option>1</option><option>2</option><option>3</option></select>&nbsp;<RouterLink style="text-decoration: none; color: red; font-size: 10px;" to="/about">⚠️{{ $t("About") }}</RouterLink></li>
 				<p class="pr" v-if="emailR">{{$t('dejaEP')}}</p>
@@ -110,6 +112,16 @@ function show2(){
 </template>
 
 <style scoped>
+
+#lisrep{
+	
+		.buttons{
+			border: none;
+			background: lightgrey;
+			border-radius: 5px;
+		}
+	
+} 
 
 .pr{
 	position: fixed;
@@ -198,5 +210,15 @@ li{
 	left: 3%;
 	
 }
+
+.dark #lisrep{
+		
+		.buttons{
+			border: none;
+			background: grey;
+			border-radius: 5px;
+		}
+	
+} 
 
 </style>

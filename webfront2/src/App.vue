@@ -129,13 +129,13 @@ nav {
   height: 35px;  
 }
 
-nav a.router-link-exact-active {
+nav a.router-link-active {
   background: black;
   border-radius: 10px;
   color: white;
 }
 
-nav a.router-link-exact-active:hover {
+nav a.router-link-active:hover {
   color: white;
 }
 

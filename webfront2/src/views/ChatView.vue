@@ -1,12 +1,16 @@
 <script setup>
-import {gls} from "@/stores/global.js"
-import {ref} from "vue"
+//import {gls} from "@/stores/global.js"
+import ChatConv from "@/components/ChatConv.vue"
+import {ref, watch} from "vue"
+import {useRoute} from 'vue-router'
+
+
 
 
 let conv = ref([])
 let convopt = ref([])
 
-
+/*
 function plus(){
 	fetch(process.env.VUE_APP_API_CREATE_CONV, {method:"POST", mode:"cors", body : JSON.stringify({"username" : gls().username, "token" : gls().sessionT}) }).then(a=>a.text()).then(a=>{
 		if(a != ""){
@@ -21,13 +25,25 @@ function plus(){
 
 	})
 }
+*/
+
+let change = ref(window.location.href.split('/')[4] == 'edit' ? 1 : 0)
+
+
+const route = useRoute()
+function c(){
+	change.value = window.location.href.split('/')[4] == 'edit' ? 1 : 0
+}
+
+
+watch(()=>route.path, c)
 
 </script>
 <template>
 	<div id="opt">
 		<RouterLink to="/chat">💬</RouterLink>
-		<RouterLink to="/chat/notif">📅</RouterLink>
-		<RouterLink to="/chat/notif">⚙️</RouterLink>
+		<RouterLink to="/calendar">📅</RouterLink>
+		<RouterLink to="/parameters">⚙️</RouterLink>
 		
 	</div>
 	<div id="conv">
@@ -42,10 +58,11 @@ function plus(){
 		</div>
 		
 	</div>
-	<div id="aff">
+	<div id="aff" v-if="!change" >
 		<img id="catE" src="@/assets/catE.png" />
 		{{$t('affel')}}
 	</div>
+	<ChatConv v-if="change"/>
 </template>
 
 

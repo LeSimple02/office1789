@@ -1,36 +1,26 @@
 <script setup>
-import {ref} from "vue"
-import {gls} from "@/stores/global.js"
-
-let dj = ref(0)
-let lj = ref(0)
-let domain = ref(0)
-let nboffer = ref(0)
-let phone  = ref(0)
-let email = ref(0)
+import AccountProfile from "@/components/AccountProfile.vue"
+import AccountChange from "@/components/AccountChange.vue"
+import {watch, ref} from "vue"
+import {useRoute} from 'vue-router'
 
 
+let change = ref(window.location.href.split('/')[4] == 'edit' ? 1 : 0)
 
-fetch(process.env.VUE_APP_API_INFO_USER, {method:"POST", mode:"cors", body : JSON.stringify({"username" : gls().username, "token" : gls().sessionT}) }).then(a=>a.json()).then(a=>{dj.value=a['DateJoined']; domain.value=a['Domain'];nboffer.value=a['Nboffer']; email.value = a['Email']; phone = a['PhoneNumber']; lj.value = a["LastLogin"]})
+const route = useRoute()
+function c(){
+	change.value = window.location.href.split('/')[4] == 'edit' ? 1 : 0
+}
 
+watch(()=>route.path, c)
 
 </script>
+
 <template>
-	<div id="enso">
-		<h1 id="title">{{$t('infop')}} :</h1>
-		<div id="lis">
-			<li id="edit"><RouterLink id="edit" to="/account/edit">{{$t('edit')}}</RouterLink></li>
-			<li id="pic"><img src="@/assets/napo.png" />{{$t('picturep')}}</li>
-			<li>{{$t('username')}} : {{gls().username}}</li>
-			<li>{{$t('password')}} : ●●●●●</li>
-			<li>{{$t('domainy')}} : {{domain}}</li>
-			<li>{{$t('offery')}} : {{nboffer}}</li>
-			<li>{{$t('emaily')}} : {{email}}</li>
-			<li>{{$t('phoney')}} : {{phone}}</li>
-			<li>{{$t('lastj')}} : {{new Date(lj).toDateString()}}</li>
-			<li>{{$t('datej')}} : {{new Date(dj).toDateString()}}</li>	
-		</div>
-	</div>
+<AccountProfile v-if="!change"></AccountProfile>
+<AccountChange v-else></AccountChange>	
+
+
 </template>
 
 

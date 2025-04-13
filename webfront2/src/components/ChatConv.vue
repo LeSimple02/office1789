@@ -1,6 +1,7 @@
 <script setup>
 import {gls} from "@/stores/global.js"
 import {ref} from "vue"
+import CallAc from "@/components/CallAc.vue"
 
 
 let conv = ref([])
@@ -20,6 +21,17 @@ fetch(process.env.VUE_APP_API_INFO_CONV, {method:"POST", mode:"cors", body : JSO
 	}
 
 })
+
+let callA = ref(0)
+
+function call(){
+	
+	callA.value = 1
+	let sound = new Audio(require("@/assets/call.mp3"))
+	sound.play()
+
+}
+
 /*
 fetch(process.env.VUE_APP_API_INFO_MESSAGE, {method:"POST", mode:"cors", body : JSON.stringify({"username" : gls().username, "token" : gls().sessionT, "conv": url.value}) }).then(a=>a.text()).then(a=>{
 	if(a != ""){
@@ -59,7 +71,7 @@ fetch(process.env.VUE_APP_API_INFO_MESSAGE, {method:"POST", mode:"cors", body : 
 	<div id="message">
 		<div id="barm">
 			<h2>{{url}}</h2>
-			<button>📞</button>
+			<button @click="call">📞</button>
 			<button>⚙️</button>
 		</div>
 		<div id="messconv">
@@ -67,11 +79,13 @@ fetch(process.env.VUE_APP_API_INFO_MESSAGE, {method:"POST", mode:"cors", body : 
 				<div class="messageS">Malheureux ! <br />Diantre</div>
 		</div>
 		<div id="sendbar">
-			<input placeholder="Sendmessage"/>
+			<textarea rows = "5" cols = "10" name = "description" placeholder="Sendmessage"></textarea>
 			<button>📨</button>
 			<button>📎</button>
 		</div>
 	</div>
+	<CallAc v-if="callA"></CallAc>
+	
 </template>
 
 
@@ -86,12 +100,12 @@ fetch(process.env.VUE_APP_API_INFO_MESSAGE, {method:"POST", mode:"cors", body : 
 #message{
 	position: fixed;
 	width: 50%;
-	height: 90%;
-	
+	height: 100%- 50px;
+	top: 50px;
 	font-family: roboto;
 	left: 50%;
 	margin-left: -25%;
-	bottom: 0%;
+	bottom: 20px;
 	justify-content: center;
 	#barm{
 		display: flex;
@@ -99,6 +113,7 @@ fetch(process.env.VUE_APP_API_INFO_MESSAGE, {method:"POST", mode:"cors", body : 
 		align-items: center;
 		position: relative;
 		left: 50%;
+		
 		width:70%;
 		border-bottom: 2px solid black;
 		margin-left: -25%;
@@ -106,9 +121,11 @@ fetch(process.env.VUE_APP_API_INFO_MESSAGE, {method:"POST", mode:"cors", body : 
 		justify-content: center;
 		
 		button{
-			border-radius:	30px;
+			border-radius:	15px;
+			height: 30px;
+			margin-left: 10px;
 			background: none;
-			border: 2px solid skyblue;	
+				
 			position: relative;
 			left: 40%;
 		}
@@ -120,23 +137,24 @@ fetch(process.env.VUE_APP_API_INFO_MESSAGE, {method:"POST", mode:"cors", body : 
 		justify-content: center;
 		text-align: center;
 		position: absolute;
-		bottom: 20px;
+		bottom: 0px;
 		width: 70%;
 		left: 50%;
 		margin-left: -25%;
-		input{
+		textarea{
 			width: 50%;
 			height: 50px;
-			border-radius: 25px;
+			border-radius: 10px;
 			
 		}
 		button{
-			height: 60px;
-			width: 60px;
-			font-size: 40px;
+			height: 40px;
+			width: 40px;
+			font-size: 20px;
+			margin-left: 10px;
 			border-radius:	30px;
 			background: none;
-			border: 2px solid blue;	
+			border: 1px solid black;	
 		}
 	}
 	#messconv{
