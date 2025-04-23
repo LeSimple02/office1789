@@ -9,23 +9,29 @@ let presentation2 = ["servicee", "servicec", "serviced", "servicew"]
 function move(dir){
 	mov = dir ? mov-=100 : mov+=100
 	movnb = dir ? movnb+=1 : movnb-=1
-	mov = mov<-300 ? -300 : mov
-	mov = mov>0 ? 0 : mov
-	movnb = movnb>3 ? 3 : movnb
-	movnb = movnb<0 ? 0 : movnb
-	
+	mov = mov<-300 ? 0 : mov
+	mov = mov>0 ? -300 : mov
+	movnb = movnb>3 ? 0 : movnb
+	movnb = movnb<0 ? 3 : movnb
 	posc.value = `transform: translateX(${mov}%)`
 }
+
+setInterval(move, 4000, 1)
 
 </script>
 
 <template>		
-		<div id="ens">
-				<div id="colp1">
+	<div id="colp1">
+					<div>
 					<h1>{{ $t('presentation1I')}}</h1><br/><br/>
 					<p id="presentation" v-html="$t('presentation1')"></p>
+					</div>
 					<RouterLink to="/about" id="try">{{$t('try')}}</RouterLink>
+					<img id="back" src="@/assets/background.png" />
 				</div>
+		
+		<div id="ens">
+				
 				<div id="ensA">
 					<div id="ens2">
 						<div id="carrousel">
@@ -46,6 +52,7 @@ function move(dir){
 					<ul v-html="$t('newsli')"></ul>
 					</div>	
 				</div>
+				
 		</div>
 	
 </template>
@@ -56,10 +63,21 @@ ul ::v-deep{
 		margin-top : 20px;
 	}
 	
+	
 }
 
 
+#back{
+	
+	position: absolute;
+	z-index: -1;
+	width: 100%;
+	height: 100%;
+	object-fit: cover;
+}
+
 #ens{
+	
 	display: flex;
 	flex-direction: column;
 	flex-wrap: wrap;
@@ -67,6 +85,8 @@ ul ::v-deep{
 	text-align: justify;
 	width: 50%;
 	margin: auto;
+	
+	
 }
 
 #ens2{
@@ -90,17 +110,36 @@ ul ::v-deep{
 	justify-content: center;
 }
 
+h1{
+	display: block;
+	font-size: 50px;
+	margin-left: 10px;
+}
+
 #colp1{
 	display: flex;
-	flex-direction: column;
-
-
+	position: relative;
+	border-radius: 10px;
+	overflow: hidden;
 	
+	align-items: center;
+	justify-content: center;
+	gap: 50px;
+	margin-bottom: 100px;
 }
 
 #presentation{
-	height: 200px;
+	height: auto;
+	width: 500px;
+	margin-left: 1%;
+	background: rgb(245,245,255, 0.7);
+	padding: 10px;
+	border-radius: 10px;
 
+}
+
+.dark #presentation{
+	background: rgb(0, 0, 0, 0.7);
 }
 
 #try{
@@ -113,6 +152,8 @@ ul ::v-deep{
 	width: 300px;
 	max-width: 300px;
 	text-align: center;
+
+	position: relative;
 	padding: 20px;
 
 }
@@ -120,6 +161,7 @@ ul ::v-deep{
 .dark #try{
 	background: white;
 	color: black;
+	
 
 }
 
@@ -136,6 +178,7 @@ ul ::v-deep{
 #actu{
 	border: 1px solid black;
 	width: 30%;
+	min-width: 220px;
 	height: 400px;
 	padding: 10px;
 	font-family: arial
@@ -179,6 +222,11 @@ ul ::v-deep{
 #carrouselm{
 	display: flex;
 	transition: ease 1s;
+}
+
+@keyframes anim {
+  from {opacity: 0;}
+  to {opacity: 1;}
 }
 
 

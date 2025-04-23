@@ -47,9 +47,7 @@ function decof(){
       <img class="logo" v-if="isDark" src="@/assets/logol.png" />
        <nav>
         <RouterLink v-for="key in menu" :key="key.name" v-bind:to="key.link">{{ $t(key.name) }}</RouterLink>
-      </nav>
-      <button id="bdeco" v-if="gls().log == 1" @click="popup = 1">⏼</button>
-      <div>
+         <div>
         <select v-model="$i18n.locale" @click="save()">
             <option v-for="locale in $i18n.availableLocales" :key="`locale-${locale}`" :value="locale">{{ locale }}</option>
           </select>
@@ -59,6 +57,9 @@ function decof(){
           <span class="ml-2">{{ isDark ? "🌕" : "☀️" }}</span>
           </button>
       </div>
+      </nav>
+      <button id="bdeco" v-if="gls().log == 1" @click="popup = 1">⏼</button>
+     
   </header>
   <div v-if="popup==1" id="sb"></div>
   <div v-if="popup==1" id="pop">
@@ -87,6 +88,10 @@ export default {
 
 <style>
 
+ body{
+      background: rgba(230,230,255,0.1);
+    }
+
 @font-face {
   font-family: roboto;
   src: url("@/assets/roboto/RobotoCondensed-Regular.ttf");
@@ -100,7 +105,12 @@ export default {
 
 header{
   display: flex;
+  
   height: 50px;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  
 }
 
 h1 {
@@ -113,12 +123,11 @@ p{
 
 
 
-header > div {
-  position: absolute;
+header > nav > div {
+
   display: flex;
   align-items: center;
-  gap: 20px;
-  right: 0%;
+
   
 }
 nav {
@@ -126,7 +135,8 @@ nav {
   border-left: 1px solid black;
   display: flex;
   align-items: center;
-  height: 35px;  
+  height: 35px;
+  gap: 20px;  
 }
 
 nav a.router-link-active {

@@ -1,5 +1,27 @@
 <script setup>
 
+
+
+const drives = document.createElement("script")
+drives.setAttribute("src", "http://localhost/web-apps/apps/api/documents/api.js")
+
+
+const config = {
+  document: {
+    fileType: "docx",
+    key: "Khirz6zTPdfd7",
+    title: "Example Document Title.docx",
+    url: "https://example.com/url-to-example-document.docx",
+  },
+  documentType: "word",
+  editorConfig: {
+    callbackUrl: "https://example.com/url-to-callback.ashx",
+  },
+};
+
+const docEditor = new drives.DocsAPI.DocEditor("placeholder", config);
+console.log(docEditor)
+
 /*
 import {ref} from "vue"
 
@@ -19,8 +41,9 @@ function send(){
 </script>
 <template>
 
-	<iframe src="http://localhost/example/">
-</iframe>
+	<div id="placeholder"></div>
+
+
 
 </template>
 <style scoped>

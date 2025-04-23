@@ -16,7 +16,7 @@
         "create": "I don't have an account",
         "createac": "Create an account",
         "news" : "News",
-        "newsli": "<li>Release of beta at 31 june</li><li>Creation of Office1789</li>",
+        "newsli": "<li>Release of beta on 30 june</li><li>Creation of Office1789</li>",
         "createacl": "<li>Enter your future email and id *:</li><li>Enter your password *:</li><li>Verify your password *: </li><li>Enter your email :</li><li>Enter your phone number :</li>",
         "aboutd": "<h1>What is Office1789 ?</h1><p>Office1789 aims to create a good alternative of your tools for your work, here are the offers :</p>",
         "offer": "<div class=\"offerm\"><h3 class=\"toffer\">6$ Normal</h3><ul class=\"lioffer\"><li>Free for 30 days</li><li>🔒Encryption E2EE</li><li>📨 Mail Service</li><li>📦 Storing your files online 5GB</li><li>🗎 Edit your documents online</li></ul></div><div class=\"offerm\"><h3 class=\"toffer\">10$ Professionnal</h3><ul class=\"lioffer\"><li>🔒Encryption E2EE</li><li>📨 Mail Service</li><li>📦 Storing your files online 10GB</li><li>🗎 Edit your documents online</li><li>👪 Get another account for your partner </li></ul></div><div class=\"offerm\"><h3 class=\"toffer\">30$ Enterprise</h3><ul class=\"lioffer\"><li>🔒Encryption E2EE</li><li>📨 Mail Service</li><li>📦 Storing your files online 500GB total, 50 per personn</li><li>🗎 Edit your documents online</li><li>☁ 10 accounts for your employees</li></ul></div>",

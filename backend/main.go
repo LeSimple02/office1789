@@ -36,9 +36,10 @@ func main() {
 	r.GET("/api/welcome", welcome)
 	r.POST("/api/subscribe", Sub)
 	r.POST("/api/connect", Connect)
-	r.POST("/api/getinfop", Getinfop)
+	//r.POST("/api/getinfop", Getinfop)
 	r.POST("/api/changeinfo", ChangeI)
 	r.POST("/api/chat/createconv", createConv)
+	r.POST("/api/drive", drivei)
 	
 	r.Run() // listen and serve on 0.0.0.0:8080
 }

@@ -21,7 +21,7 @@ type ChangeIn struct{
 	
 }
 
-func Getinfop(c * gin.Context){
+func drivei(c * gin.Context){
 
 	var verif sessionSend;
 	var infop Subscribe;
