@@ -22,13 +22,16 @@ setInterval(move, 4000, 1)
 
 <template>		
 	<div id="colp1">
-					<div>
-					<h1>{{ $t('presentation1I')}}</h1><br/><br/>
-					<p id="presentation" v-html="$t('presentation1')"></p>
-					</div>
+					<h1>{{ $t('presentation1I')}}</h1>
+					<h2>Leurs privilèges, notre Révolution</h2>
+					<div style="display: flex; align-items: center; gap: 20px;">
+					
+					<RouterLink id="try2" to="/createaccount">{{$t('create')}}</RouterLink>
 					<RouterLink to="/about" id="try">{{$t('try')}}</RouterLink>
-					<img id="back" src="@/assets/background.png" />
-				</div>
+					</div>
+					
+					
+	</div>
 		
 		<div id="ens">
 				
@@ -53,7 +56,15 @@ setInterval(move, 4000, 1)
 					</div>	
 				</div>
 				
+				
 		</div>
+		<div id="psf">
+		<span></span>
+		<img src="@/assets/europe.png">
+		<p>French/Europe Power</p>
+		<p>{{$t('apo')}}</p>
+		</div>
+		
 	
 </template>
 <style scoped>
@@ -83,20 +94,57 @@ ul ::v-deep{
 	flex-wrap: wrap;
 	gap: 80px;
 	text-align: justify;
+	align-items: center;
 	width: 50%;
-	margin: auto;
+	margin-top: 20px;
+	background: #f5f5f7;
+	width: 100%;
+	
+	
+	
 	
 	
 }
 
+#psf{
+
+	display: flex;
+	padding: 100px;
+	justify-content: center;
+	align-items: center;
+	margin-top: 20px;
+	background : rgb(220, 220, 240);
+	gap: 20px;
+	p{
+	font-family: roboto;
+	}
+	
+
+	span{
+		background: linear-gradient(90deg, blue 33%, white 33%, white 66%, red 66%);
+		width: 120px;
+		height: 100px;
+		border: 1px solid grey;
+		border-radius: 50px;
+	}
+	img{
+		width: 120px;
+		height: 100px;
+		
+		border: 1px solid grey;
+		border-radius: 50px;
+	}
+}
+
+
 #ens2{
 	display: flex;
 	flex-wrap: wrap;
-	
+	min-height: 35em;
 	flex-direction: column;
 	gap: 20px;
 	text-align: justify;
-	height: auto;
+	
 	width: 55%;
 	
 }
@@ -105,46 +153,56 @@ ul ::v-deep{
 	display: flex;
 	flex-wrap: wrap;
 	gap: 80px;
-	width: 100%;
+	width: 50%;
 	
 	justify-content: center;
 }
 
 h1{
 	display: block;
+	text-align: center;
 	font-size: 50px;
-	margin-left: 10px;
+	
+	
+}
+
+h2{
+	display: block;
+	text-align: center;
+	
+	
+        font-family: roboto;
+	background : -webkit-linear-gradient(30deg, blue, red);
+	font-style: italic;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+	
 }
 
 #colp1{
-	display: flex;
-	position: relative;
-	border-radius: 10px;
-	overflow: hidden;
+	display: grid;
 	
-	align-items: center;
+
+	
+	background: #f5f5f7;
+	width: 100%;
+	
+	padding-bottom: 50px;
+	
 	justify-content: center;
-	gap: 50px;
-	margin-bottom: 100px;
+	align-items: center;
+	
+	
+	
 }
 
-#presentation{
-	height: auto;
-	width: 500px;
-	margin-left: 1%;
-	background: rgb(245,245,255, 0.7);
-	padding: 10px;
-	border-radius: 10px;
-
-}
-
-.dark #presentation{
-	background: rgb(0, 0, 0, 0.7);
+#presentation2{
+	font-family: roboto;
 }
 
 #try{
-	background: black;
-	color: white;
+	border: 2px solid red;
+	color: red;
 	font-family: arial;
 	text-decoration: none;
 	border-radius: 5px;
@@ -152,18 +210,27 @@ h1{
 	width: 300px;
 	max-width: 300px;
 	text-align: center;
-
 	position: relative;
 	padding: 20px;
 
 }
 
-.dark #try{
-	background: white;
-	color: black;
-	
+#try2{
+	border: 2px solid #06c;
+	color: #06c;
+	font-family: arial;
+	text-decoration: none;
+	border-radius: 5px;
+	font-size: 20px;
+	width: 300px;
+	max-width: 300px;
+	text-align: center;
+	position: relative;
+	padding: 20px;
 
 }
+
+
 
 #carrousel{
 	display: flex;
@@ -176,17 +243,16 @@ h1{
 }
 
 #actu{
-	border: 1px solid black;
+	
 	width: 30%;
 	min-width: 220px;
-	height: 400px;
+	height: auto;
 	padding: 10px;
-	font-family: arial
+	font-family: arial;
+	background: rgb(240, 200, 200);
+	
 }
 
-.dark #actu{
-	border: 1px solid white;
-}
 
 #actu > h3 {
 	font-family: roboto;
@@ -197,6 +263,13 @@ h1{
 	border-bottom: 1px solid white;
 }
 
+.dark #colp1{
+	background: #1C1C1E;
+}
+
+.dark #ens{
+	background: #1C1C1E;
+}
 
 
 #carrousel img {
@@ -208,7 +281,8 @@ h1{
 	background: black;
 	border-radius: 20px;
 	color: white;
-	padding: 10px;
+	font-style: bold;
+	
 	border: none;
 	font-size: 30px;
 }

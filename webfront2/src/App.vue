@@ -12,9 +12,7 @@ const toggleDark = useToggle(isDark)
 let menu1 = [{name : "Home", link : "/"},{name : "Login", link : "/login"},{name : "About", link : "/about"}]
 let menu2 = [{name : "Mail", link : "/mail"}, {name : "Drive", link : "/drive"}, {name : "Chat", link : "/chat"}, {name : "Account", link : "/account"}]
 
-
 verifback()
-
 
 let menu = computed(()=>{
   
@@ -87,11 +85,7 @@ export default {
 </script>
 
 <style>
-
- body{
-      background: rgba(230,230,255,0.1);
-    }
-
+      
 @font-face {
   font-family: roboto;
   src: url("@/assets/roboto/RobotoCondensed-Regular.ttf");
@@ -136,6 +130,7 @@ nav {
   display: flex;
   align-items: center;
   height: 35px;
+  position: relative;
   gap: 20px;  
 }
 

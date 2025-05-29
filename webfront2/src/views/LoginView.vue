@@ -1,9 +1,8 @@
 <script setup>
 import {gls} from "@/stores/global"
 import {ref} from "vue"
+import { useDark } from '@vueuse/core'
 import router from "@/router/index"
-
-
 
 
 let passw = ref("password")
@@ -11,6 +10,9 @@ let passw = ref("password")
 let userl = ref('')
 let passl = ref('')
 let wrong = ref(0)
+
+const isDark = useDark()
+
 
 function connect(){
 
@@ -71,6 +73,8 @@ function show(){
 </template>
 
 <style scoped>
+
+
 
 #wrongP{
 	position: relative;
