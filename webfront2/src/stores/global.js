@@ -17,18 +17,23 @@ export let gls = defineStore('main',()=>
 	}
 
 	let username = ref(0)
-
-	if(document.cookie.split(';')[0])
-	{
-		username = document.cookie.split(';')[0].split('=')[1] 
-	}
-
 	let sessionT = ref(0)
-	if(document.cookie.split(';')[1])
-	{
-		sessionT = document.cookie.split(';')[1].split('=')[1];
+	
+	
+	let decodedCookie = decodeURIComponent(document.cookie);
+	let co = decodedCookie.split("; ");
+	
+	for (let i=0; i!=co.length; i++){
+		let aco = co[i].split("=")
+		
+		if(aco[0]=="name"){
+			username = aco[1]
+			
+		}
+		else if(aco[0]=="sessionToken"){
+			sessionT = aco[1]
+		}
 	}
-
 	return {log, lang, username, sessionT}
         
     }

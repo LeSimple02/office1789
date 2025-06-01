@@ -30,7 +30,7 @@ func Connect(c *gin.Context){
 				expiry : expiresAtTime,
 			}
 			
-			c.JSON(http.StatusOK,  sessionSend{sessionToken, conn.Username, expiresAtTime})
+			c.JSON(http.StatusOK,  sessionSend{conn.Username, sessionToken, expiresAtTime})
 		} else{
 			
 			conn.Username = "no"

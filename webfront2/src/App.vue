@@ -10,7 +10,7 @@ const isDark = useDark()
 const toggleDark = useToggle(isDark)
 
 let menu1 = [{name : "Home", link : "/"},{name : "Login", link : "/login"},{name : "About", link : "/about"}]
-let menu2 = [{name : "Mail", link : "/mail"}, {name : "Drive", link : "/drive"}, {name : "Chat", link : "/chat"}, {name : "Account", link : "/account"}]
+let menu2 = [{name : "Mail", link : "/mail"}, {name : "Drive", link : "/drive"}, {name : "Chat", link : "/chat"}, {name : "Calendar", link : "/calendar"}, {name : "Account", link : "/account"}]
 
 verifback()
 

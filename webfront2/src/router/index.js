@@ -61,7 +61,7 @@ const router = createRouter({
 	component: () => import('../views/ChatView.vue')
       },
       {
-	path: ':user',
+	path: '/:user',
 	component: () => import('../views/ChatView.vue'),
       }]
     },
@@ -88,8 +88,12 @@ const router = createRouter({
     },
     {
 	path: '/contact',
-	component: () => import('../views/AboutView.vue')
-    }
+	component: () => import('../views/ContactView.vue')
+    },
+     {
+	path: '/calendar',
+	component: () => import('../views/CalendarView.vue')
+    },
   ]
 })
 

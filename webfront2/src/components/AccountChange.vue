@@ -28,16 +28,18 @@ fetch(process.env.VUE_APP_API_INFO_USER, {method:"POST", mode:"cors", body : JSO
 
 function send(){
 	if(passf1.value==passf2.value){
-		fetch(process.env.VUE_APP_API_CHANGE_INFO, {method:"POST", mode:"cors", body : JSON.stringify({"lastusername" : gls().username, "username" : newusername.value, "phonenumber": newphone.value, "email": newemail.value, "nboffer": newoffer.value, "password": passf2.value, "token": gls().sessionT }) })
+		fetch(process.env.VUE_APP_API_INFO_CHANGE, {method:"POST", mode:"cors", body : JSON.stringify({"lastusername" : gls().username, "username" : newusername.value, "phonenumber": newphone.value, "email": newemail.value, "nboffer": newoffer.value, "password": passf2.value, "token": gls().sessionT }) })
 		.then(a=>a.json()).then((a)=>{
 			if(newusername.value != "" && a["Username"] != "no" && a["Email"] != "no" && a["Phone"] != "no"){
 				
-				
+				console.log(a["Username"])
 				document.cookie = `name=${gls().username}; expires=Fri, 31 Dec 1900 23:59:59 GMT; Secure`
+				document.cookie = `sessionToken=${gls().sessionT}; expires=Fri, 31 Dec 1900 23:59:59 GMT; Secure`
 				gls().sessionT = a["Token"]
 				gls().username = a["Username"]
 				document.cookie = `name=${a["Username"]}; expires=${a["Expiry"]}; Secure`
 				document.cookie = `sessionToken = ${a["Token"]}; expires=${a["Expiry"]}; Secure`
+				window.location.href = "/account"
 			}
 			else {
 				

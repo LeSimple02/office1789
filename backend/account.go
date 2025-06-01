@@ -41,6 +41,25 @@ func drivei(c * gin.Context){
 
 }
 
+func getinfop(c * gin.Context){
+
+	var verif sessionSend;
+	var infop Subscribe;
+	
+	c.BindJSON(&verif)
+
+	if sessions[verif.Token].Username == verif.Username{
+		rows := db.QueryRow("SELECT domain, nboffer, date_joined, last_login, phonenumber, email FROM Users WHERE username=$1", verif.Username)
+		rows.Scan(&infop.Domain, &infop.Nboffer, &infop.DateJoined, &infop.LastLogin, &infop.PhoneNumber, &infop.Email)
+		
+		c.JSON(http.StatusOK, infop)
+	
+	}else{
+		infop.Username = "no"
+		c.JSON(http.StatusOK, infop)
+	}
+
+}
 
 
 func ChangeI(c *gin.Context){
@@ -49,6 +68,7 @@ func ChangeI(c *gin.Context){
 	var infova vInfo
 	
 	c.BindJSON(&cha)
+	
 	
 	if(sessions[cha.Token].Username == cha.LastUsername){
 	
@@ -108,7 +128,7 @@ func ChangeI(c *gin.Context){
 						Username : cha.Username,
 						expiry : expiresAtTime,
 						}
-						c.JSON(http.StatusOK,  sessionSend{sessionToken, cha.Username, expiresAtTime})
+						c.JSON(http.StatusOK,  sessionSend{cha.Username, sessionToken, expiresAtTime})
 					}else{
 						c.JSON(http.StatusOK, infova)
 					}

@@ -3,8 +3,7 @@ import {ref} from "vue"
 import {gls} from "@/stores/global"
 import router from "@/router/index"
 
-let passw = ref("password")
-let passw2 = ref("password")
+
 
 let username = ref('')
 let passf1 = ref('')
@@ -54,38 +53,23 @@ function connect(){
 			})
 }
 
-function show(){
-			if (passw.value=="password")
-				passw.value = "text"
-			else if(passw.value=="text")
-				passw.value="password"
-}
-function show2(){
-			if (passw2.value=="password")
-				passw2.value = "text"
-			else if(passw2.value=="text")
-				passw2.value="password"
-}
 
 
 
 </script>
 <template>
 	<div id="forma">
-		<h1 id="tac">{{$t("createac")}} :</h1>
+		<h1 id="tac">{{$t("contact")}} :</h1>
 		<div id="champ">
-			<ul v-html="$t('createacl')">
+			<ul v-html="$t('contactacl')">
 			</ul>
 			<ul>
-				<p class="pr" v-if="usernameR">{{$t('dejaUP')}}</p>
+				<li><input v-model="email" type="text" required/></li>
 				<li><input v-model="username" type="text" required/>@office1789.com</li>
 				
-				<li><input v-model="passf1" :type="passw" required/><input type="button" value="👁" @click="show()" class="show2" /></li>
-				<li><input v-model="passf2" :type="passw2" required/><input type="button" value="👁" @click="show2()" class="show2"/></li>
-				<p class="pr" v-if="emailR">{{$t('dejaEP')}}</p>
-				<li><input v-model="email" type="text"/></li>
-				<p class="pr" v-if="phonenumberR">{{$t('dejaPP')}}</p>
+				<li><input /></li>
 				<li><input v-model="phonenumber" type="text"/></li>
+				<li><textarea style="height: 200px;"></textarea></li>
 				
 			</ul>
 			
@@ -104,19 +88,21 @@ function show2(){
 }
 
 #forma{
-	position: absolute;
-	left: 50%;
-	width: 650px;
-	margin-left: -310px;
+	position: relative;
+	width: 100%;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
 	top: 50%;
-	
-	
-	margin-top: -250px;
+	height: auto;
+	margin-top: 150px;
 	text-align: center;
 }
 #champ{
 	display: flex;
 	text-align: left;
+	justify-content: center;
+	
 	
 }
 
@@ -132,14 +118,17 @@ function show2(){
 
 #forma li{
 	margin-top: 20px;
-	height: 30px;
+	height: auto;
 }
 
 #bform{
-	margin-top: 20px;
+	
 	background: black;
 	color: white;
 	border: none;
+	width: 100px;
+	//margin: auto;
+	
 	
 }
 
@@ -149,16 +138,6 @@ function show2(){
 	color: black;
 	border: none;
 	
-}
-
-
-.show2{
-	
-	color: black;
-	border: none;
-	background: none;
-	height:20px;
-	margin-left: -25px;
 }
 
 

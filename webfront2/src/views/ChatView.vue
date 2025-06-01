@@ -5,8 +5,6 @@ import {ref, watch} from "vue"
 import {useRoute} from 'vue-router'
 
 
-
-
 let conv = ref([])
 let convopt = ref([])
 
@@ -28,24 +26,24 @@ function plus(){
 */
 
 let change = ref(window.location.href.split('/')[4] == 'edit' ? 1 : 0)
+let calendar = ref(window.location.href.split('/')[4] == 'calendar' ? 1 : 0)
 
 
 const route = useRoute()
 function c(){
 	change.value = window.location.href.split('/')[4] == 'edit' ? 1 : 0
+	calendar.value = window.location.href.split('/')[3] == 'calendar' ? 1 : 0
+	console.log(calendar.value)
+	
 }
 
 
 watch(()=>route.path, c)
 
+
 </script>
 <template>
-	<div id="opt">
-		<RouterLink to="/chat">💬</RouterLink>
-		<RouterLink to="/calendar">📅</RouterLink>
-		<RouterLink to="/parameters">⚙️</RouterLink>
-		
-	</div>
+	
 	<div id="conv">
 		<input v-bind:placeholder="$t('userids')"/>
 		<span style="margin-top: 10px;border-bottom: 1px solid grey;"></span>
@@ -63,6 +61,7 @@ watch(()=>route.path, c)
 		{{$t('affel')}}
 	</div>
 	<ChatConv v-if="change"/>
+	
 </template>
 
 
@@ -108,30 +107,8 @@ watch(()=>route.path, c)
 	
 }
 
-#opt{
-	position: absolute;
-	left: 0%;
-	
-	display: flex;
-	flex-direction: column;
-	width: 50px;
-	height: 100%;
-	background: lightgrey;
-	align-items: center;
-	text-align: center;
-	padding: 10px;
-	font-size: 30px;
-	
-	
-	a{
-		
-		padding: 10px;
-		text-decoration: none;
-	};
-}
-
 #conv{
-	
+	border-top : 2px solid black;
 	display: flex;
 	flex-direction: column;
 	width: 300px;
