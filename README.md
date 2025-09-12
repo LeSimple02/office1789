@@ -1,6 +1,6 @@
 # 🏛 Office1789
 
-Office1789 est une application web basée sur **Vue.js** (frontend), **Gin (Go)** (backend) et **PostgreSQL** (base de données).  
+Office1789 est une application web qui se voudra a terme être une alternative à office365 basée sur **Vue.js** (frontend), **Gin (Go)** (backend) et **PostgreSQL** (base de données).  
 L’ensemble est orchestré avec **Docker** et **Docker Compose** pour simplifier le développement et le déploiement.
 
 ---
