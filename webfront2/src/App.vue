@@ -293,4 +293,93 @@ select{
   color: white;
 }
 
+
+select {
+  background: #222;
+  border-radius: 8px;
+  color: #fff;
+  padding: 4px 12px;
+  border: none;
+  font-size: 16px;
+  margin-right: 8px;
+  transition: background 0.3s, color 0.3s;
+}
+
+#toggle {
+  border: none;
+  background: none;
+  font-size: 28px;
+  cursor: pointer;
+  margin-left: 8px;
+  transition: color 0.3s;
+}
+
+header {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 24px;
+  padding: 12px 32px;
+  background: rgba(245,245,247,0.95);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.07);
+  border-radius: 0 0 24px 24px;
+}
+
+.logo {
+  width: 40px;
+  height: 40px;
+  margin-right: 16px;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.10);
+}
+
+/* Dark mode */
+.dark nav {
+  background: rgba(30,30,40,0.85);
+}
+
+.dark nav a {
+  color: #eee;
+}
+
+.dark nav a.router-link-active,
+.dark nav a.router-link-exact-active,
+.dark nav a:hover {
+  background: -webkit-linear-gradient(30deg, blue, red);
+  color: #fff;
+}
+
+.dark select {
+  background: #222;
+  color: #fff;
+}
+
+.dark header {
+  background: rgba(30,30,40,0.95);
+}
+
+.dark .logo {
+  box-shadow: 0 2px 8px rgba(0,0,0,0.30);
+}
+
+/* Responsive */
+@media (max-width: 700px) {
+  header {
+    flex-direction: column;
+    align-items: flex-start;
+    padding: 12px 8px;
+    gap: 12px;
+  }
+  nav {
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-left: 0;
+    border-radius: 12px;
+  }
+  .logo {
+    margin-right: 0;
+    margin-bottom: 8px;
+  }
+}
+
 </style>

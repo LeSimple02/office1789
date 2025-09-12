@@ -76,9 +76,6 @@
 
 }
 
-.offerm:hover{
-	border: 2px solid black;
-}
 
 .offerm > h3{
 	text-align: center;
@@ -87,11 +84,16 @@
 	margin-top: -30px;
 	height: 40px;
 	margin-left: -30px;
-	background: rgba(255, 0,0,0.5);
+color: white;
+	background: linear-gradient(30deg, blue, red);
+		transition:all 10s ease;
 }
-.offerm:hover > h3{
-	transition: 0.5s ease-out;
-	background: rgba(255, 0,0,0.8);
+.offerm:hover{
+
+	h3{
+		transition:all 0.5s ease;	
+	background: linear-gradient(30deg, red, blue);
+	}
 }
 
 .dark .offerm{
@@ -100,9 +102,6 @@
 
 }
 
-.dark .offerm:hover{
-	border: 2px solid white;
-}
 
 
 .lioffer{

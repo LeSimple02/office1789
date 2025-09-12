@@ -24,7 +24,7 @@ let usernameR = ref('')
 let emailR = ref('')
 let phonenumberR = ref('')
 
-fetch(process.env.VUE_APP_API_INFO_USER, {method:"POST", mode:"cors", body : JSON.stringify({"username" : gls().username, "token" : gls().sessionT}) }).then(a=>a.json()).then(a=>{dj.value=a['DateJoined']; domain.value=a['Domain'];nboffer.value=a['Nboffer']; email.value = a['Email']; phone.value = a['PhoneNumber']; lj.value = a["LastLogin"]})
+fetch(import.meta.env.VITE_APP_API_INFO_USER, {method:"POST", mode:"cors", body : JSON.stringify({"username" : gls().username, "token" : gls().sessionT}) }).then(a=>a.json()).then(a=>{dj.value=a['DateJoined']; domain.value=a['Domain'];nboffer.value=a['Nboffer']; email.value = a['Email']; phone.value = a['PhoneNumber']; lj.value = a["LastLogin"]})
 
 function send(){
 	if(passf1.value==passf2.value){

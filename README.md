@@ -1,22 +1,35 @@
-# Office1789
+# 🏛 Office1789
 
-Office1789 is a free and open alternative for your work
+Office1789 est une application web basée sur **Vue.js** (frontend), **Gin (Go)** (backend) et **PostgreSQL** (base de données).  
+L’ensemble est orchestré avec **Docker** et **Docker Compose** pour simplifier le développement et le déploiement.
 
-## Installation
+---
+
+## 🚀 Stack technique
+
+- **Frontend** : Vue.js  
+- **Backend** : Gin (Go)  
+- **Base de données** : PostgreSQL  
+- **Conteneurisation** : Docker
+
+---
+
+## ⚙️ Prérequis
 
 python3 config.py
 
-## Contributing
+---
 
-Pull requests are welcome but please open an issue first to discuss what would like to change
+## ▶️ Lancer le projet en local
 
-## Lib
+1. **Cloner le dépôt**
+   ```bash
+   git clone https://github.com/LeSimple02/office1789.git
+   cd office1789
 
-Frontend [VueJS, Javascript]
-Backend : [Actix, Rust]
-Database : [CQL, https://hub.docker.com/_/cassandra]
-Deployment : [Docker, Kubernetes]
+   cd webfront2
+   npm install
+   npm run serve
 
-## License
-
-[MIT](https://choosealicense.com/licenses/mit/)
+   cd backend
+   go run .

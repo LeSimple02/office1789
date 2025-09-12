@@ -11,7 +11,7 @@ let email = ref(0)
 
 
 
-fetch(process.env.VUE_APP_API_INFO_USER, {method:"POST", mode:"cors", body : JSON.stringify({"username" : gls().username, "token" : gls().sessionT}) }).then(a=>a.json()).then(a=>{dj.value=a['DateJoined']; domain.value=a['Domain'];nboffer.value=a['Nboffer']; email.value = a['Email']; phone = a['PhoneNumber']; lj.value = a["LastLogin"]})
+fetch(import.meta.env.VITE_APP_API_INFO_USER, {method:"POST", mode:"cors", body : JSON.stringify({"username" : gls().username, "token" : gls().sessionT}) }).then(a=>a.json()).then(a=>{dj.value=a['DateJoined']; domain.value=a['Domain'];nboffer.value=a['Nboffer']; email.value = a['Email']; phone = a['PhoneNumber']; lj.value = a["LastLogin"]})
 
 
 </script>
