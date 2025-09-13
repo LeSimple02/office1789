@@ -64,6 +64,74 @@ CREATE TABLE IF NOT EXISTS CalendarEvents (
     location VARCHAR(255),
     date_created DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES Users(user_id) ON DELETE CASCADE
+);*/
+
+/*-- Creating a database for the Office1789
+CREATE DATABASE IF NOT EXISTS Office1789;
+
+USE Office1789;
+
+-- Table for storing users
+CREATE TABLE IF NOT EXISTS Users (
+    user_id INT AUTO_INCREMENT PRIMARY KEY,
+    username VARCHAR(100) NOT NULL UNIQUE,
+    first_name VARCHAR(50),
+    last_name VARCHAR(50),
+    domain VARCHAR(100) NOT NULL,
+    email VARCHAR(100),
+    password_hash VARCHAR(255) NOT NULL,
+    nboffer INT,
+    phonenumber VARCHAR(255),
+    date_joined DATETIME DEFAULT CURRENT_TIMESTAMP,
+    last_login DATETIME
+);
+
+-- Table for storing user drive data (files)
+CREATE TABLE IF NOT EXISTS DriveFiles (
+    file_id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT,
+    file_name VARCHAR(255) NOT NULL,
+    file_path VARCHAR(255) NOT NULL,
+    file_size INT NOT NULL, -- Size in bytes
+    file_type VARCHAR(50),
+    date_uploaded DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES Users(user_id) ON DELETE CASCADE
+);
+
+-- Table for storing mail data
+CREATE TABLE IF NOT EXISTS Emails (
+    email_id INT AUTO_INCREMENT PRIMARY KEY,
+    sender_user_id INT,
+    recipient_user_id INT,
+    subject VARCHAR(255),
+    body TEXT,
+    date_sent DATETIME DEFAULT CURRENT_TIMESTAMP,
+    is_read BOOLEAN DEFAULT FALSE,
+    FOREIGN KEY (sender_user_id) REFERENCES Users(user_id) ON DELETE CASCADE,
+    FOREIGN KEY (recipient_user_id) REFERENCES Users(user_id) ON DELETE CASCADE
+);
+
+-- Table for storing email attachments (in case you want to handle attachments)
+CREATE TABLE IF NOT EXISTS EmailAttachments (
+    attachment_id INT AUTO_INCREMENT PRIMARY KEY,
+    email_id INT,
+    file_name VARCHAR(255),
+    file_path VARCHAR(255),
+    file_size INT,
+    FOREIGN KEY (email_id) REFERENCES Emails(email_id) ON DELETE CASCADE
+);
+
+-- Table for storing user calendar events (Optional)
+CREATE TABLE IF NOT EXISTS CalendarEvents (
+    event_id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT,
+    event_title VARCHAR(255),
+    event_description TEXT,
+    event_start DATETIME,
+    event_end DATETIME,
+    location VARCHAR(255),
+    date_created DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES Users(user_id) ON DELETE CASCADE
 );
 */
 --Create Db version postgreSQL
@@ -143,14 +211,6 @@ CREATE TABLE IF NOT EXISTS EmailAttachments (
     FOREIGN KEY (email_id) REFERENCES Emails(email_id) ON DELETE CASCADE
 );
 
--- Table for storing groups
-CREATE TABLE IF NOT EXISTS groups (
-    group_id SERIAL PRIMARY KEY,
-    subject VARCHAR(255),
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    deleted_at TIMESTAMP
-);
-
 -- Table for storing participants
 CREATE TABLE IF NOT EXISTS participants (
     group_id INT,
@@ -188,4 +248,3 @@ CREATE TABLE IF NOT EXISTS CalendarEvents (
     date_created TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES Users(user_id) ON DELETE CASCADE
 );
-

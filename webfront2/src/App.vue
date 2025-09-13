@@ -56,7 +56,7 @@ function decof(){
           </button>
       </div>
       </nav>
-      <button id="bdeco" v-if="gls().log == 1" @click="popup = 1">⏼</button>
+  <button id="bdeco" v-if="gls().log == 1" @click="popup = 1" title="Déconnexion">🔓</button>
      
   </header>
   <div v-if="popup==1" id="sb"></div>
@@ -135,13 +135,27 @@ nav {
 }
 
 nav a.router-link-active {
-  background: black;
+  background: -webkit-linear-gradient(30deg, blue, red);
   border-radius: 10px;
-  color: white;
+  color: #fff;
+  background: -webkit-linear-gradient(30deg, blue, red);
+  box-shadow:
+    0 0 16px 4px rgba(41,121,255,0.25),
+    0 0 32px 8px rgba(237,73,86,0.18),
+    0 2px 8px rgba(41,121,255,0.18);
+  border: 2px solid #2979ff;
+  outline: 2px solid #ed4956;
+  filter: brightness(1.12) drop-shadow(0 2px 8px #2979ff);
+  text-shadow: 0 2px 12px rgba(41,121,255,0.18);
+  transform: translateY(-2px) scale(1.04);
 }
 
 nav a.router-link-active:hover {
-  color: white;
+  color: #fff;
+  background: -webkit-linear-gradient(30deg, blue, red);
+  box-shadow: 0 0 12px 2px rgba(41,121,255,0.18), 0 0 24px 4px rgba(237,73,86,0.12);
+  filter: brightness(1.08);
+  text-shadow: 0 2px 8px rgba(41,121,255,0.12);
 }
 
 nav a {
@@ -193,11 +207,7 @@ footer a:first-of-type {
   color: black;
 }
 
-select{
-  background: black;
-  border-radius: 10px;
-  color: white;
-}
+
 
 #bdeco{
   background: rgba(255, 0,0,0.5);
@@ -272,7 +282,11 @@ select{
 }
 
 .dark nav a:hover{
-  color:  rgb(200, 200, 200);
+  color: #fff;
+  background: -webkit-linear-gradient(30deg, blue, red);
+  box-shadow: 0 0 12px 2px rgba(41,121,255,0.28), 0 0 24px 4px rgba(237,73,86,0.18);
+  filter: brightness(1.12);
+  text-shadow: 0 2px 8px rgba(41,121,255,0.18);
 }
 
 .dark nav a.router-link-exact-active:hover{
@@ -284,10 +298,7 @@ select{
   color: black;
 }
 
-.dark select{
-  background: white;
-  color: black;
-}
+
 
 .dark button{
   color: white;
@@ -295,7 +306,7 @@ select{
 
 
 select {
-  background: #222;
+  background: -webkit-linear-gradient(30deg, blue, red);
   border-radius: 8px;
   color: #fff;
   padding: 4px 12px;
@@ -349,9 +360,9 @@ header {
   color: #fff;
 }
 
-.dark select {
-  background: #222;
-  color: #fff;
+.dark select{
+  background: -webkit-linear-gradient(30deg, blue, red);
+ 
 }
 
 .dark header {

@@ -28,7 +28,7 @@ fetch(import.meta.env.VITE_APP_API_INFO_USER, {method:"POST", mode:"cors", body 
 
 function send(){
 	if(passf1.value==passf2.value){
-		fetch(process.env.VUE_APP_API_INFO_CHANGE, {method:"POST", mode:"cors", body : JSON.stringify({"lastusername" : gls().username, "username" : newusername.value, "phonenumber": newphone.value, "email": newemail.value, "nboffer": newoffer.value, "password": passf2.value, "token": gls().sessionT }) })
+		fetch(import.meta.env.VITE_APP_API_INFO_CHANGE, {method:"POST", mode:"cors", body : JSON.stringify({"lastusername" : gls().username, "username" : newusername.value, "phonenumber": newphone.value, "email": newemail.value, "nboffer": newoffer.value, "password": passf2.value, "token": gls().sessionT }) })
 		.then(a=>a.json()).then((a)=>{
 			if(newusername.value != "" && a["Username"] != "no" && a["Email"] != "no" && a["Phone"] != "no"){
 				

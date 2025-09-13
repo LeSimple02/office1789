@@ -34,6 +34,7 @@ const calendarOptions = computed(() => ({
 
 :deep(.fc-toolbar) {
   background: linear-gradient(30deg, blue, red);
+  font-family: roboto;
   border-radius: 16px;
   color: #fff;
   margin-bottom: 16px;
