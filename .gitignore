@@ -1,3 +1,11 @@
-node_modules
+# Node.js
+node_modules/
+
+# Tous les .env
 .env
+.env.*
+
+
+# Tous les Dockerfile
 Dockerfile
+Dockerfile.*
