@@ -1,13 +1,13 @@
 <script setup>
-import {ref} from "vue"
-import {gls} from "@/stores/global.js"
+import { ref } from "vue"
+import { gls } from "@/stores/global.js"
 
 let dj = ref(0)
 let lj = ref(0)
-let domain = ref(0)
+let domain = ref('')
 let nboffer = ref(0)
-let phone  = ref(0)
-let email = ref(0)
+let phone  = ref('')
+let email = ref('')
 
 let passwordt = ref('password')
 let passwordt2 = ref('password')
@@ -20,207 +20,355 @@ let newoffer = ref(0)
 let passf1 = ref('')
 let passf2 = ref('')
 
-let usernameR = ref('')
-let emailR = ref('')
-let phonenumberR = ref('')
+let usernameR = ref(false)
+let emailR = ref(false)
+let phonenumberR = ref(false)
 
-fetch(import.meta.env.VITE_APP_API_INFO_USER, {method:"POST", mode:"cors", body : JSON.stringify({"username" : gls().username, "token" : gls().sessionT}) }).then(a=>a.json()).then(a=>{dj.value=a['DateJoined']; domain.value=a['Domain'];nboffer.value=a['Nboffer']; email.value = a['Email']; phone.value = a['PhoneNumber']; lj.value = a["LastLogin"]})
+// Récupère les infos utilisateur (comme avant)
+fetch(import.meta.env.VITE_APP_API_INFO_USER, {
+  method: "POST",
+  mode: "cors",
+  body: JSON.stringify({ "username": gls().username, "token": gls().sessionT })
+})
+  .then(r => r.json())
+  .then(a => {
+    dj.value = a['DateJoined']
+    domain.value = a['Domain']
+    nboffer.value = a['Nboffer']
+    email.value = a['Email']
+    phone.value = a['PhoneNumber']
+    lj.value = a["LastLogin"]
+  })
+  .catch(() => {
+    // ignore fetch errors for now
+  })
 
-function send(){
-	if(passf1.value==passf2.value){
-		fetch(import.meta.env.VITE_APP_API_INFO_CHANGE, {method:"POST", mode:"cors", body : JSON.stringify({"lastusername" : gls().username, "username" : newusername.value, "phonenumber": newphone.value, "email": newemail.value, "nboffer": newoffer.value, "password": passf2.value, "token": gls().sessionT }) })
-		.then(a=>a.json()).then((a)=>{
-			if(newusername.value != "" && a["Username"] != "no" && a["Email"] != "no" && a["Phone"] != "no"){
-				
-				console.log(a["Username"])
-				document.cookie = `name=${gls().username}; expires=Fri, 31 Dec 1900 23:59:59 GMT; Secure`
-				document.cookie = `sessionToken=${gls().sessionT}; expires=Fri, 31 Dec 1900 23:59:59 GMT; Secure`
-				gls().sessionT = a["Token"]
-				gls().username = a["Username"]
-				document.cookie = `name=${a["Username"]}; expires=${a["Expiry"]}; Secure`
-				document.cookie = `sessionToken = ${a["Token"]}; expires=${a["Expiry"]}; Secure`
-				window.location.href = "/account"
-			}
-			else {
-				
-				if(a["Username"]){
-					usernameR.value = 1			
-				}
-				if(a["Email"]){
-					emailR.value = 1 
-				}
-				if(a["Phone"]){
-					phonenumberR.value = 1 
-				}
-					
-			}})
-			
-			
+function send() {
+  // Reset previous errors
+  usernameR.value = false
+  emailR.value = false
+  phonenumberR.value = false
 
-	}
+  if (passf1.value !== passf2.value) {
+    return // you may show an error — handled in template
+  }
+
+  fetch(import.meta.env.VITE_APP_API_INFO_CHANGE, {
+    method: "POST",
+    mode: "cors",
+    body: JSON.stringify({
+      "lastusername": gls().username,
+      "username": newusername.value,
+      "phonenumber": newphone.value,
+      "email": newemail.value,
+      "nboffer": newoffer.value,
+      "password": passf2.value,
+      "token": gls().sessionT
+    })
+  })
+    .then(r => r.json())
+    .then(a => {
+      if (newusername.value !== "" && a["Username"] !== "no" && a["Email"] !== "no" && a["Phone"] !== "no") {
+        // succes: update cookies / store
+        document.cookie = `name=${gls().username}; expires=Fri, 31 Dec 1900 23:59:59 GMT; Secure`
+        document.cookie = `sessionToken=${gls().sessionT}; expires=Fri, 31 Dec 1900 23:59:59 GMT; Secure`
+        gls().sessionT = a["Token"]
+        gls().username = a["Username"]
+        document.cookie = `name=${a["Username"]}; expires=${a["Expiry"]}; Secure`
+        document.cookie = `sessionToken=${a["Token"]}; expires=${a["Expiry"]}; Secure`
+        window.location.href = "/account"
+      } else {
+        // Show field-specific errors if present
+        if (a["Username"]) usernameR.value = true
+        if (a["Email"]) emailR.value = true
+        if (a["Phone"]) phonenumberR.value = true
+      }
+    })
+    .catch(() => {
+      // handle error silently for now
+    })
 }
 
-
-function show(){
-			if (passwordt.value=="password")
-				passwordt.value = "text"
-			else if(passwordt.value=="text")
-				passwordt.value="password"
+function togglePassword1() {
+  passwordt.value = (passwordt.value === "password") ? "text" : "password"
 }
-
-function show2(){
-			if (passwordt2.value=="password")
-				passwordt2.value = "text"
-			else if(passwordt2.value=="text")
-				passwordt2.value="password"
+function togglePassword2() {
+  passwordt2.value = (passwordt2.value === "password") ? "text" : "password"
 }
 </script>
 
 <template>
-<h1 id="title">{{$t('infop')}} :</h1>
-<div id="enso">
-		<li id="edit"><RouterLink id="edit" to="/account">⬅️</RouterLink></li>
-		<li id="pic"><img src="@/assets/napo.png" />{{$t('picturep')}}</li>
-		<div id="enso2">
-			<div id="lis">
-				<li>{{$t('username')}} :</li>
-				<li style="padding-top: 20px; padding-bottom: 20px;">{{$t('password')}} :</li>
-				<li>{{$t('doble')}} :</li>
-				<li>{{$t('domainy')}} :</li>
-				<li>{{$t('offery')}} :</li>
-				<li>{{$t('emaily')}} :</li>
-				<li>{{$t('phoney')}} :</li>
-				<li>{{$t('lastj')}} : {{new Date(lj).toDateString()}}</li>
-				<li>{{$t('datej')}} : {{new Date(dj).toDateString()}}</li>		  		
-			</div>
-			<div id="lisrep">
-				<p class="pr" v-if="usernameR">{{$t('dejaUP')}}</p>
-				<li><input v-model="newusername" v-bind:placeholder="gls().username"/></li>
-				<li id="passc" style="display: grid;"><p v-if="passf1!=passf2 && passf2!=''" style="color: red; position: fixed; margin-top: -10px; font-size:10px;">{{$t('passwordd')}}</p><div><input v-bind:type="passwordt" v-model="passf1" v-bind:placeholder="$t('passwordN')"/><button type="button" v-on:click="show" id="show">👁</button></div><div><input v-model="passf2" style="margin-top: 10px;" v-bind:placeholder="$t('repassword')" v-bind:type="passwordt2"/><button type="button" v-on:click="show2" id="show">👁</button></div></li>
-				<li style="display: flex; gap :20px;">❌<button class="buttons">config</button></li>
-				<li><select><option>@office1789</option></select></li>
-				<li><select><option>1</option><option>2</option><option>3</option></select>&nbsp;<RouterLink style="text-decoration: none; color: red; font-size: 10px;" to="/about">⚠️{{ $t("About") }}</RouterLink></li>
-				<p class="pr" v-if="emailR">{{$t('dejaEP')}}</p>
-				<li><input v-model="newemail" v-bind:placeholder="email"/></li>
-				<p class="pr" v-if="phonenumberR">{{$t('dejaPP')}}</p>
-				<li><input  v-model="newphone"  v-bind:placeholder="phone"/></li>			
-			</div>
-		</div>
-		<div id="choice">
-			<button @click="send">✅</button>
-			<RouterLink  style="text-decoration:none;" to="/account">❌</RouterLink>
-		</div>	
-	</div>
+  <div class="container">
+    <h1 id="title">{{ $t('infop') }}</h1>
+
+    <section id="enso" class="card">
+      <!-- top: back link + avatar -->
+      <div class="top-row">
+        <RouterLink class="back" to="/account">⬅️</RouterLink>
+
+        <div id="pic">
+          <img src="@/assets/napo.png" alt="avatar" />
+          <p class="pic-label">{{ $t('picturep') }}</p>
+        </div>
+      </div>
+
+      <!-- grid with two columns: label | field -->
+      <form class="form-grid" @submit.prevent="send" novalidate>
+        <!-- Username -->
+        <div class="form-label">{{ $t('username') }}</div>
+        <div class="form-field">
+          <input v-model="newusername" :placeholder="gls().username" />
+          <p v-if="usernameR" class="error small">{{ $t('dejaUP') }}</p>
+        </div>
+
+        <!-- Password (two inputs stacked in field column) -->
+        <div class="form-label">{{ $t('password') }}</div>
+        <div class="form-field">
+          <div class="password-row">
+            <input :type="passwordt" v-model="passf1" :placeholder="$t('passwordN')" />
+            <button type="button" class="icon-btn" @click="togglePassword1" aria-label="toggle password">👁</button>
+          </div>
+          <div class="password-row">
+            <input :type="passwordt2" v-model="passf2" :placeholder="$t('repassword')" />
+            <button type="button" class="icon-btn" @click="togglePassword2" aria-label="toggle confirm">👁</button>
+          </div>
+          <p v-if="passf1 !== passf2 && passf2 !== ''" class="error small">{{ $t('passwordd') }}</p>
+        </div>
+
+        <!-- Doble (example static) -->
+        <div class="form-label">{{ $t('doble') }}</div>
+        <div class="form-field">
+          <button class="small-btn">config</button>
+        </div>
+
+        <!-- Domain (read-only) -->
+        <div class="form-label">{{ $t('domainy') }}</div>
+        <div class="form-field">
+          <input readonly :value="domain || '-'" />
+        </div>
+
+        <!-- Offer selector -->
+        <div class="form-label">{{ $t('offery') }}</div>
+        <div class="form-field">
+          <select v-model="newoffer">
+            <option value="0">0</option>
+            <option value="1">1</option>
+            <option value="2">2</option>
+          </select>
+          <RouterLink class="warn" to="/about">⚠️ {{ $t('About') }}</RouterLink>
+        </div>
+
+        <!-- Email -->
+        <div class="form-label">{{ $t('emaily') }}</div>
+        <div class="form-field">
+          <input v-model="newemail" :placeholder="email" />
+          <p v-if="emailR" class="error small">{{ $t('dejaEP') }}</p>
+        </div>
+
+        <!-- Phone -->
+        <div class="form-label">{{ $t('phoney') }}</div>
+        <div class="form-field">
+          <input v-model="newphone" :placeholder="phone" />
+          <p v-if="phonenumberR" class="error small">{{ $t('dejaPP') }}</p>
+        </div>
+
+        <!-- Last login (read-only) -->
+        <div class="form-label">{{ $t('lastj') }}</div>
+        <div class="form-field"><span>{{ lj ? (new Date(lj).toDateString()) : '-' }}</span></div>
+
+        <!-- Date joined -->
+        <div class="form-label">{{ $t('datej') }}</div>
+        <div class="form-field"><span>{{ dj ? (new Date(dj).toDateString()) : '-' }}</span></div>
+      </form>
+
+      <!-- actions -->
+      <div class="actions">
+        <button type="button" class="btn primary" @click="send">✔ {{ $t('save') || 'Save' }}</button>
+        <RouterLink class="btn ghost" to="/account">✖ {{ $t('cancel') || 'Cancel' }}</RouterLink>
+      </div>
+    </section>
+  </div>
 </template>
 
 <style scoped>
 
-#lisrep{
-	
-		.buttons{
-			border: none;
-			background: lightgrey;
-			border-radius: 5px;
-		}
-	
-} 
 
-.pr{
-	position: fixed;
-	font-size: 10px;
-	color: red;
+* { box-sizing: border-box; font-family: 'Roboto', sans-serif; }
+
+.container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  
+  padding: 28px 16px;
+  background: #f4f6fb;
+  min-height: 100vh;
+  
+}
+.dark .container { background: #0f1220; }
+
+#title {
+  width: 100%;
+  max-width: 900px;
+  margin: 0 auto 16px;
+  font-size: 26px;
+  font-weight: 700;
+  color: #222;
+  text-align: left;
+}
+.dark #title { color: #eee; }
+
+/* Card */
+.card {
+  width: 100%;
+  max-width: 900px;
+  background: #fff;
+  border-radius: 16px;
+  padding: 20px;
+  box-shadow: 0 8px 30px rgba(15,20,40,0.06);
+}
+.dark .card { background: #1f2230; color: #eee; box-shadow: 0 6px 24px rgba(0,0,0,0.4); }
+
+.top-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 18px;
+}
+.back {
+  color: #666;
+  text-decoration: none;
+  font-size: 18px;
+}
+#pic {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+#pic img {
+  width: 84px;
+  height: 84px;
+  border-radius: 999px;
+  object-fit: cover;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+}
+.pic-label { font-weight: 600; color: #333; }
+.dark .pic-label { color: #ddd; }
+
+/* Grid: labels and fields aligned exactly opposite */
+.form-grid {
+  display: grid;
+  grid-template-columns: 1fr 2fr; /* label | field */
+  gap: 12px 20px;
+  align-items: center;
+  margin-top: 6px;
 }
 
-#passc{
-	display: flex;
+/* Labels (right-aligned so they're directly facing fields) */
+.form-label {
+  justify-self: end;
+  text-align: right;
+  color: #444;
+  font-weight: 500;
+  padding-right: 6px;
+}
+.dark .form-label { color: #ddd; }
+
+/* Field column */
+.form-field { justify-self: start; width: 100%; }
+
+/* Inputs */
+input[type="text"],
+input[type="password"],
+input[readonly],
+select,
+textarea {
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid #e2e6ef;
+  background: #fff;
+  font-size: 14px;
+}
+.dark input, .dark select, .dark textarea, .dark input[readonly] {
+  background: #2b2d3b; color: #eee; border-color: #444;
 }
 
-#passc > div > button{
-	background: none;
-	border: none;
+/* Password rows */
+.password-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 8px;
 }
-#choice{
-	border: none;
-	background: none;
-	font-size: 30px;
-	position: absolute;
-	left: 80%;
-	top: 90%;
-}
-
-#choice > button{
-	border: none;
-	background: none;
-	font-size: 30px;
+.icon-btn {
+  border: none;
+  background: none;
+  cursor: pointer;
+  padding: 6px;
+  font-size: 18px;
 }
 
-input{
-	border-radius: 2px;
-	border : none;
+/* small buttons inside form */
+.small-btn {
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: 1px solid #e6e6e6;
+  background: #f4f6fb;
+  cursor: pointer;
 }
 
-#edit{
-	margin-top: -40px;
-	color: grey;
-	text-decoration: none;
-	
+/* error text */
+.error { color: #d9534f; margin-top: 6px; }
+.small { font-size: 12px; margin: 6px 0 0 0; }
+
+/* Actions */
+.actions {
+  margin-top: 18px;
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+}
+.btn {
+  padding: 10px 16px;
+  border-radius: 10px;
+  border: none;
+  cursor: pointer;
+  font-weight: 600;
+}
+.btn.primary {
+  background: linear-gradient(135deg,#4facfe 0%,#00f2fe 100%);
+  color: white;
+  box-shadow: 0 6px 18px rgba(64,150,255,0.12);
+}
+.btn.ghost {
+  background: transparent;
+  color: #c0392b;
+  border: 1px solid #eee;
 }
 
-#enso2{
-	display: flex;
+/* Responsive: on small screens show stacked layout where label is above field */
+@media (max-width: 820px) {
+  .form-grid {
+    grid-template-columns: 1fr; /* single column */
+  }
+  .form-label {
+    justify-self: start;
+    text-align: left;
+    padding-right: 0;
+  }
+  #pic {
+    justify-self: center;
+  }
+  .actions {
+    justify-content: center;
+  }
+  #title { font-size: 20px; }
 }
 
-#enso{
-
-	list-style: none;
-	font-family: roboto;
-	font-size: 20px;
-	position: absolute;
-	height: auto;
-	padding: 10px;
-	left: 50%;
-	top: 20%;
-	width: auto;
-	min-width: 200px;
-	text-align: left;
-	margin-left: -10%;
-	border-radius: 30px;
-
+/* Very small screens tweak */
+@media (max-width: 420px) {
+  #pic img { width: 72px; height:72px; }
+  .btn { padding: 10px 12px; font-size: 14px; }
 }
-
-#pic{
-	display: grid;
-	align-items: center;
-	text-align: center;
-	justify-content: center;
-	font-weight: bold;
-}
-#pic >img{
-	width: 200px;
-	border-radius: 100px;
-	
-}
-
-li{
-	margin-top: 20px;
-}
-
-#title{
-	font-family: roboto;
-	font-size: 40px;
-	position: absolute;
-	left: 3%;
-	
-}
-
-.dark #lisrep{
-		
-		.buttons{
-			border: none;
-			background: grey;
-			border-radius: 5px;
-		}
-	
-} 
-
 </style>

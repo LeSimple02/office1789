@@ -30,7 +30,7 @@ function connect(){
 			
 			document.cookie = `name=${a["Username"]}; expires=${a["Expiry"]}; Secure`
 			document.cookie = `sessionToken = ${a["Token"]}; expires=${a["Expiry"]}; Secure`
-			router.push("/mail")
+			router.push("mail")
 		}
 		else{
 			wrong.value = 1

@@ -188,6 +188,10 @@ background: -webkit-linear-gradient(30deg, blue, red);;
     border-radius: 24px;
 }
 
+.dark #ens::before{
+	background: rgba(0,0,0,0.6);
+}
+
 #prevision,
 #ensA {
     position: relative;
@@ -448,7 +452,154 @@ h2{
 
 .dark #psf{
 	background: rgba(0, 50, 0, 0.2);
-	
+	p{
+		color: white;
+	}
 }
+
+/* Responsive Mobile (max-width: 767px) */
+@media (max-width: 767px) {
+
+#progressbar {
+  display: flex;
+  flex-direction: column; /* empilement vertical */
+  align-items: flex-start; /* texte à gauche */
+  text-align: left;
+  width: 100%;
+  padding: 0; /* enlever padding par défaut si présent */
+  
+  li {
+    display: flex;
+    align-items: center; /* aligner cercles et texte */
+    gap: 12px; /* espace entre le cercle et le texte */
+    margin-bottom: 20px;
+    position: relative;
+    text-align: left;
+
+    .nactive,
+    .active {
+      position: relative; /* cercles restent à gauche du texte */
+      margin: 0;
+    }
+
+    p {
+      margin: 0;
+      font-family: roboto;
+      font-size: 1rem;
+      
+    }
+  }
+
+  .nactiveb,
+  .activeb {
+    display: none;
+  }
+}
+
+
+
+  /* Header et boutons */
+  #colp1 {
+    padding: 20px 12px;
+    border-radius: 12px;
+  }
+
+  #colp1 h1 {
+    font-size: 1.6rem;
+  }
+
+  #colp1 h2 {
+    font-size: 1rem;
+  }
+
+  #colp1 > div {
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+  }
+
+  #try, #try2 {
+    width: 100%;
+    text-align: center;
+    padding: 10px;
+    font-size: 0.9rem;
+  }
+
+ 
+  #ens {
+	display: flex;
+	flex-direction: column;
+    gap: 100px;
+
+  }
+
+  #ensA {
+    flex-direction: column;
+	
+    width: 100%;
+  }
+
+  #ens2 {
+    width: 100%;
+	gap: 20%;
+  }
+
+  #carrousel {
+    height: 180px;
+  }
+
+  #carrousel button {
+    width: 30px;
+    height: 30px;
+    font-size: 16px;
+  }
+
+  #progressbar {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    padding-bottom: 8px;
+  }
+
+  #progressbar li {
+    min-width: 100px;
+    padding: 0 4px;
+  }
+
+  #progressbar p {
+    font-size: 0.7rem;
+  }
+
+  /* Actualités et pied de page */
+  #actu {
+    width: auto;
+
+	
+   
+  }
+
+  #actu h3 {
+    font-size: 1rem;
+  }
+
+  #psf {
+    flex-direction: column;
+    gap: 12px;
+    padding: 16px;
+  }
+
+  
+  #psf span, #psf img {
+    width: 60px;
+    height: 50px;
+  }
+
+  #psf p {
+    font-size: 0.8rem;
+  }
+}
+
+
+
+
 
 </style>
