@@ -1,4 +1,5 @@
 import {gls} from "@/stores/global"
+import router from "@/router";
 
 function verifback(){
 
@@ -10,18 +11,21 @@ if(gls().log==1){
 	const contentType = response.headers.get('content-type');
         
 	if (contentType && contentType.includes('application/json')) {
-		
+
 			return response.json();
         }
+		
         else{
 		gls().log = 0
 		
 		
         
         }}).then(a=>{
-		if (a['username']=="no"){
+			
+		if (a['Username']=='no'){
 			
 		gls().log = 0
+		router.push("/")
 		
 	}
 
