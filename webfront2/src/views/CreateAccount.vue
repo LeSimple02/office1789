@@ -84,8 +84,8 @@ function show2(){
 	<div id="forma">
 		<h1 id="tac">{{$t("createac")}} :</h1>
 		<div id="champ">
-			<ul v-html="$t('createacl')"></ul>
-			<ul>
+			<ul id="col1" v-html="$t('createacl')"></ul>
+			<ul id="col2">
 				<p class="pr" v-if="usernameR">{{$t('dejaUP')}}</p>
 				<li><input v-model="username" type="text" required/>@office1789.com</li>
 				
@@ -156,6 +156,28 @@ function show2(){
   cursor: pointer;
 }
 
+#col1 ::v-deep{
+    
+    
+    list-style: none;
+  margin: 0;
+  padding: 0;
+  font-family: arial;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  text-align: left;
+  li {
+      
+      
+      align-items: center;
+      display: flex;
+      height: 40px;
+
+  }
+    
+}
+
 /* dark mode */
 .dark #forma {
   background: rgba(30,30,40,0.7);
@@ -179,15 +201,20 @@ function show2(){
 }
 
 /* listes */
-#forma ul {
+#col2 {
   list-style: none;
   margin: 0;
   padding: 0;
+  
   font-family: arial;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 20px;
   text-align: left;
+  li{
+    display: flex;
+    gap: 10px;
+  }
 }
 
 /* chaque ligne d'inputs */
@@ -195,7 +222,6 @@ function show2(){
   display: flex;
   justify-content: flex-start;
   align-items: center;
-  gap: 10px;
   width: 100%;
 }
 
@@ -209,6 +235,7 @@ function show2(){
   border: 1px solid #d0d0d0;
   box-sizing: border-box;
   background: rgba(245,245,247,0.95);
+  height: 40px;
 }
 
 /* icône œil */

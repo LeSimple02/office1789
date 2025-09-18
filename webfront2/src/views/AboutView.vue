@@ -19,6 +19,7 @@
 
 .about{
 	font-family: arial;
+	
 }
 
 #enso{
@@ -26,6 +27,7 @@
 	display: flex;
 	flex-direction: column;
 	height: auto;
+	
 }
 
 #enso > a{
@@ -73,7 +75,8 @@
 	font-family: arial;
 	background: transparent;
 	transition: 0.5s ease-out;
-
+	border-radius: 20px;
+	overflow : hidden;
 }
 
 
@@ -84,6 +87,7 @@
 	margin-top: -30px;
 	height: 40px;
 	margin-left: -30px;
+	
 color: white;
 	background: linear-gradient(30deg, blue, red);
 		transition:all 10s ease;

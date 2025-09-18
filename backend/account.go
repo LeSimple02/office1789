@@ -127,7 +127,7 @@ func ChangeI(c *gin.Context) {
 						Username: cha.Username,
 						expiry:   expiresAtTime,
 					}
-					c.JSON(http.StatusOK, sessionSend{sessionToken, cha.Username, expiresAtTime})
+					c.JSON(http.StatusOK, sessionSend{cha.Username, sessionToken, expiresAtTime})
 				} else {
 					c.JSON(http.StatusOK, infova)
 				}

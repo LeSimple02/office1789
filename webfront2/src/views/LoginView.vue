@@ -230,7 +230,7 @@ function show(){
 #lo {
   width: 100%;
   height: 44px;
-  background: -webkit-linear-gradient(30deg, #00308F, #ff3c3c);
+  background: linear-gradient(30deg, blue, red);
   border: none;
   border-radius: 12px;
   color: white;
@@ -243,12 +243,11 @@ function show(){
   transition: background 0.3s, box-shadow 0.2s;
 }
 #lo:hover {
-  background: -webkit-linear-gradient(30deg, #ff3c3c, #00308F);
+ background: linear-gradient(30deg, red, blue);
   box-shadow: 0 4px 16px rgba(0,0,0,0.18);
 }
 
 .dark #lo {
-  background: -webkit-linear-gradient(30deg, #00308F, #ff3c3c);
   color: #fff;
 }
 

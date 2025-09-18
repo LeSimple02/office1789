@@ -67,7 +67,7 @@
               </div>
             </div>
           </div>
-          <div class="messages-list">
+          <div :class="{messages_list: 1}">
             <div v-for="msg in currentMessages" :key="msg.id" :class="['message', msg.fromMe ? 'me' : 'other']">
               <span class="message-content">{{ msg.text }}</span>
               <span class="message-date">{{ msg.date }}</span>
@@ -255,6 +255,8 @@ function deleteGroup() {
   showDeleteModal.value = false;
 }
 
+
+var messages_list = ref('false')
 function sendMessage() {
   if (!newMessageText.value.trim() || !selectedDiscussion.value) return;
   let key = selectedDiscussion.value.isGroup ? `group_${selectedDiscussion.value.id}` : `user_${selectedDiscussion.value.id}`;
@@ -264,6 +266,7 @@ function sendMessage() {
     fromMe: true,
     date: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
   };
+  //messages_list.value.scrollTop = messages_list.value.scrollHeight
   if (!messagesData.value[key]) messagesData.value[key] = [];
   messagesData.value[key].push(msg);
   newMessageText.value = '';
@@ -507,8 +510,8 @@ onUnmounted(() => {
   max-height: 500px;
   overflow: hidden;
 }
-.messages-list {
-  overflow-y: auto;
+.messages_list {
+  overflow: scroll;
   margin-bottom: 12px;
   display: flex;
   flex-direction: column;
