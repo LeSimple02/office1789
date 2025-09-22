@@ -60,7 +60,6 @@ onMounted(() => {
         <li><RouterLink to="/mail/draft" exact-active-class="active">{{$t('draft')}}</RouterLink></li>
         <li><RouterLink to="/mail/send" exact-active-class="active">{{$t('send')}}</RouterLink></li>
         <li><RouterLink to="/mail/trash" exact-active-class="active">{{$t('trash')}}</RouterLink></li>
-        <li><RouterLink to="/mail/sendem" exact-active-class="active">{{$t('sendem')}}</RouterLink></li>
       </ul>
     </aside>
 

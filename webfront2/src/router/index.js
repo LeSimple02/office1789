@@ -45,6 +45,12 @@ const router = createRouter({
       {
         path: 'draft',
         component: MailView,
+      },{
+        path: 'send',
+        component: MailView,
+      }, {
+        path: 'trash',
+        component: MailView,
       }]
     },
     {

@@ -25,11 +25,21 @@ if(gls().log==1){
 		if (a['Username']=='no'){
 			
 		gls().log = 0
+		
 		router.push("/")
 		
 	}
 
-	})
+	}) .catch(err => {
+		localStorage.removeItem("log")
+		gls().sessionT = ""
+			gls().username = ""
+			document.cookie = "name=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+			document.cookie = "sessionToken=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+			router.push("/")
+			
+		}
+		)
 
 }
 }

@@ -6,12 +6,14 @@ import router from "@/router/index"
 import { useDark, useToggle } from '@vueuse/core'
 import verifback from "./views/backwork.js"
 
+
 const isDark = useDark()
 const toggleDark = useToggle(isDark)
 const menuOpen = ref(false)
 let menu1 = [{name : "Home", link : "/"},{name : "Login", link : "/login"},{name : "About", link : "/about"}]
 let menu2 = [{name : "Mail", link : "/mail"}, {name : "Drive", link : "/drive"}, {name : "Chat", link : "/chat"}, {name : "Calendar", link : "/calendar"}, {name : "Account", link : "/account"}]
 verifback()
+
 let menu = computed(()=>{
   if(gls().log == 1){
     return menu2
