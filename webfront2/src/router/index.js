@@ -56,7 +56,12 @@ const router = createRouter({
     {
       path: '/drive',
       name: 'drive',
-      component: () => import('../views/DriveView.vue')
+      component: () => import('../views/DriveView.vue'),
+       children: [
+      {
+        path: 'trash',
+        component: () => import('../views/DriveView.vue')
+      }]
     },
     {
       path: '/chat',

@@ -156,6 +156,10 @@ function show2(){
   cursor: pointer;
 }
 
+.dark #create-bg::before{
+  background: linear-gradient(120deg, #23243a 0%, #1a1b26 100%);
+}
+
 #col1 ::v-deep{
     
     
@@ -180,7 +184,7 @@ function show2(){
 
 /* dark mode */
 .dark #forma {
-  background: rgba(30,30,40,0.7);
+  background: rgba(30,30,40, 1);
   backdrop-filter: blur(16px);
   color: #eee;
 }

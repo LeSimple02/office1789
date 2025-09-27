@@ -1,8 +1,9 @@
 <script setup>
 import {gls} from "@/stores/global"
 import {ref} from "vue"
-import { useDark } from '@vueuse/core'
 import router from "@/router/index"
+import { useDark } from '@vueuse/core'
+
 
 
 let passw = ref("password")
@@ -30,7 +31,7 @@ function connect(){
 			
 			document.cookie = `name=${a["Username"]}; expires=${a["Expiry"]}; Secure`
 			document.cookie = `sessionToken = ${a["Token"]}; expires=${a["Expiry"]}; Secure`
-			router.push("mail")
+			router.push("/mail")
 		}
 		else{
 			wrong.value = 1
@@ -43,6 +44,7 @@ function connect(){
 
 if (gls().log == 1){
 	router.push("/mail")
+  
 }
 
 

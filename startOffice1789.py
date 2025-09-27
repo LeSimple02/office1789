@@ -1,11 +1,15 @@
 import subprocess
 import webbrowser
+import docker
+
+
 
 
 if __name__ == "__main__":
     print("Start of Postgresql docker")
-    process = subprocess.Popen("docker start focused_bhabha")
-    process.wait()
+    client = docker.from_env()
+    container = client.containers.get("focused_bhabha")
+    container.start()
     print("Start of Backend go")
     subprocess.Popen("air", cwd="backend")
     print("Start of webfront")
