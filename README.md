@@ -26,10 +26,4 @@ python3 config.py
    ```bash
    git clone https://github.com/LeSimple02/office1789.git
    cd office1789
-
-   cd webfront2
-   npm install
-   npm run serve
-
-   cd backend
-   go run .
+   python3 startOffice1789.py
