@@ -16,7 +16,7 @@ if(gls().log==1){
 		
         else{
 		gls().log = 0
-		
+		localStorage.setItem("log", 0)
 		
         
         }}).then(a=>{
