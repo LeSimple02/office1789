@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"strings"
 	"time"
+
 	//"fmt"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -20,47 +21,25 @@ type ChangeIn struct {
 	Token        string `json:token`
 }
 
-func drivei(c *gin.Context) {
-
-	var verif sessionSend
-	var infop Subscribe
-
-	c.BindJSON(&verif)
-
-	if sessions[verif.Token].Username == verif.Username {
-		rows := db.QueryRow("SELECT domain, nboffer, date_joined, last_login, phonenumber, email FROM Users WHERE username=$1", verif.Username)
-		rows.Scan(&infop.Domain, &infop.Nboffer, &infop.DateJoined, &infop.LastLogin, &infop.PhoneNumber, &infop.Email)
-
-		c.JSON(http.StatusOK, infop)
-
-	} else {
-		infop.Username = "no"
-		c.JSON(http.StatusOK, infop)
-	}
-	
-
-}
-
 func getinfop(c *gin.Context) {
 
 	var verif sessionSend
 	var infop Subscribe
 
 	c.ShouldBindJSON(&verif)
-	
 
-	if sessions[verif.Token].Username == verif.Username && verif.Username != ""{
+	if sessions[verif.Token].Username == verif.Username && verif.Username != "" {
 		rows := db.QueryRow("SELECT domain, nboffer, date_joined, last_login, phonenumber, email FROM Users WHERE username=$1", verif.Username)
 		rows.Scan(&infop.Domain, &infop.Nboffer, &infop.DateJoined, &infop.LastLogin, &infop.PhoneNumber, &infop.Email)
-		
+
 		c.JSON(http.StatusOK, infop)
 		return
 
 	} else {
 		infop.Username = "no"
-		
+
 		c.JSON(http.StatusOK, infop)
-		
+
 	}
 
 }

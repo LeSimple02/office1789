@@ -8,7 +8,7 @@ import docker
 if __name__ == "__main__":
     print("Start of Postgresql docker")
     client = docker.from_env()
-    container = client.containers.get("focused_bhabha")
+    container = client.containers.get("postgres-db")
     container.start()
     print("Start of Backend go")
     subprocess.Popen("air", cwd="backend")
