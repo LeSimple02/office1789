@@ -22,7 +22,7 @@ func Connect(c *gin.Context) {
 
 		if passc == true {
 			sessionToken := uuid.NewString()
-			expiresAtTime := time.Now().Add(120 * time.Second)
+			expiresAtTime := time.Now().Add(24 * time.Hour)
 			sessions[sessionToken] = session{
 				Username: conn.Username,
 				expiry:   expiresAtTime,
