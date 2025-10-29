@@ -29,35 +29,39 @@
     <!-- MAIN -->
     <main class="dv-main">
       <header class="dv-header">
-        <div class="dv-breadcrumbs"
-             @dragover.prevent
-             @drop.prevent="onBreadcrumbDropRoot">
-          <!-- Root drop target (drag onto "Root") -->
+       <div class="dv-breadcrumbs"
+          @dragover.prevent
+          @drop.prevent="onBreadcrumbDropRoot"
+          role="navigation"
+          aria-label="breadcrumbs">
+        <button
+          class="crumb"
+          :class="{ 'crumb-target': dragTarget === 'breadcrumb-root', 'crumb-active': currentPath === '/' }"
+          @click="goRoot"
+          @dragover.prevent="dragTarget = 'breadcrumb-root'"
+          @dragleave="dragTarget = null"
+          @drop.prevent="onBreadcrumbDropRoot"
+          aria-current="page"
+          title="Root"
+        >
+          Root
+        </button>
+
+        <template v-for="(part, i) in currentParts" :key="i">
+          <span class="slash">/</span>
           <button
             class="crumb"
-            :class="{ 'crumb-target': dragTarget === 'breadcrumb-root' }"
-            @click="goRoot"
-            @dragover.prevent="dragTarget = 'breadcrumb-root'"
+            :class="{ 'crumb-target': dragTarget === `breadcrumb-${i}`, 'crumb-active': i === currentParts.length - 1 }"
+            @click="goToBreadcrumb(i)"
+            @dragover.prevent="dragTarget = `breadcrumb-${i}`"
             @dragleave="dragTarget = null"
-            @drop.prevent="onBreadcrumbDropRoot"
+            @drop.prevent="onBreadcrumbDrop(i)"
+            :aria-label="`Aller à ${part}`"
           >
-            Root
+            {{ part }}
           </button>
-
-          <template v-for="(part, i) in currentParts" :key="i">
-            <span class="slash">/</span>
-            <button
-              class="crumb"
-              :class="{ 'crumb-target': dragTarget === `breadcrumb-${i}` }"
-              @click="goToBreadcrumb(i)"
-              @dragover.prevent="dragTarget = `breadcrumb-${i}`"
-              @dragleave="dragTarget = null"
-              @drop.prevent="onBreadcrumbDrop(i)"
-            >
-              {{ part }}
-            </button>
-          </template>
-        </div>
+        </template>
+      </div>
 
         <div class="dv-tools">
           <input class="dv-search" v-model="searchQuery" placeholder="Rechercher..." />
@@ -126,10 +130,16 @@
               </div>
 
               <div class="actions">
-                <button class="dv-mini" @click.stop="startRename(it)" title="Renommer">✏️</button>
-                <button class="dv-mini" @click.stop="downloadFile(it)" title="Télécharger">⬇️</button>
-                <button v-if="it.folder !== 'trash'" class="dv-mini" @click.stop="moveToTrash(it.id)" title="Mettre à la corbeille">🗑️</button>
-              </div>
+              <button class="dv-mini" @click.stop="startRename(it)" title="Renommer">✏️</button>
+              <button class="dv-mini" @click.stop="downloadFile(it)" title="Télécharger">⬇️</button>
+
+              <!-- si on est pas dans la corbeille, proposer mise à la corbeille -->
+              <button v-if="it.folder !== 'trash'" class="dv-mini" @click.stop="moveToTrash(it.id)" title="Mettre à la corbeille">🗑️</button>
+
+              <!-- si on est dans la corbeille, proposer suppression définitive (confirm) -->
+              <button v-else class="dv-mini danger" @click.stop="confirmPermanentDelete(it)" title="Supprimer définitivement">🗑️❌</button>
+            </div>
+
             </li>
           </ul>
         </aside>
@@ -158,7 +168,7 @@
                 <button class="dv-btn green" @click="downloadFile(selectedFile)">Télécharger</button>
                 <button class="dv-btn" @click="startRename(selectedFile)">Renommer</button>
                 <button class="dv-btn purple" @click="shareFile(selectedFile)">Partager</button>
-                <button v-if="curr !== 'trash'" class="dv-btn danger" @click="moveToTrash([selectedFile.id])">Mettre à la corbeille</button>
+                <button v-if="curr !== 'trash'" class="dv-btn danger" @click="moveToTrash(selectedFile.id)">Mettre à la corbeille</button>
                 <template v-else>
                   <button class="dv-btn" @click="restoreFile(selectedFile)">Restaurer</button>
                   <button class="dv-btn danger" @click="confirmPermanentDelete(selectedFile)">Supprimer définitivement</button>
@@ -186,9 +196,26 @@
                   </audio>
                 </template>
 
+                <!-- PDF inline preview -->
+                <template v-else-if="selectedFile.url && (selectedFile.mime || '').toLowerCase() === 'application/pdf'">
+                  <iframe :src="selectedFile.url" class="preview-pdf" :key="selectedFile.id" style="width:100%;height:400px;border:0"></iframe>
+                </template>
+
+                <!-- DOCX / other office: try opening in new tab (browser may download or display depending on support) -->
+                <template v-else-if="selectedFile.url && (selectedFile.mime || '').includes('word')">
+                  <div class="no-preview">
+                    Aperçu natif non disponible pour ce format dans le navigateur. <button class="dv-btn small" @click="openAction(selectedFile)">Ouvrir</button>
+                  </div>
+                </template>
+
                 <template v-else-if="selectedFile.text">
                   <pre class="preview-text" :key="selectedFile.id">{{ selectedFile.text }}</pre>
                 </template>
+
+                <template v-else>
+                  <div class="no-preview">Aperçu non disponible pour ce fichier</div>
+                </template>
+
 
                 <template v-else>
                   <div class="no-preview">Aperçu non disponible pour ce fichier</div>
@@ -211,20 +238,80 @@
     <!-- hidden file input -->
     <input ref="uploadInput" type="file" multiple style="display:none" @change="handleUpload" />
 
-    <!-- UPLOAD MODAL -->
-    <div v-if="showUploadModal" class="modal-wrap" @keydown.esc="showUploadModal = false">
-      <div class="modal" role="dialog" aria-modal="true" aria-label="Uploader des fichiers">
-        <h3>Uploader des fichiers</h3>
-        <p>Glisse-dépose ou clique pour sélectionner des fichiers.</p>
-        <div class="upload-zone" @click="triggerFilePicker" @dragover.prevent @drop.prevent="handleUpload">
-          <p>Déposez vos fichiers ici — ou cliquez</p>
-        </div>
-        <div class="modal-actions">
-          <button class="dv-btn" @click="showUploadModal = false">Annuler</button>
+    <!-- UPLOAD MODAL (avec file progress) -->
+<div v-if="showUploadModal" class="modal-wrap" @keydown.esc="showUploadModal = false">
+  <div class="modal" role="dialog" aria-modal="true" aria-label="Uploader des fichiers">
+    <h3>Uploader des fichiers</h3>
+    <p>Glisse-dépose ou clique pour sélectionner des fichiers.</p>
+
+    <div class="upload-zone" @click="triggerFilePicker" @dragover.prevent @drop.prevent="handleUpload">
+      <p>Déposez vos fichiers ici — ou cliquez</p>
+      <small v-if="uploadQueue.length === 0" style="display:block; margin-top:8px; color:#666">
+        Les fichiers seront envoyés et affichés ci-dessous avec une barre de progression.
+      </small>
+    </div>
+
+    <input ref="uploadInput" type="file" multiple style="display:none" @change="handleUpload" />
+
+    <div v-if="uploadQueue.length" style="margin-top:12px; max-height:40vh; overflow:auto; padding-right:4px">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px">
+        <strong>Uploads en cours</strong>
+        <div style="display:flex; gap:8px; align-items:center">
+          <small>{{ uploadsSummary }}</small>
+          <button class="dv-btn small" @click="cancelAllUploads">Annuler tout</button>
         </div>
       </div>
-      <div class="backdrop" @click="showUploadModal = false"></div>
+
+      <!-- overall progress -->
+      <div class="progress-wrap" style="margin-bottom:8px">
+        <div class="progress-track">
+          <div class="progress-fill" :style="{ width: overallProgress + '%' }"></div>
+        </div>
+        <div style="font-size:0.85rem; margin-top:6px; display:flex; justify-content:space-between">
+          <span>Global</span>
+          <span>{{ overallProgress }}%</span>
+        </div>
+      </div>
+
+      <!-- per-file list -->
+      <ul style="list-style:none; padding:0; margin:0; display:flex; flex-direction:column; gap:8px">
+        <li v-for="(u, i) in uploadQueue" :key="u.id" style="display:flex; gap:12px; align-items:center;">
+          <div style="flex:1">
+            <div style="display:flex; justify-content:space-between; align-items:center">
+              <div style="font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:60%">
+                {{ u.name }}
+              </div>
+              <div style="font-size:0.85rem; color:#666">{{ u.progress }}% • {{ humanSize(u.size) }}</div>
+            </div>
+
+            <div class="progress-wrap" style="margin-top:6px">
+              <div class="progress-track">
+                <div class="progress-fill" :style="{ width: u.progress + '%' }"></div>
+              </div>
+            </div>
+
+            <div style="display:flex; gap:8px; margin-top:6px; align-items:center">
+              <small v-if="u.status === 'uploading'">Envoi…</small>
+              <small v-else-if="u.status === 'done'" style="color:green">Terminé</small>
+              <small v-else-if="u.status === 'error'" style="color:#c00">Erreur</small>
+              <small v-else-if="u.status === 'cancelled'" style="color:#999">Annulé</small>
+            </div>
+          </div>
+
+          <div style="display:flex; flex-direction:column; gap:6px; align-items:flex-end">
+            <button v-if="u.status === 'uploading'" class="dv-mini" @click="cancelUpload(u.id)" title="Annuler">✖️</button>
+            <button v-else class="dv-mini" @click="retryUpload(u.id)" title="Réessayer">↻</button>
+          </div>
+        </li>
+      </ul>
     </div>
+
+    <div class="modal-actions">
+      <button class="dv-btn" @click="showUploadModal = false">Fermer</button>
+    </div>
+  </div>
+  <div class="backdrop" @click="showUploadModal = false"></div>
+</div>
 
     <!-- NEW FOLDER MODAL -->
     <div v-if="showNewFolderModal" class="modal-wrap" @keydown.esc="showNewFolderModal = false">
@@ -272,6 +359,7 @@
 </template>
 
 <script setup>
+
 import { ref, computed, onMounted, watch } from 'vue'
 import { gls } from '@/stores/global.js'
 
@@ -294,7 +382,9 @@ const API_RENAME = resolveAPI(import.meta.env.VITE_API_DRIVE_RENAME || '/api/dri
 const API_DELETE = resolveAPI(import.meta.env.VITE_API_DRIVE_DELETE || '/api/drive/delete')
 const API_TRASH = resolveAPI(import.meta.env.VITE_API_DRIVE_TRASH || '/api/drive/trash')
 const API_GTRASH = resolveAPI(import.meta.env.VITE_API_DRIVE_GTRASH || '/api/drive/gettrash')
-const API_DELETE_PERMANENT = resolveAPI(import.meta.env.VITE_API_DRIVE_DELETE_PERMANENT || '/api/drive/deletePermanent')
+const API_RESTORE = resolveAPI(import.meta.env.VITE_API_DRIVE_RESTORE || '/api/drive/restore')
+const API_CREATE_FOLDER = resolveAPI(import.meta.env.VITE_API_DRIVE_CREATE_FOLDER || '/api/drive/createFolder')
+
 
 // ---------- état / UI ----------
 const userName = gls().username
@@ -305,10 +395,15 @@ const selectedFile = ref(null)
 
 const curr = ref('drive') // drive | shared | trash
 const currentPath = ref('/') // toujours finie par '/'
-const currentParts = computed(() => currentPath.value.split('/').filter(p => p))
+const currentParts = computed(() => {
+  const p = normalizePath(currentPath.value || '/')
+  // remove leading/trailing slashes and split
+  if (p === '/') return []
+  return p.replace(/^\//, '').replace(/\/$/, '').split('/')
+})
+
 
 const files = ref([])
-
 
 function changec(folder) {
   curr.value = folder
@@ -322,11 +417,12 @@ function openFolder(folder) {
   selectedFile.value = null
 }
 
-
+// drag/drop basic state
 const dragOver = ref(false)
 const draggedItem = ref(null)
 const dragTarget = ref(null)
 
+// upload UI state & queue
 const uploadInput = ref(null)
 const showUploadModal = ref(false)
 const showNewFolderModal = ref(false)
@@ -336,10 +432,33 @@ const renameValue = ref('')
 const newFolderName = ref('')
 const shareLink = ref('')
 
+// upload queue: item = { id, file, name, size, progress, status, xhr }
+const uploadQueue = ref([])
 
-function openUploadModal() {
-  showUploadModal.value = true
-}
+// overall progress computed (weighted by file size)
+const overallProgress = computed(() => {
+  if (uploadQueue.value.length === 0) return 0
+  let totalSize = 0
+  let weighted = 0
+  uploadQueue.value.forEach(u => {
+    const s = u.size || 0
+    totalSize += s
+    weighted += (u.progress || 0) * s
+  })
+  if (totalSize === 0) {
+    const avg = Math.round(uploadQueue.value.reduce((a,b)=>a+(b.progress||0),0) / uploadQueue.value.length)
+    return avg
+  }
+  return Math.round(weighted / totalSize)
+})
+
+const uploadsSummary = computed(() => {
+  const total = uploadQueue.value.length
+  const done = uploadQueue.value.filter(u => u.status === 'done').length
+  const err = uploadQueue.value.filter(u => u.status === 'error').length
+  const uploading = uploadQueue.value.filter(u => u.status === 'uploading').length
+  return `${done}/${total} • ${uploading} en cours • ${err} erreurs`
+})
 
 // ---------- util ----------
 function humanSize(bytes) {
@@ -367,7 +486,9 @@ function mapServerFile(row) {
   let url = null
   if (!isFolder) {
     const token = gls().sessionT || ''
-    url = `${API_DOWNLOAD}?file_id=${encodeURIComponent(id)}&token=${encodeURIComponent(token)}`
+    // include username to avoid session mismatch on server side
+    const uname = encodeURIComponent(userName || '')
+    url = `${API_DOWNLOAD}?file_id=${encodeURIComponent(id)}&token=${encodeURIComponent(token)}&username=${uname}`
   }
 
   // determine folder flag: trash if file_path points to /.trash/
@@ -398,7 +519,6 @@ async function fetchFiles() {
 
     // si on est dans la corbeille, appeler l'endpoint dédié
     const api = curr.value === 'trash' ? API_GTRASH : API_GETFILES
-    console.log(api)
     const res = await fetch(api, {
       method: 'POST',
       mode: 'cors',
@@ -421,38 +541,253 @@ async function fetchFiles() {
 watch(curr, async () => {
   await fetchFiles()
 })
-async function uploadFilesFromInput(fileList) {
-  if (!fileList || fileList.length === 0) return
-  const fd = new FormData()
-  fd.append('username', userName)
-  if (gls().sessionT) fd.append('token', gls().sessionT)
-  fd.append('parent_path', currentPath.value || '/')
-  Array.from(fileList).forEach(f => fd.append('files', f, f.name))
+
+// normalise un chemin pour qu'il soit '/' ou commence et termine par '/'
+function normalizePath(p) {
+  if (!p) return '/'
+  let s = String(p)
+  s = s.replace(/\/+/g, '/') // collapse multiple slashes
+  if (s === '/') return '/'
+  if (!s.startsWith('/')) s = '/' + s
+  if (!s.endsWith('/')) s = s + '/'
+  return s
+}
+
+// navigue vers la racine
+function goRoot() {
+  currentPath.value = '/'
+  selectedFile.value = null
+  dragTarget.value = null
+}
+
+// navigue vers le crumb d'index i (0-based)
+function goToBreadcrumb(i) {
+  const parts = currentParts.value.slice(0, i + 1)
+  currentPath.value = '/' + (parts.length ? parts.join('/') + '/' : '')
+  currentPath.value = normalizePath(currentPath.value)
+  selectedFile.value = null
+  dragTarget.value = null
+  // recharger la liste si nécessaire
+  fetchFiles().catch(()=>{})
+}
+
+// remonte d'un niveau
+function goUp() {
+  if (!currentPath.value || currentPath.value === '/') return
+  const parts = currentParts.value.slice()
+  parts.pop()
+  currentPath.value = '/' + (parts.length ? parts.join('/') + '/' : '')
+  currentPath.value = normalizePath(currentPath.value)
+  selectedFile.value = null
+  dragTarget.value = null
+  fetchFiles().catch(()=>{})
+}
+
+// ouvre un dossier et rafraîchit la liste (utilitaire)
+function openFolderAndList(folder) {
+  if (!folder || folder.type !== 'folder') return
+  // folder.parentPath est quelque chose comme "/a/b/"
+  currentPath.value = normalizePath((folder.parentPath || '/') + folder.name + '/')
+  selectedFile.value = null
+  fetchFiles().catch(()=>{})
+}
+
+async function createFolder() {
+  const name = (newFolderName.value || '').trim()
+  if (!name) {
+    window.alert('Le nom du dossier est vide')
+    return
+  }
+
+  // payload similaire à d'autres endpoints
+  const payload = {
+    username: userName,
+    token: gls().sessionT,
+    parent_path: currentPath.value || '/',
+    folder_name: name
+  }
 
   try {
-    const res = await fetch(API_UPLOAD, { method: 'POST', mode: 'cors', body: fd})
-    if (!res.ok) console.warn('upload failed', res.status, res.statusText)
-    // refresh list après upload
+    const res = await fetch(API_CREATE_FOLDER, {
+      method: 'POST',
+      mode: 'cors',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    })
+
+    if (res.status === 401) {
+      window.alert('Session invalide')
+      return
+    }
+    if (res.status === 409) {
+      const j = await res.json().catch(()=>({}))
+      window.alert(j.error || 'Un fichier/dossier du même nom existe déjà')
+      return
+    }
+    if (!res.ok) {
+      const txt = await res.text().catch(()=> '')
+      console.error('createFolder failed', res.status, txt)
+      window.alert('Erreur lors de la création du dossier')
+      return
+    }
+
+    // success
     await fetchFiles()
+    showNewFolderModal.value = false
+    newFolderName.value = ''
   } catch (err) {
-    console.error('upload error', err)
+    console.error('createFolder error', err)
+    window.alert('Impossible de créer le dossier')
   }
 }
 
-// wrappers liés au <input> ou drag'n'drop
-function triggerFilePicker() { if (uploadInput.value) uploadInput.value.click() }
+// ---------- upload logic (per-file XHR, progress) ----------
+
+// open modal
+function openUploadModal() {
+  showUploadModal.value = true
+}
+
+// trigger input picker
+function triggerFilePicker() {
+  if (uploadInput.value) uploadInput.value.click()
+}
+
+// handle file input or drop event
 function handleUpload(e) {
   let fileList = null
   if (e && e.target && e.target.files) fileList = e.target.files
   else if (e && e.dataTransfer && e.dataTransfer.files) fileList = e.dataTransfer.files
   if (!fileList || fileList.length === 0) return
+
+  // ensure modal remains open to show progress
+  showUploadModal.value = true
+
   uploadFilesFromInput(fileList)
-  showUploadModal.value = false
-  dragOver.value = false
+
   if (uploadInput.value) uploadInput.value.value = ''
 }
 
-// rename / delete via API
+// push files to queue and start uploads
+function uploadFilesFromInput(fileList) {
+  const arr = Array.from(fileList)
+  arr.forEach((f, idx) => {
+    const id = `${Date.now()}_${idx}_${Math.random().toString(36).slice(2,8)}`
+    const item = {
+      id,
+      file: f,
+      name: f.name,
+      size: f.size,
+      progress: 0,
+      status: 'queued',
+      xhr: null
+    }
+    uploadQueue.value.push(item)
+    // start async upload (slight stagger)
+    setTimeout(() => startUpload(item), 10 * idx)
+  })
+}
+
+// start upload for a single item using XMLHttpRequest to capture upload progress
+function startUpload(item) {
+  if (!item || !item.file) return
+  item.status = 'uploading'
+  item.progress = 0
+
+  const fd = new FormData()
+  fd.append('username', userName)
+  if (gls().sessionT) fd.append('token', gls().sessionT)
+  fd.append('parent_path', currentPath.value || '/')
+  // send single file per request for per-file progress
+  fd.append('files', item.file, item.file.name)
+
+  const xhr = new XMLHttpRequest()
+  item.xhr = xhr
+
+  xhr.open('POST', API_UPLOAD, true)
+
+  xhr.upload.onprogress = function (ev) {
+    if (!ev.lengthComputable) return
+    const percent = Math.round((ev.loaded / ev.total) * 100)
+    item.progress = percent
+  }
+
+  xhr.onload = async function () {
+    item.xhr = null
+    if (xhr.status >= 200 && xhr.status < 300) {
+      try {
+        item.progress = 100
+        item.status = 'done'
+        // refresh file list (you may batch refresh if many files)
+        await fetchFiles()
+      } catch (e) {
+        item.status = 'done'
+        await fetchFiles()
+      }
+    } else {
+      item.status = 'error'
+      console.error('upload failed', xhr.status, xhr.responseText)
+    }
+  }
+
+  xhr.onerror = function () {
+    item.status = 'error'
+    item.xhr = null
+  }
+
+  xhr.onabort = function () {
+    item.status = 'cancelled'
+    item.xhr = null
+  }
+
+  xhr.send(fd)
+}
+
+// cancel one upload
+function cancelUpload(id) {
+  const idx = uploadQueue.value.findIndex(u => u.id === id)
+  if (idx === -1) return
+  const u = uploadQueue.value[idx]
+  if (u.xhr) {
+    try { u.xhr.abort() } catch (e) {}
+  } else {
+    u.status = 'cancelled'
+  }
+}
+
+// retry a failed/cancelled upload (re-queue)
+function retryUpload(id) {
+  const idx = uploadQueue.value.findIndex(u => u.id === id)
+  if (idx === -1) return
+  const u = uploadQueue.value[idx]
+  if (u.status === 'uploading') return
+  u.progress = 0
+  u.status = 'queued'
+  setTimeout(() => startUpload(u), 50)
+}
+
+// cancel all
+function cancelAllUploads() {
+  uploadQueue.value.forEach(u => {
+    if (u.xhr) try { u.xhr.abort() } catch(e) {}
+    else u.status = 'cancelled'
+  })
+}
+
+// auto-close modal when all done/error/cancelled
+watch(uploadQueue, (q) => {
+  if (!q || q.length === 0) return
+  const allFinished = q.every(u => ['done','error','cancelled'].includes(u.status))
+  if (allFinished) {
+    setTimeout(() => {
+      showUploadModal.value = false
+      // keep errors / cancelled in queue for user to act, remove done
+      uploadQueue.value = uploadQueue.value.filter(u => u.status !== 'done')
+    }, 700)
+  }
+}, { deep: true })
+
+// ---------- rename / delete via API ----------
 async function renameFileRequest(fileId, newName) {
   try {
     const payload = { username: userName, token: gls().sessionT, file_id: fileId, new_name: newName }
@@ -486,25 +821,34 @@ function openFile(it) { selectedFile.value = it }
 
 function openAction(it) {
   if (!it) return
-  // si backend fournit une URL (presigned / endpoint), l'ouvrir
-  if (it.url) { window.open(it.url, '_blank'); return }
-  // afficher le texte si fourni par le backend
+  if (it.url) {
+    if ((it.mime || '').toLowerCase() === 'application/pdf') {
+      window.open(it.url, '_blank')
+      return
+    }
+    if ((it.mime || '').includes('word') || (it.mime || '').includes('excel') || (it.mime || '').includes('presentation')) {
+      window.open(it.url, '_blank')
+      return
+    }
+    window.open(it.url, '_blank')
+    return
+  }
   if (it.text) {
     const w = window.open('', '_blank')
     w.document.write(`<pre style="white-space:pre-wrap;font-family:monospace">${escapeHtml(it.text)}</pre>`)
     w.document.title = it.name
     return
   }
-  // en production on ne simule pas : indiquer l'absence d'aperçu
   window.alert('Aperçu non disponible pour ce fichier. Vérifiez que le backend fournit une URL de téléchargement ou le contenu.')
 }
 
 function downloadFile(it) {
   if (!it) return
-  // utilisation directe de l'URL serveur si disponible
   if (it.url) {
+    const sep = it.url.includes('?') ? '&' : '?'
+    const downloadUrl = it.url + sep + 'download=1'
     const a = document.createElement('a')
-    a.href = it.url
+    a.href = downloadUrl
     a.download = it.name || ''
     document.body.appendChild(a)
     a.click()
@@ -512,11 +856,10 @@ function downloadFile(it) {
     return
   }
 
-  // si on a un id, appeler l'endpoint de téléchargement serveur (GET /api/drive/download?file_id=...&token=...)
   if (it.id) {
     const token = gls().sessionT || ''
-    const url = `${API_DOWNLOAD}?file_id=${encodeURIComponent(it.id)}&token=${encodeURIComponent(token)}`
-    // ouverture dans un nouvel onglet pour que le navigateur gère le téléchargement / erreurs CORS
+    const uname = encodeURIComponent(userName || '')
+    const url = `${API_DOWNLOAD}?file_id=${encodeURIComponent(it.id)}&token=${encodeURIComponent(token)}&username=${uname}&download=1`
     window.open(url, '_blank')
     return
   }
@@ -536,24 +879,40 @@ async function applyRename() {
   if (idx !== -1) {
     const newName = (renameValue.value || files.value[idx].name).trim()
     if (!newName) return
-    // update on server then locally refresh
     await renameFileRequest(selectedFile.value.id, newName)
   }
   showRenameModal.value = false
   renameValue.value = ''
 }
 
-// trash / restore / delete local operations
+// Restore file from trash
+async function restoreFile(file) {
+  if (!file) return
+  const payload = { username: userName, token: gls().sessionT, file_id: file.id }
+  try {
+    const res = await fetch(API_RESTORE, {
+      method: 'POST',
+      mode: 'cors',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    })
+    if (!res.ok) throw new Error('restore failed')
+    await fetchFiles()
+    selectedFile.value = null
+  } catch (err) {
+    console.error('Erreur restauration', err)
+    window.alert('Impossible de restaurer le fichier.')
+  }
+}
+
+// trash
 async function moveToTrash(fileId) {
   if (!fileId) return;
 
-  // Récupère l’ID serveur si présent
   const serverId = (() => {
     const f = files.value.find(f => f.id === fileId);
     return f?._server?.file_id ?? fileId;
   })();
-
-  console.log('ID à envoyer à la corbeille :', serverId);
 
   try {
     const payload = {
@@ -562,7 +921,6 @@ async function moveToTrash(fileId) {
       file_id: serverId
     };
 
-    
     const res = await fetch(API_TRASH, {
       method: 'POST',
       mode: 'cors',
@@ -577,7 +935,6 @@ async function moveToTrash(fileId) {
       return;
     }
 
-    // Mise à jour locale
     files.value.forEach(f => {
       if (f.id === fileId) {
         f.folder = 'trash';
@@ -585,15 +942,14 @@ async function moveToTrash(fileId) {
       }
     });
 
-    await fetchFiles(); // rafraîchir la liste
-    selectedFile.value = null; // désélectionner si c'était le fichier sélectionné
+    await fetchFiles();
+    selectedFile.value = null;
 
   } catch (err) {
     console.error('Erreur moveToTrash', err);
     window.alert('Erreur lors de la mise à la corbeille');
   }
 }
-
 
 function confirmPermanentDelete(file) {
   if (!file) return
@@ -635,7 +991,6 @@ function onDropIntoFolder(folder) {
     const oldPath = (moving.parentPath || '/') + moving.name + '/'
     const newParent = (folder.parentPath || '/') + folder.name + '/'
     if (newParent.indexOf(oldPath) === 0 || oldPath === newParent) { draggedItem.value = null; dragTarget.value = null; return }
-    // local move
     moveFolderToFolder(moving, folder)
   } else {
     moveFileToFolder(moving, folder)
@@ -779,6 +1134,7 @@ onMounted(() => {
   fetchFiles()
 })
 </script>
+
 
 <style scoped>
 #drive-v2 {

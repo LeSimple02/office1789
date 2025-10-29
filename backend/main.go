@@ -38,6 +38,8 @@ func main() {
 	r.POST("/api/drive/trash", moveToTrash)
 	r.POST("/api/drive/delete", deletePermanent)
 	r.POST("/api/drive/deletePermanent", deletePermanent)
+	r.POST("/api/drive/restore", restoreFile)
+	r.POST("/api/drive/createFolder", createFolder)
 
 	r.Run() // listen and serve on 0.0.0.0:8080
 }
