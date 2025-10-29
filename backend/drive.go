@@ -80,23 +80,25 @@ func getfiles(c *gin.Context) {
 	c.JSON(http.StatusOK, FileListResponse{Files: files})
 }
 
-// === uploadFile ===
 func uploadFile(c *gin.Context) {
 	username := c.PostForm("username")
 	token := c.PostForm("token")
 	parentPath := c.PostForm("parent_path")
 
+	// Vérif session
 	if session, ok := sessions[token]; !ok || session.Username != username || username == "" {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid session"})
 		return
 	}
 
+	// Récupération user_id
 	var userID int
 	if err := db.QueryRow("SELECT user_id FROM Users WHERE username=$1", username).Scan(&userID); err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "user not found"})
 		return
 	}
 
+	// Récupération des fichiers envoyés
 	var fileHeaders []*multipart.FileHeader
 	if form, err := c.MultipartForm(); err == nil && form != nil {
 		for _, fhs := range form.File {
@@ -120,6 +122,7 @@ func uploadFile(c *gin.Context) {
 		return
 	}
 
+	// Créer le dossier utilisateur si besoin
 	uploadDir := filepath.Join("uploads", username)
 	if parentPath != "" && parentPath != "/" {
 		uploadDir = filepath.Join(uploadDir, parentPath)
@@ -130,10 +133,28 @@ func uploadFile(c *gin.Context) {
 	}
 
 	var uploaded []gin.H
-	for _, fh := range fileHeaders {
-		safeName := fmt.Sprintf("%d_%s", time.Now().UnixNano(), filepath.Base(fh.Filename))
-		dst := filepath.Join(uploadDir, safeName)
 
+	for _, fh := range fileHeaders {
+		// Garder le nom original
+		originalName := filepath.Base(fh.Filename)
+		dst := filepath.Join(uploadDir, originalName)
+
+		// Si le fichier existe déjà, on ajoute un suffixe
+		if _, err := os.Stat(dst); err == nil {
+			base := strings.TrimSuffix(originalName, filepath.Ext(originalName))
+			ext := filepath.Ext(originalName)
+			for i := 1; ; i++ {
+				candidate := fmt.Sprintf("%s_%d%s", base, i, ext)
+				candidatePath := filepath.Join(uploadDir, candidate)
+				if _, err := os.Stat(candidatePath); os.IsNotExist(err) {
+					dst = candidatePath
+					originalName = candidate
+					break
+				}
+			}
+		}
+
+		// Ouverture du fichier uploadé
 		in, err := fh.Open()
 		if err != nil {
 			uploaded = append(uploaded, gin.H{"file": fh.Filename, "error": err.Error()})
@@ -145,6 +166,7 @@ func uploadFile(c *gin.Context) {
 			uploaded = append(uploaded, gin.H{"file": fh.Filename, "error": err.Error()})
 			continue
 		}
+
 		_, err = io.Copy(out, in)
 		in.Close()
 		out.Close()
@@ -153,9 +175,10 @@ func uploadFile(c *gin.Context) {
 			continue
 		}
 
+		// Déterminer le type MIME
 		contentType := fh.Header.Get("Content-Type")
 		if contentType == "" {
-			if ext := filepath.Ext(fh.Filename); ext != "" {
+			if ext := filepath.Ext(originalName); ext != "" {
 				contentType = mime.TypeByExtension(ext)
 			}
 			if contentType == "" {
@@ -163,22 +186,23 @@ func uploadFile(c *gin.Context) {
 			}
 		}
 
-		_, err = db.Exec(`INSERT INTO DriveFiles (user_id, file_name, file_path, file_size, file_type, date_uploaded)
-		                  VALUES ($1, $2, $3, $4, $5, NOW())`,
-			userID, safeName, parentPath, fh.Size, contentType)
+		// Enregistrement en base de données
+		_, err = db.Exec(`INSERT INTO DriveFiles 
+			(user_id, file_name, file_path, file_size, file_type, date_uploaded)
+			VALUES ($1, $2, $3, $4, $5, NOW())`,
+			userID, originalName, parentPath, fh.Size, contentType)
 		if err != nil {
 			_ = os.Remove(dst)
 			uploaded = append(uploaded, gin.H{"file": fh.Filename, "error": "db insert failed"})
 			continue
 		}
 
-		uploaded = append(uploaded, gin.H{"file": fh.Filename, "status": "uploaded"})
+		uploaded = append(uploaded, gin.H{"file": originalName, "status": "uploaded"})
 	}
 
 	c.JSON(http.StatusOK, gin.H{"uploaded": uploaded})
 }
 
-// === downloadFile ===
 // === downloadFile ===
 func downloadFile(c *gin.Context) {
 	token := c.Query("token")
