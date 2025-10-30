@@ -65,7 +65,14 @@
 
         <div class="dv-tools">
           <input class="dv-search" v-model="searchQuery" placeholder="Rechercher..." />
-          <button class="dv-btn small" @click="selectFirst">Sélectionner 1er</button>
+          <button class="dv-btn small" :class="{ 'dv-btn small active': sMul}" @click="selectMultiple">Sélection Multiple</button>
+          <label v-if="sMul" class="dv-btn small">Tout sélectionner :
+            <input type="checkbox" id="select-mul" v-model="sMulAll" @click="selectAll" style="margin-right:6px" />
+            </label>
+          <button v-if="curr !== 'trash' && sMul" class="dv-btn danger" @click="moveToTrash(selectedFile.id)">Mettre à la corbeille</button>
+          <button class="dv-btn green" v-if="sMul" @click="moveFile(selectedFile)">Déplacer fichiers</button>
+          <button class="dv-btn green" v-if="sMul" @click="downloadFile(selectedFile)">Télécharger</button>
+          <button class="dv-btn small" v-if="!sMul" @click="selectFirst">Sélectionner 1er</button>
           <button class="dv-btn small" @click="clearSelection">Effacer</button>
         </div>
       </header>
@@ -102,7 +109,7 @@
 
           <ul v-else class="dv-items" role="list">
             <li
-              v-for="it in filteredFiles"
+              v-for="(it, index) in filteredFiles"
               :key="it.id"
               class="dv-item"
               :class="{
@@ -117,6 +124,7 @@
               @dragleave="onItemDragLeave(it)"
               @drop.prevent="it.type === 'folder' && onDropIntoFolder(it)"
             >
+            <input v-if="sMul" type="checkbox" v-model="selectedC[index]"/>
               <div class="left">
                 <div class="icon" v-if="it.type === 'folder'">📁</div>
                 <div class="icon" v-else-if="(it.mime || '').startsWith('image/')">🖼️</div>
@@ -130,7 +138,9 @@
               </div>
 
               <div class="actions">
+              
               <button class="dv-mini" @click.stop="startRename(it)" title="Renommer">✏️</button>
+              
               <button class="dv-mini" @click.stop="downloadFile(it)" title="Télécharger">⬇️</button>
 
               <!-- si on est pas dans la corbeille, proposer mise à la corbeille -->
@@ -168,6 +178,7 @@
                 <button class="dv-btn green" @click="downloadFile(selectedFile)">Télécharger</button>
                 <button class="dv-btn" @click="startRename(selectedFile)">Renommer</button>
                 <button class="dv-btn purple" @click="shareFile(selectedFile)">Partager</button>
+                <button class="dv-btn green" @click="moveFile(selectedFile)">Déplacer fichier</button>
                 <button v-if="curr !== 'trash'" class="dv-btn danger" @click="moveToTrash(selectedFile.id)">Mettre à la corbeille</button>
                 <template v-else>
                   <button class="dv-btn" @click="restoreFile(selectedFile)">Restaurer</button>
@@ -510,6 +521,24 @@ function mapServerFile(row) {
     url,
     _server: row
   }
+}
+
+var sMul = ref(false)
+var sMulAll = ref(false)
+var selectedC = ref(new Array(files.value.length).fill(false))
+
+function selectAll() {
+  // select/deselect all files in the current view
+  sMulAll.value = !sMulAll.value
+  for (var i = 0; i < selectedC.value.length; i++) {
+    selectedC.value[i] = sMulAll.value
+  }
+}
+
+function selectMultiple() {
+  // select all files in the current view
+  selectedC.value = new Array(files.value.length).fill(false)
+  sMul.value = !sMul.value
 }
 
 // ---------- appels API ----------
@@ -1167,6 +1196,7 @@ onMounted(() => {
 .dv-btn.primary {  background: -webkit-linear-gradient(30deg, blue, red); color:#fff; }
 .dv-btn.ghost { background:grey; }
 .dv-btn.small { padding:6px 8px; font-size:0.9rem; }
+.dv-btn.small.active { padding:6px 8px; font-size:0.9rem; background: lightblue; color:#fff; }
 .dv-nav { display:flex; flex-direction:column; gap:8px; margin-top:6px; }
 .nav-item { background:transparent; border:none; padding:10px; text-align:left; border-radius:8px; cursor:pointer; color:#333; }
 .dark .nav-item { color:#e5e5e5; }
@@ -1224,6 +1254,7 @@ onMounted(() => {
 .dv-btn.green { background:#e6ffe6; color:#008000; }
 .dv-btn.purple { background:#f3e8ff; color:#6a00b6; }
 .dv-btn.danger { background:#ffecec; color:#a00; }
+
 /* detail body */
 .detail-body { display:flex; gap:12px; margin-top:12px; align-items:flex-start; }
 .preview { flex:1; display:flex; align-items:center; justify-content:center; min-height:140px; border-radius:8px; background:#fbfbfe; border:1px dashed #eee; padding:12px; }
@@ -1237,7 +1268,7 @@ onMounted(() => {
 
 /* MODALS (centered) */
 .modal-wrap { position:fixed; inset:0; display:flex; align-items:center; justify-content:center; z-index:2000; }
-.modal { width:420px; background:#fff; padding:20px; border-radius:12px; box-shadow:0 10px 40px rgba(0,0,0,0.12); z-index:2001; }
+.modal { width:420px; background:#fff; padding:50px; border-radius:12px; box-shadow:0 10px 40px rgba(0,0,0,0.12); z-index:2001; }
 .dark .modal { background:#1e1e1e; color:#e5e5e5; }
 .backdrop { position:fixed; inset:0; background:rgba(0,0,0,0.25); z-index:2000; }
 .upload-zone { border:2px dashed #e6e6ee; border-radius:8px; padding:18px; text-align:center; cursor:pointer; margin:10px 0; }
