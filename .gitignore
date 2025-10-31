@@ -1,14 +1,4 @@
 # Node.js
 node_modules/
 
-# Tous les .env
-.env
-.env.*
-**/.env
-**/.env.*
-
-# Tous les Dockerfile
-Dockerfile
-Dockerfile.*
-**/Dockerfile
-**/Dockerfile.*
+backend/uploads

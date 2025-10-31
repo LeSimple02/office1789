@@ -79,7 +79,7 @@
               Supprimer définitivement
             </button>
           <button class="dv-btn green" v-if="sMul" @click="moveFile(selectedFile)">Déplacer fichiers</button>
-          <button class="dv-btn green" v-if="sMul" @click="downloadFile(selectedFile)">Télécharger</button>
+          <button class="dv-btn green" v-if="sMul" @click="downloadSelectedAsZip(selectedFile)">Télécharger</button>
           <button class="dv-btn small" v-if="!sMul" @click="selectFirst">Sélectionner 1er</button>
           <button class="dv-btn small" @click="clearSelection">Effacer</button>
         </div>

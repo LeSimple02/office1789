@@ -1,0 +1,48 @@
+version: "3.9"
+
+services:
+  postgres_db:
+    build:
+      context: ../
+      dockerfile: docker/DockerfileDB/Dockerfile
+    container_name: postgres_db
+    environment:
+      POSTGRES_USER: robespierre
+      POSTGRES_PASSWORD: guillotine
+      POSTGRES_DB: office1789
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  roundcube:
+    build:
+      dockerfile: DockerfileRC/Dockerfile
+    container_name: roundcube
+    ports:
+      - "8081:80"
+    depends_on:
+      - postgres_db
+    environment:
+      ROUNDCUBE_DB_TYPE: pgsql
+      ROUNDCUBE_DB_HOST: postgres_db
+      ROUNDCUBE_DB_PORT: 5432
+      ROUNDCUBE_DB_NAME: office1789
+      ROUNDCUBE_DB_USER: robespierre
+      ROUNDCUBE_DB_PASSWORD: guillotine
+      ROUNDCUBE_DEFAULT_HOST: mail.localhost
+      ROUNDCUBE_SMTP_SERVER: mail.localhost
+      ROUNDCUBE_PLUGINS: archive,zipdownload
+
+  onlyoffice:
+    image: onlyoffice/documentserver:latest
+    container_name: onlyoffice
+    ports:
+      - "8082:80"
+    environment:
+      JWT_ENABLED: "true"
+      JWT_SECRET: "changeme_verysecret"
+    restart: always
+
+volumes:
+  pgdata:

@@ -136,10 +136,11 @@ CREATE TABLE IF NOT EXISTS CalendarEvents (
 */
 --Create Db version postgreSQL
 -- Creating a database for the Office1789
-CREATE DATABASE Office1789;
+
+/* Je retire ceci à cause du docker compose CREATE DATABASE Office1789;
 
 -- Connecting to the database
-\c office1789;
+\c office1789;*/
 
 -- Table for storing users
 CREATE TABLE IF NOT EXISTS Users (
