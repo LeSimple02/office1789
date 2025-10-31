@@ -931,3 +931,291 @@ func createFolder(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{"message": "folder created", "folder": name, "parent": parent})
 }
+
+// === moveFile ===
+func moveFile(c *gin.Context) {
+	type reqT struct {
+		Username        string `json:"username"`
+		Token           string `json:"token"`
+		FileID          int    `json:"file_id"`
+		DestinationPath string `json:"destination_path"`
+	}
+	var req reqT
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request"})
+		return
+	}
+
+	// Vérif session
+	if session, ok := sessions[req.Token]; !ok || session.Username != req.Username || req.Username == "" {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid session"})
+		return
+	}
+
+	// Normaliser destination
+	dest := strings.TrimSpace(req.DestinationPath)
+	if dest == "" {
+		dest = "/"
+	}
+	if !strings.HasPrefix(dest, "/") {
+		dest = "/" + dest
+	}
+	if !strings.HasSuffix(dest, "/") {
+		dest = dest + "/"
+	}
+
+	// Empêcher déplacement vers corbeille via ce endpoint
+	if strings.HasPrefix(dest, "/.trash") {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "cannot move directly into trash"})
+		return
+	}
+
+	// Récup info fichier
+	var file DriveFile
+	err := db.QueryRow(`SELECT file_id, user_id, file_name, file_path, file_type FROM DriveFiles WHERE file_id=$1`, req.FileID).
+		Scan(&file.FileID, &file.UserID, &file.FileName, &file.FilePath, &file.FileType)
+	if err == sql.ErrNoRows {
+		c.JSON(http.StatusNotFound, gin.H{"error": "file not found"})
+		return
+	} else if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "db query failed"})
+		return
+	}
+
+	// Vérif propriétaire
+	var userID int
+	if err := db.QueryRow("SELECT user_id FROM Users WHERE username=$1", req.Username).Scan(&userID); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "user lookup failed"})
+		return
+	}
+	if file.UserID != userID {
+		c.JSON(http.StatusForbidden, gin.H{"error": "access denied"})
+		return
+	}
+
+	// Construire chemins disques
+	userDir := filepath.Join("uploads", req.Username)
+	srcBase := userDir
+	if file.FilePath != "" && file.FilePath != "/" {
+		p := strings.TrimPrefix(file.FilePath, "/")
+		srcBase = filepath.Join(srcBase, p)
+	}
+	srcPath := filepath.Join(srcBase, file.FileName)
+
+	destBase := filepath.Join(userDir)
+	if dest != "/" {
+		p := strings.TrimPrefix(dest, "/")
+		destBase = filepath.Join(destBase, p)
+	}
+	if err := os.MkdirAll(destBase, 0o755); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "cannot create destination"})
+		return
+	}
+	destPath := filepath.Join(destBase, file.FileName)
+
+	// Gérer collision
+	if _, err := os.Stat(destPath); err == nil {
+		base := strings.TrimSuffix(file.FileName, filepath.Ext(file.FileName))
+		ext := filepath.Ext(file.FileName)
+		for i := 1; ; i++ {
+			candidate := fmt.Sprintf("%s_%d%s", base, i, ext)
+			candidatePath := filepath.Join(destBase, candidate)
+			if _, err := os.Stat(candidatePath); os.IsNotExist(err) {
+				destPath = candidatePath
+				file.FileName = candidate
+				break
+			}
+		}
+	}
+
+	// Déplacement physique
+	if err := os.Rename(srcPath, destPath); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "cannot move file on disk", "err": err.Error()})
+		return
+	}
+
+	// Mise à jour DB
+	if _, err := db.Exec(`UPDATE DriveFiles SET file_path=$1, file_name=$2 WHERE file_id=$3`, dest, file.FileName, file.FileID); err != nil {
+		// rollback du move sur disque si erreur DB
+		_ = os.Rename(destPath, srcPath)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "db update failed"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message":  "file moved successfully",
+		"file_id":  req.FileID,
+		"new_path": dest,
+		"new_name": file.FileName,
+	})
+}
+
+// === moveFolder ===
+// Déplace un dossier (et tout son contenu) identifié par folder_path vers destination_path.
+// JSON attendu:
+//
+//	{
+//	  "username": "alice",
+//	  "token": "abcd",
+//	  "folder_path": "/src/folder/",
+//	  "destination_path": "/dest/path/"
+//	}
+func moveFolder(c *gin.Context) {
+	type reqT struct {
+		Username        string `json:"username"`
+		Token           string `json:"token"`
+		FolderPath      string `json:"folder_path"`
+		DestinationPath string `json:"destination_path"`
+	}
+	var req reqT
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request"})
+		return
+	}
+
+	// Vérif session
+	if session, ok := sessions[req.Token]; !ok || session.Username != req.Username || req.Username == "" {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid session"})
+		return
+	}
+
+	// Normaliser source et destination
+	src := strings.TrimSpace(req.FolderPath)
+	if src == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "folder_path is required"})
+		return
+	}
+	if !strings.HasPrefix(src, "/") {
+		src = "/" + src
+	}
+	if !strings.HasSuffix(src, "/") {
+		src = src + "/"
+	}
+
+	dest := strings.TrimSpace(req.DestinationPath)
+	if dest == "" {
+		dest = "/"
+	}
+	if !strings.HasPrefix(dest, "/") {
+		dest = "/" + dest
+	}
+	if !strings.HasSuffix(dest, "/") {
+		dest = dest + "/"
+	}
+
+	// Empêcher déplacement vers corbeille via ce endpoint
+	if strings.HasPrefix(dest, "/.trash") {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "cannot move directly into trash"})
+		return
+	}
+
+	// Récup user id et username
+	var userID int
+	if err := db.QueryRow("SELECT user_id FROM Users WHERE username=$1", req.Username).Scan(&userID); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "user lookup failed"})
+		return
+	}
+	var username string
+	if err := db.QueryRow("SELECT username FROM Users WHERE user_id=$1", userID).Scan(&username); err != nil {
+		// fallback to provided username
+		username = req.Username
+	}
+
+	userDir := filepath.Join("uploads", username)
+
+	// chemin source physique: uploads/<username>/<src trimmed>
+	srcBase := userDir
+	if src != "/" {
+		p := strings.TrimPrefix(src, "/")
+		srcBase = filepath.Join(srcBase, p)
+	}
+	if _, err := os.Stat(srcBase); os.IsNotExist(err) {
+		c.JSON(http.StatusNotFound, gin.H{"error": "source folder not found on disk"})
+		return
+	} else if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "stat source failed"})
+		return
+	}
+
+	// destination base: uploads/<username>/<dest trimmed>
+	destBase := userDir
+	if dest != "/" {
+		p := strings.TrimPrefix(dest, "/")
+		destBase = filepath.Join(destBase, p)
+	}
+	if err := os.MkdirAll(destBase, 0o755); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "cannot create destination"})
+		return
+	}
+
+	// final destination folder path will be destBase/<folderName>
+	folderName := filepath.Base(strings.TrimRight(src, "/"))
+	finalDest := filepath.Join(destBase, folderName)
+
+	// gérer collision de nom de dossier
+	if _, err := os.Stat(finalDest); err == nil {
+		for i := 1; ; i++ {
+			candidate := fmt.Sprintf("%s_%d", folderName, i)
+			candidatePath := filepath.Join(destBase, candidate)
+			if _, err := os.Stat(candidatePath); os.IsNotExist(err) {
+				finalDest = candidatePath
+				folderName = candidate
+				break
+			}
+		}
+	}
+
+	// déplacer dossier sur disque
+	if err := os.Rename(srcBase, finalDest); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "cannot move folder on disk", "err": err.Error()})
+		return
+	}
+
+	// Mise à jour DB: tous les enregistrements DriveFiles dont file_path commence par src
+	// Ex: src = "/a/b/"  -> remplacer préfixe par dest + folderName + "/"
+	newPrefix := dest
+	if !strings.HasSuffix(newPrefix, "/") {
+		newPrefix = newPrefix + "/"
+	}
+	if newPrefix == "/" {
+		newPrefix = "/" + folderName + "/"
+	} else {
+		newPrefix = strings.TrimSuffix(newPrefix, "/") + "/" + folderName + "/"
+	}
+
+	oldPrefix := src
+
+	// Transaction DB: mettre à jour les paths relatifs
+	tx, err := db.Begin()
+	if err != nil {
+		// rollback physique
+		_ = os.Rename(finalDest, srcBase)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "db begin failed"})
+		return
+	}
+
+	res, err := tx.Exec(`UPDATE DriveFiles SET file_path = $1 || substring(file_path from char_length($2)+1)
+				WHERE user_id=$3 AND (file_path = $2 OR file_path LIKE $2 || '%')`, newPrefix, oldPrefix, userID)
+	if err != nil {
+		tx.Rollback()
+		// tenter rollback disque
+		_ = os.Rename(finalDest, srcBase)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "db update failed", "err": err.Error()})
+		return
+	}
+
+	if err := tx.Commit(); err != nil {
+		// tenter rollback disque
+		_ = os.Rename(finalDest, srcBase)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "db commit failed"})
+		return
+	}
+
+	affected, _ := res.RowsAffected()
+	c.JSON(http.StatusOK, gin.H{
+		"message":         "folder moved successfully",
+		"moved_folder":    folderName,
+		"new_parent":      dest,
+		"db_rows_updated": affected,
+	})
+}
