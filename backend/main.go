@@ -10,18 +10,26 @@ func welcome(c *gin.Context) {
 	c.Writer.Write([]byte("Hello welcome to the backend of Office1789\n"))
 }
 
-type createGroup struct {
-	Token       string   `json:token`
-	Username    string   `json:username`
-	Participant []string `json:recepter`
-}
-
 func main() {
 	Connectdb()
 	r := gin.Default()
 
+	// CORS configuration with credentials support
 	config := cors.DefaultConfig()
-	config.AllowAllOrigins = true
+	config.AllowOrigins = []string{
+		"http://localhost:8082", // OnlyOffice DocumentServer
+		"http://localhost:5173", // Vite dev server
+		"http://localhost:8081", // or your frontend production URL
+	}
+	config.AllowMethods = []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"}
+	config.AllowHeaders = []string{
+		"Origin",
+		"Content-Type",
+		"Accept",
+		"Authorization",
+		"X-Requested-With",
+	}
+	config.AllowCredentials = true // Important: enable credentials
 	r.Use(cors.New(config))
 
 	r.GET("/api/welcome", welcome)
@@ -30,20 +38,21 @@ func main() {
 	r.POST("/api/getinfop", getinfop)
 	r.POST("/api/changeinfo", ChangeI)
 	r.POST("/api/chat/createconv", createConv)
-	r.POST("/api/drive/getfiles", getfiles)
-	r.POST("/api/drive/upload", uploadFile)
+
 	r.GET("/api/drive/download", downloadFile)
-	r.POST("/api/drive/rename", renameFile)
+	r.POST("/api/drive/upload", uploadFile)
+	r.POST("/api/drive/getfiles", getfiles)
 	r.POST("/api/drive/gettrash", getTrashFiles)
-	r.POST("/api/drive/trash", moveToTrash)
-	r.POST("/api/drive/delete", deletePermanent)
-	r.POST("/api/drive/deletePermanent", deletePermanent)
-	r.POST("/api/drive/restore", restoreFile)
 	r.POST("/api/drive/createFolder", createFolder)
+	r.POST("/api/drive/rename", renameFile)
+	r.POST("/api/drive/delete", deletePermanent)
+	r.POST("/api/drive/trash", moveToTrash)
+	r.POST("/api/drive/restore", restoreFile)
 	r.POST("/api/drive/moveFile", moveFile)
 	r.POST("/api/drive/moveFolder", moveFolder)
-	r.POST("/onlyoffice/config", onlyofficeConfig)
-	r.POST("/onlyoffice/callback", onlyofficeCallback)
 
-	r.Run() // listen and serve on 0.0.0.0:8080
+	r.GET("/api/onlyoffice/config", onlyofficeConfig)
+	r.POST("/api/onlyoffice/callback", onlyofficeCallback)
+
+	r.Run(":8080")
 }

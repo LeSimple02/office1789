@@ -164,7 +164,7 @@ CREATE TABLE IF NOT EXISTS DriveFiles (
     file_name VARCHAR(255) NOT NULL,
     file_path VARCHAR(255) NOT NULL,
     file_size INT NOT NULL, -- Size in bytes
-    file_type VARCHAR(50),
+    file_type VARCHAR(255),
     date_uploaded TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES Users(user_id) ON DELETE CASCADE
 );

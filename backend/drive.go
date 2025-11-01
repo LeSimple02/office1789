@@ -2,8 +2,10 @@ package main
 
 import (
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"mime"
 	"mime/multipart"
 	"net/http"
@@ -11,9 +13,16 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
+)
+
+var (
+	downloadTokens     = map[string]downloadToken{}
+	downloadTokensLock sync.RWMutex
 )
 
 // === Structures ===
@@ -39,6 +48,13 @@ type FileListResponse struct {
 	Files     []DriveFile `json:"files"`
 	UserEmail string      `json:"user_email,omitempty"`
 	Error     string      `json:"error,omitempty"`
+}
+
+// add token store for OnlyOffice temporary download tokens
+type downloadToken struct {
+	FileID   int
+	Username string
+	Expires  time.Time
 }
 
 // === getfiles ===
@@ -152,6 +168,7 @@ func uploadFile(c *gin.Context) {
 	}
 
 	var uploaded []gin.H
+	anyError := false
 
 	for _, fh := range fileHeaders {
 		// Garder le nom original
@@ -194,6 +211,15 @@ func uploadFile(c *gin.Context) {
 			continue
 		}
 
+		// after writing, get actual size from disk
+		fi, statErr := os.Stat(dst)
+		var actualSize int64 = 0
+		if statErr == nil {
+			actualSize = fi.Size()
+		} else {
+			log.Println("stat after save failed:", statErr)
+		}
+
 		// Déterminer le type MIME
 		contentType := fh.Header.Get("Content-Type")
 		if contentType == "" {
@@ -205,8 +231,7 @@ func uploadFile(c *gin.Context) {
 			}
 		}
 
-		// Enregistrement en base de données
-		// store file_path normalized (server uses leading+trailing slash convention)
+		// Enregistrement en base de données — utilise la taille réelle
 		dbPath := parentPath
 		if dbPath == "" {
 			dbPath = "/"
@@ -214,44 +239,91 @@ func uploadFile(c *gin.Context) {
 		_, err = db.Exec(`INSERT INTO DriveFiles 
 			(user_id, file_name, file_path, file_size, file_type, date_uploaded)
 			VALUES ($1, $2, $3, $4, $5, NOW())`,
-			userID, originalName, dbPath, fh.Size, contentType)
+			userID, originalName, dbPath, actualSize, contentType)
 		if err != nil {
+			log.Println("db insert failed for", originalName, "err:", err)
 			_ = os.Remove(dst)
-			uploaded = append(uploaded, gin.H{"file": fh.Filename, "error": "db insert failed"})
+			uploaded = append(uploaded, gin.H{"file": fh.Filename, "error": err.Error()})
+			anyError = true
 			continue
 		}
 
 		uploaded = append(uploaded, gin.H{"file": originalName, "status": "uploaded"})
 	}
 
+	// si au moins un fichier a échoué on renvoie 500 pour que le front marque erreur
+	if anyError {
+		c.JSON(http.StatusInternalServerError, gin.H{"uploaded": uploaded})
+		return
+	}
 	c.JSON(http.StatusOK, gin.H{"uploaded": uploaded})
 }
 
 // === downloadFile ===
 func downloadFile(c *gin.Context) {
-	token := c.Query("token")
+	// debug
+	log.Printf("download request: remote=%s query=%s headers=%v", c.ClientIP(), c.Request.URL.RawQuery, c.Request.Header)
+
+	// Track if a valid temporary auth was used (download_token)
+	var tempAuthUsed bool
+
+	// Read incoming query values first (may be empty)
 	fileIDStr := c.Query("file_id")
 	username := c.Query("username")
-	// if client explicitly asks download, force attachment
+	token := c.Query("token")
 	downloadMode := c.Query("download") // "1" or "true" => attachment
 
-	// session check: require valid token; if username not provided, use session.Username
-	session, ok := sessions[token]
-	if !ok {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid session"})
-		return
-	}
-	if username == "" {
-		username = session.Username
-	}
-	if session.Username != username || username == "" {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid session"})
-		return
+	// If download_token present, prefer it and override fileIDStr/username directly
+	if dt := c.Query("download_token"); dt != "" {
+		downloadTokensLock.RLock()
+		dentry, ok := downloadTokens[dt]
+		downloadTokensLock.RUnlock()
+		if ok {
+			if time.Now().Before(dentry.Expires) {
+				tempAuthUsed = true
+				// override using the secure stored values — do NOT rely on rewriting RawQuery
+				fileIDStr = strconv.Itoa(dentry.FileID)
+				username = dentry.Username
+				log.Printf("download_token accepted dt=%s file_id=%s username=%s expires=%s", dt, fileIDStr, dentry.Username, dentry.Expires)
+			} else {
+				downloadTokensLock.Lock()
+				delete(downloadTokens, dt)
+				downloadTokensLock.Unlock()
+				log.Printf("download_token expired dt=%s", dt)
+				c.JSON(http.StatusForbidden, gin.H{"error": "download token expired"})
+				return
+			}
+		} else {
+			log.Printf("download_token invalid dt=%s", dt)
+			c.JSON(http.StatusForbidden, gin.H{"error": "invalid download token"})
+			return
+		}
 	}
 
-	// parse file_id
+	// session check unless tempAuthUsed
+	if token != "" && !tempAuthUsed {
+		session, ok := sessions[token]
+		if !ok {
+			log.Printf("invalid session token while downloading file_id=%s username=%s", fileIDStr, username)
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid session"})
+			return
+		}
+		if username == "" {
+			username = session.Username
+		}
+		if session.Username != username || username == "" {
+			log.Printf("session username mismatch: session=%s requested=%s", session.Username, username)
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid session"})
+			return
+		}
+	} else if tempAuthUsed {
+		// already populated username from token entry
+	}
+
+	// parse file_id (with clearer error log)
 	fid, err := strconv.Atoi(fileIDStr)
 	if err != nil {
+		log.Printf("invalid or missing file_id: %q (tempAuthUsed=%v)", fileIDStr, tempAuthUsed)
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid file_id"})
 		return
 	}
@@ -272,18 +344,22 @@ func downloadFile(c *gin.Context) {
 		return
 	}
 
-	// owner must match session user
-	if ownerUsername != session.Username {
+	// authorize: owner must match requested username (username filled from session or token)
+	if ownerUsername != username {
 		c.JSON(http.StatusForbidden, gin.H{"error": "access denied"})
 		return
 	}
 
-	// build path on disk
+	// build path on disk (trim leading slash)
 	filePath := filepath.Join("uploads", ownerUsername)
 	if file.FilePath != "" && file.FilePath != "/" {
-		filePath = filepath.Join(filePath, file.FilePath)
+		p := strings.TrimPrefix(file.FilePath, "/")
+		if p != "" && p != "/" {
+			filePath = filepath.Join(filePath, p)
+		}
 	}
 	filePath = filepath.Join(filePath, file.FileName)
+	log.Printf("Resolved filePath=%s (file_id=%d owner=%s)", filePath, fid, ownerUsername)
 
 	fi, statErr := os.Stat(filePath)
 	if os.IsNotExist(statErr) {
@@ -306,7 +382,6 @@ func downloadFile(c *gin.Context) {
 	if file.FileType != "" {
 		contentType = file.FileType
 	}
-	// read head bytes to detect if needed
 	head := make([]byte, 512)
 	n, _ := f.Read(head)
 	if contentType == "" || contentType == "application/octet-stream" {
@@ -332,7 +407,6 @@ func downloadFile(c *gin.Context) {
 	}
 	c.Header("Content-Type", contentType)
 	c.Header("Content-Disposition", fmt.Sprintf("%s; filename=%q", disposition, file.FileName))
-	// Reset file offset and use ServeContent for range requests / proper headers
 	_, _ = f.Seek(0, 0)
 	http.ServeContent(c.Writer, c.Request, file.FileName, fi.ModTime(), f)
 }
@@ -1258,122 +1332,290 @@ func moveFolder(c *gin.Context) {
 	})
 }
 
+func saveDownloadTokens() {
+	const tokenFile = "/tmp/download_tokens.json"
+
+	downloadTokensLock.RLock()
+	defer downloadTokensLock.RUnlock()
+
+	// créer un fichier temporaire puis le remplacer (atomic write)
+	tmpFile := tokenFile + ".tmp"
+	f, err := os.Create(tmpFile)
+	if err != nil {
+		log.Println("⚠️ erreur création fichier token:", err)
+		return
+	}
+	enc := json.NewEncoder(f)
+	enc.SetIndent("", "  ")
+	if err := enc.Encode(downloadTokens); err != nil {
+		log.Println("⚠️ erreur écriture JSON tokens:", err)
+		_ = f.Close()
+		_ = os.Remove(tmpFile)
+		return
+	}
+	f.Close()
+	_ = os.Rename(tmpFile, tokenFile)
+}
+
 func onlyofficeConfig(c *gin.Context) {
 	fileID := c.Query("file_id")
 	token := c.Query("token")
 	username := c.Query("username")
 
-	// Vérif session
+	// 1️⃣ Vérifier la session utilisateur
 	session, ok := sessions[token]
 	if !ok || session.Username != username || username == "" {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid session"})
 		return
 	}
 
-	// Récup info fichier
+	// 2️⃣ Récupérer les infos du fichier
 	var file DriveFile
-	var userName string
 	err := db.QueryRow(`
-        SELECT f.file_id, f.user_id, f.file_name, f.file_path, f.file_type, u.username
-        FROM DriveFiles f
-        JOIN Users u ON f.user_id=u.user_id
-        WHERE f.file_id=$1
-    `, fileID).Scan(&file.FileID, &file.UserID, &file.FileName, &file.FilePath, &file.FileType, &userName)
+        SELECT file_id, user_id, file_name, file_path, file_type 
+        FROM DriveFiles 
+        WHERE file_id=$1
+    `, fileID).Scan(&file.FileID, &file.UserID, &file.FileName, &file.FilePath, &file.FileType)
+
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "file not found"})
 		return
 	}
 
-	// Construire l'URL de téléchargement depuis ton API
-	downloadURL := fmt.Sprintf("https://ton-domaine/api/download?file_id=%s&token=%s&username=%s", fileID, token, username)
+	// 3️⃣ Déterminer le type de document
+	ext := strings.ToLower(strings.TrimPrefix(filepath.Ext(file.FileName), "."))
+	fileType := ext
+	documentType := "text"
+	switch ext {
+	case "xlsx", "xls", "csv":
+		documentType = "spreadsheet"
+	case "pptx", "ppt":
+		documentType = "presentation"
+	}
 
-	// URL de callback pour OnlyOffice (où il renverra le fichier sauvegardé)
-	callbackURL := fmt.Sprintf("https://ton-domaine/api/onlyoffice/callback?file_id=%s&token=%s&username=%s", fileID, token, username)
+	// 4️⃣ Calculer le baseURL (priorité à l'env)
+	baseURL := os.Getenv("ONLYOFFICE_BACKEND_URL")
+	if baseURL == "" {
+		scheme := "http"
+		if c.Request.TLS != nil {
+			scheme = "https"
+		}
+		host := c.Request.Host
+		if host == "" {
+			host = "localhost:8080"
+		}
+		// corrige host pour être atteignable depuis le conteneur OnlyOffice
+		if strings.HasPrefix(host, "localhost") || strings.HasPrefix(host, "127.") {
+			host = "host.docker.internal:8080"
+		}
+		baseURL = fmt.Sprintf("%s://%s", scheme, host)
+	}
 
-	// Config OnlyOffice
+	// 5️⃣ Créer le token temporaire et le persister
+	dtok := uuid.NewString()
+	newToken := downloadToken{
+		FileID:   file.FileID,
+		Username: username,
+		Expires:  time.Now().Add(10 * time.Minute),
+	}
+
+	downloadTokensLock.Lock()
+	downloadTokens[dtok] = newToken
+	downloadTokensLock.Unlock()
+
+	// Sauvegarde immédiate sur disque (sécurité anti-redémarrage)
+	saveDownloadTokens()
+
+	// 6️⃣ Construire les URLs OnlyOffice
+	downloadURL := fmt.Sprintf("%s/api/drive/download?download_token=%s", baseURL, dtok)
+	callbackURL := fmt.Sprintf("%s/api/onlyoffice/callback?file_id=%s&username=%s&download_token=%s", baseURL, fileID, username, dtok)
+
+	// 7️⃣ Construire la config OnlyOffice
 	config := gin.H{
 		"document": gin.H{
-			"fileType": strings.TrimPrefix(filepath.Ext(file.FileName), "."),
+			"fileType": fileType,
 			"key":      fmt.Sprintf("%d-%d", file.UserID, file.FileID),
 			"title":    file.FileName,
 			"url":      downloadURL,
-			"permissions": gin.H{
-				"edit": true,
-			},
 		},
+		"documentType": documentType,
 		"editorConfig": gin.H{
 			"callbackUrl": callbackURL,
+			"mode":        "edit",
 			"user": gin.H{
 				"id":   fmt.Sprintf("%d", file.UserID),
 				"name": username,
 			},
 		},
-		"type": "desktop", // ou "embedded"
+		"type": "desktop",
 	}
 
+	log.Printf("onlyoffice config OK: user=%s file_id=%s token=%s", username, fileID, dtok)
 	c.JSON(http.StatusOK, config)
 }
+
+// onlyofficeCallback gère les callbacks envoyés par DocumentServer (OnlyOffice).
+// - Valide download_token (présent dans la query string)
+// - Selon le status, télécharge le fichier depuis l'URL fournie par DocumentServer et remplace le fichier sur le disque
+// - Répond { "error": 0 } à DocumentServer en cas de succès
 func onlyofficeCallback(c *gin.Context) {
-	fileID := c.Query("file_id")
-	username := c.Query("username")
-	token := c.Query("token")
+	// Query params
+	downloadTokenStr := c.Query("download_token")
+	fileIDQ := c.Query("file_id")
+	usernameQ := c.Query("username")
 
-	// Vérif session
-	session, ok := sessions[token]
-	if !ok || session.Username != username || username == "" {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid session"})
+	if downloadTokenStr == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": 1, "message": "missing download_token"})
 		return
 	}
 
-	var body struct {
-		Status int    `json:"status"`
-		URL    string `json:"url"`
-	}
-	if err := c.ShouldBindJSON(&body); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid JSON"})
+	// Validate token exists
+	dt, ok := downloadTokens[downloadTokenStr]
+	if !ok {
+		c.JSON(http.StatusNotFound, gin.H{"error": 1, "message": "invalid download_token"})
 		return
 	}
 
-	// Seul status=2 (Document saved) ou 6 (force save) nous intéresse
-	if body.Status != 2 && body.Status != 6 {
-		c.JSON(http.StatusOK, gin.H{"message": "ignored"})
+	// Expiry check
+	if time.Now().After(dt.Expires) {
+		delete(downloadTokens, downloadTokenStr)
+		c.JSON(http.StatusUnauthorized, gin.H{"error": 1, "message": "download_token expired"})
 		return
 	}
 
-	// Télécharger la nouvelle version
-	resp, err := http.Get(body.URL)
+	// Optionally verify file_id and username match the token (safer)
+	if fileIDQ != "" && fmt.Sprintf("%d", dt.FileID) != fileIDQ {
+		c.JSON(http.StatusBadRequest, gin.H{"error": 1, "message": "file_id mismatch with token"})
+		return
+	}
+	if usernameQ != "" && dt.Username != usernameQ {
+		c.JSON(http.StatusBadRequest, gin.H{"error": 1, "message": "username mismatch with token"})
+		return
+	}
+
+	// Parse JSON body sent by OnlyOffice
+	var payload struct {
+		Status     int    `json:"status"`
+		URL        string `json:"url"`        // URL where OnlyOffice stored the updated file
+		FileURL    string `json:"fileUrl"`    // sometimes named fileUrl
+		ChangesURL string `json:"changesurl"` // sometimes provided
+		EndConvert bool   `json:"endConvert"`
+	}
+	if err := c.BindJSON(&payload); err != nil {
+		// If body is empty or not JSON, still respond OK to avoid retries but log
+		log.Printf("onlyoffice callback: invalid json body: %v", err)
+		c.JSON(http.StatusOK, gin.H{"error": 0})
+		return
+	}
+
+	log.Printf("onlyoffice callback: token=%s file_id=%d user=%s status=%d url=%s fileUrl=%s changesurl=%s",
+		downloadTokenStr, dt.FileID, dt.Username, payload.Status, payload.URL, payload.FileURL, payload.ChangesURL)
+
+	// Decide quelle URL utiliser pour récupérer le fichier (priorité : URL > FileURL > ChangesURL)
+	sourceURL := payload.URL
+	if sourceURL == "" {
+		sourceURL = payload.FileURL
+	}
+	if sourceURL == "" {
+		sourceURL = payload.ChangesURL
+	}
+
+	// OnlyOffice statuses: we handle the common ones that require saving:
+	// 2 = MustSave (editing finished, save new version)
+	// 3 = ForceSave (save anyway)
+	// for other statuses, just acknowledge
+	if payload.Status != 2 && payload.Status != 3 {
+		// nothing to save — acknowledge
+		c.JSON(http.StatusOK, gin.H{"error": 0})
+		return
+	}
+
+	if sourceURL == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": 1, "message": "no source URL provided by OnlyOffice"})
+		return
+	}
+
+	// Retrieve file meta from DB (path, name)
+	var file DriveFile
+	err := db.QueryRow(`
+        SELECT file_id, user_id, file_name, file_path, file_type
+        FROM DriveFiles
+        WHERE file_id = $1
+    `, dt.FileID).Scan(&file.FileID, &file.UserID, &file.FileName, &file.FilePath, &file.FileType)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "cannot download updated file"})
+		log.Printf("onlyoffice callback: could not load file meta for file_id=%d: %v", dt.FileID, err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": 1, "message": "file not found"})
+		return
+	}
+
+	// Download the updated file from DocumentServer
+	client := &http.Client{
+		Timeout: 60 * time.Second,
+	}
+	req, err := http.NewRequest("GET", sourceURL, nil)
+	if err != nil {
+		log.Printf("onlyoffice callback: bad source URL: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": 1, "message": "invalid source url"})
+		return
+	}
+
+	// If your DocumentServer requires special headers, add here (normally not)
+	// req.Header.Set("User-Agent", "MyApp/1.0")
+
+	resp, err := client.Do(req)
+	if err != nil {
+		log.Printf("onlyoffice callback: error fetching file from OnlyOffice URL: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": 1, "message": "failed to download updated file"})
 		return
 	}
 	defer resp.Body.Close()
 
-	// Trouver chemin du fichier existant
-	var file DriveFile
-	err = db.QueryRow("SELECT file_name, file_path FROM DriveFiles WHERE file_id=$1", fileID).Scan(&file.FileName, &file.FilePath)
-	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "file not found"})
+	if resp.StatusCode != http.StatusOK {
+		bodyBytes, _ := io.ReadAll(io.LimitReader(resp.Body, 1024))
+		log.Printf("onlyoffice callback: non-200 from source URL: %d body=%s", resp.StatusCode, string(bodyBytes))
+		c.JSON(http.StatusInternalServerError, gin.H{"error": 1, "message": fmt.Sprintf("source returned %d", resp.StatusCode)})
 		return
 	}
 
-	path := filepath.Join("uploads", username)
-	if file.FilePath != "" && file.FilePath != "/" {
-		path = filepath.Join(path, file.FilePath)
-	}
-	finalPath := filepath.Join(path, file.FileName)
-
-	out, err := os.Create(finalPath)
+	// Write atomically: save to tmp then rename
+	tmpPath := file.FilePath + ".oo_tmp"
+	out, err := os.Create(tmpPath)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "cannot overwrite file"})
+		log.Printf("onlyoffice callback: cannot create tmp file %s: %v", tmpPath, err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": 1, "message": "cannot create tmp file"})
 		return
 	}
-	defer out.Close()
-
-	_, err = io.Copy(out, resp.Body)
+	n, err := io.Copy(out, resp.Body)
+	out.Close()
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "cannot save file"})
+		log.Printf("onlyoffice callback: error writing tmp file: %v", err)
+		_ = os.Remove(tmpPath)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": 1, "message": "failed to save file"})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"message": "file updated"})
+	// atomically replace
+	if err := os.Rename(tmpPath, file.FilePath); err != nil {
+		log.Printf("onlyoffice callback: rename tmp -> final failed: %v", err)
+		_ = os.Remove(tmpPath)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": 1, "message": "failed to finalize file save"})
+		return
+	}
+
+	// update DB (e.g. updated_at, optionally size)
+	_, err = db.Exec(`UPDATE DriveFiles SET updated_at = NOW(), file_size = $1 WHERE file_id = $2`, n, file.FileID)
+	if err != nil {
+		log.Printf("onlyoffice callback: failed to update DB for file_id=%d: %v", file.FileID, err)
+		// we succeeded saving the file; still acknowledge OnlyOffice but log DB error
+		c.JSON(http.StatusOK, gin.H{"error": 0})
+		// optionally return here
+		delete(downloadTokens, downloadTokenStr)
+		return
+	}
+
+	// success: invalidate the download token
+	delete(downloadTokens, downloadTokenStr)
+
+	log.Printf("onlyoffice callback: saved file_id=%d bytes=%d path=%s", file.FileID, n, file.FilePath)
+	c.JSON(http.StatusOK, gin.H{"error": 0})
 }

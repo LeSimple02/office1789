@@ -40,8 +40,10 @@ services:
     ports:
       - "8082:80"
     environment:
-      JWT_ENABLED: "true"
-      JWT_SECRET: "changeme_verysecret"
+      - JWT_ENABLED=false
+      - JWT_SECRET=changeme_verysecret
+      - ALLOW_PRIVATE_IP_ADDRESS=true        
+      - ALLOW_META_IP_ADDRESS=true          
     restart: always
 
 volumes:

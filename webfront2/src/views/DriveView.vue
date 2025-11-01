@@ -223,9 +223,10 @@
                 </template>
 
                 <!-- DOCX / other office: try opening in new tab (browser may download or display depending on support) -->
-                <template v-else-if="selectedFile.url && (selectedFile.mime || '').includes('word')">
-                  <div class="no-preview">
-                    Aperçu natif non disponible pour ce format dans le navigateur. <button class="dv-btn small" @click="openAction(selectedFile)">Ouvrir</button>
+                <template v-else-if="selectedFile.url && ['docx','xlsx','pptx'].includes(selectedFile.name.split('.').pop().toLowerCase())">
+                  <!-- OnlyOffice container : s'ouvre automatiquement et prend toute la zone preview -->
+                  <div id="onlyoffice-wrapper" class="preview office-open" :key="selectedFile.id" style="padding:0">
+                    <div id="onlyofficeContainer" style="width:100%;height:100%;"></div>
                   </div>
                 </template>
 
@@ -843,6 +844,14 @@ function openFile(it) { selectedFile.value = it }
 
 function openAction(it) {
   if (!it) return
+  
+  // Ajouter cette condition pour les fichiers Office
+  if (['docx','xlsx','pptx'].includes(it.name.split('.').pop().toLowerCase())) {
+    openInOnlyOffice(it)
+    return
+  }
+
+  // Reste du code existant...
   if (it.url) {
     window.open(it.url, '_blank')
     return
@@ -1364,28 +1373,125 @@ const filteredFiles = computed(() => {
   return list.filter(f => (f.name || '').toLowerCase().includes(q))
 })
 
+let _onlyofficeScriptLoading = null
 function loadOnlyOfficeScript() {
-  return new Promise((resolve, reject) => {
-    if (window.DocEditor) {
-      resolve(window.DocEditor)
-      return
+  if (window.DocEditor || (window.DocsAPI && window.DocsAPI.DocEditor)) return Promise.resolve()
+  if (_onlyofficeScriptLoading) return _onlyofficeScriptLoading
+
+  _onlyofficeScriptLoading = new Promise((resolve, reject) => {
+    try {
+      // determine base: either env VITE_API_ONLYOFFICE (can be full api.js URL or base) or fallback to localhost:8082
+      let cfg = (import.meta.env.VITE_API_ONLYOFFICE || '').trim()
+      let docserverBase = ''
+      if (cfg) {
+        // strip possible trailing /web-apps/.../api.js if user provided full path
+        docserverBase = cfg.replace(/\/web-apps\/apps\/api\/documents\/api\.js\/?$/i, '').replace(/\/+$/, '')
+      } else {
+        docserverBase = `${window.location.protocol}//${window.location.hostname}:8082`
+      }
+      const src = `${docserverBase}/web-apps/apps/api/documents/api.js`
+
+      // avoid double-insert
+      if (document.querySelector(`script[src="${src}"]`)) {
+        // attach to existing script load if not ready
+        const existing = document.querySelector(`script[src="${src}"]`)
+        existing.addEventListener('load', () => setTimeout(() => resolve(), 50))
+        existing.addEventListener('error', (e) => reject(e))
+        return
+      }
+
+      const s = document.createElement('script')
+      s.src = src
+      s.async = true
+      s.onload = () => setTimeout(() => resolve(), 50)
+      s.onerror = (e) => {
+        console.error('Failed to load OnlyOffice api.js from', src, e)
+        reject(new Error('Failed to load OnlyOffice api.js'))
+      }
+      document.head.appendChild(s)
+    } catch (err) {
+      reject(err)
     }
-    const script = document.createElement('script')
-    script.src = import.meta.env.VITE_API_ONLYOFFICE  // ton URL OnlyOffice
-    script.type = 'text/javascript'
-    script.onload = () => resolve(window.DocEditor)
-    script.onerror = reject
-    document.body.appendChild(script)
   })
+  return _onlyofficeScriptLoading
 }
 
+async function openInOnlyOffice(file) {
+  try {
+    const fileId = file.file_id || file.id
+    if (!fileId) return
+    const username = gls().username || localStorage.getItem('username') || ''
+    const token = gls().sessionT || localStorage.getItem('token') || ''
+    if (!username || !token) { alert('Session invalide'); return }
 
+    // fetch config WITH credentials to allow backend session validation
+    const apiBase = resolveAPI('')
+    const cfgUrl = `${apiBase.replace(/\/+$/, '')}/api/onlyoffice/config?file_id=${encodeURIComponent(fileId)}&token=${encodeURIComponent(token)}&username=${encodeURIComponent(username)}`
+    const cfgResp = await fetch(cfgUrl, { credentials: 'include', headers: { 'Accept': 'application/json' } })
+    if (!cfgResp.ok) {
+      const txt = await cfgResp.text().catch(()=> '')
+      console.error('OnlyOffice config fetch failed', cfgResp.status, txt)
+      alert('Impossible de récupérer la configuration OnlyOffice (voir console).')
+      return
+    }
+    const cfg = await cfgResp.json()
+    console.log('OnlyOffice config:', cfg)
 
-watch(files, () => ensureSelectedStillVisible(), { deep: true })
+    // load api.js
+    await loadOnlyOfficeScript()
 
-onMounted(() => {
-  window.addEventListener('resize', () => { isMobile.value = window.innerWidth <= 750 })
-  fetchFiles()
+    const container = document.getElementById('onlyofficeContainer')
+    if (!container) { console.error('onlyofficeContainer missing'); return }
+    container.innerHTML = ''
+
+    const DocEditorCtor = window.DocEditor || (window.DocsAPI && window.DocsAPI.DocEditor)
+    if (!DocEditorCtor) {
+      console.error('DocEditor constructor not found after loading api.js')
+      alert('Impossible d\'initialiser OnlyOffice (api.js manquant).')
+      return
+    }
+
+    // ensure editor config uses full-width/height
+    cfg.width = '100%'
+    cfg.height = '100%'
+
+    // instantiate and keep reference
+    try {
+      const editor = new DocEditorCtor('onlyofficeContainer', cfg)
+      window._onlyofficeEditor = editor
+      console.log('OnlyOffice editor created')
+    } catch (err) {
+      console.error('Failed to instantiate OnlyOffice editor', err)
+      alert('Erreur lors de l\'initialisation de l\'éditeur OnlyOffice (voir console).')
+    }
+  } catch (err) {
+    console.error('openInOnlyOffice failed:', err)
+    alert('Erreur lors de l\'ouverture dans OnlyOffice. Voir console.')
+  }
+}
+onMounted(async () => {
+  try {
+    await fetchFiles()
+  } catch (e) {
+    console.error('fetchFiles onMounted failed', e)
+  }
+})
+
+// optionnel : relancer fetchFiles quand la session est définie/renouvelée
+watch(() => gls().sessionT, (newToken) => {
+  if (newToken) {
+    fetchFiles().catch(err => console.error('fetchFiles on session change failed', err))
+  }
+})
+
+// call editor automatically when onlyoffice-wrapper is present / file changes
+watch(selectedFile, async (v) => {
+  if (!v) return
+  const ext = (v.name || '').split('.').pop().toLowerCase()
+  if (['docx','xlsx','pptx'].includes(ext)) {
+    // small delay to ensure DOM container is rendered
+    setTimeout(() => openInOnlyOffice(v), 50)
+  }
 })
 </script>
 
@@ -1514,4 +1620,24 @@ onMounted(() => {
 
 /* small extras */
 .dv-up { margin-bottom: 8px; display:flex; justify-content:flex-start; }
+
+
+/* when OnlyOffice editor is open we enlarge the preview area */
+.preview.office-open {
+  min-height: calc(100vh - 140px);
+  height: calc(100vh - 140px);
+  padding: 0;
+  margin: 0;
+  overflow: hidden;
+}
+
+/* editor container should fill the preview */
+#onlyofficeContainer {
+  width: 100%;
+  height: 100%;
+  min-height: 60vh;
+  border: 0;
+  overflow: hidden;
+  border-radius: 6px;
+}
 </style>
