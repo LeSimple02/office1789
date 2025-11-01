@@ -42,6 +42,8 @@ func main() {
 	r.POST("/api/drive/createFolder", createFolder)
 	r.POST("/api/drive/moveFile", moveFile)
 	r.POST("/api/drive/moveFolder", moveFolder)
+	r.POST("/onlyoffice/config", onlyofficeConfig)
+	r.POST("/onlyoffice/callback", onlyofficeCallback)
 
 	r.Run() // listen and serve on 0.0.0.0:8080
 }

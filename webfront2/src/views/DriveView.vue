@@ -378,7 +378,6 @@
     </div>
   </div>
 </template>
-
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
 import { gls } from '@/stores/global.js'
@@ -1364,6 +1363,23 @@ const filteredFiles = computed(() => {
   if (!q) return list
   return list.filter(f => (f.name || '').toLowerCase().includes(q))
 })
+
+function loadOnlyOfficeScript() {
+  return new Promise((resolve, reject) => {
+    if (window.DocEditor) {
+      resolve(window.DocEditor)
+      return
+    }
+    const script = document.createElement('script')
+    script.src = import.meta.env.VITE_API_ONLYOFFICE  // ton URL OnlyOffice
+    script.type = 'text/javascript'
+    script.onload = () => resolve(window.DocEditor)
+    script.onerror = reject
+    document.body.appendChild(script)
+  })
+}
+
+
 
 watch(files, () => ensureSelectedStillVisible(), { deep: true })
 

@@ -83,7 +83,24 @@ func getfiles(c *gin.Context) {
 func uploadFile(c *gin.Context) {
 	username := c.PostForm("username")
 	token := c.PostForm("token")
-	parentPath := c.PostForm("parent_path")
+	parentPath := strings.TrimSpace(c.PostForm("parent_path"))
+
+	// normalize parent_path: store as "/" or "/path/.../" (server prefers leading+trailing slash)
+	if parentPath == "" {
+		parentPath = "/"
+	} else {
+		if !strings.HasPrefix(parentPath, "/") {
+			parentPath = "/" + parentPath
+		}
+		if !strings.HasSuffix(parentPath, "/") {
+			parentPath = parentPath + "/"
+		}
+	}
+	// block uploads into trash
+	if strings.HasPrefix(parentPath, "/.trash") {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "upload into trash is not allowed"})
+		return
+	}
 
 	// Vérif session
 	if session, ok := sessions[token]; !ok || session.Username != username || username == "" {
@@ -125,7 +142,9 @@ func uploadFile(c *gin.Context) {
 	// Créer le dossier utilisateur si besoin
 	uploadDir := filepath.Join("uploads", username)
 	if parentPath != "" && parentPath != "/" {
-		uploadDir = filepath.Join(uploadDir, parentPath)
+		// trim leading slash before Join so it's not treated as absolute
+		p := strings.TrimPrefix(parentPath, "/")
+		uploadDir = filepath.Join(uploadDir, p)
 	}
 	if err := os.MkdirAll(uploadDir, 0o755); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "cannot create upload dir"})
@@ -187,10 +206,15 @@ func uploadFile(c *gin.Context) {
 		}
 
 		// Enregistrement en base de données
+		// store file_path normalized (server uses leading+trailing slash convention)
+		dbPath := parentPath
+		if dbPath == "" {
+			dbPath = "/"
+		}
 		_, err = db.Exec(`INSERT INTO DriveFiles 
 			(user_id, file_name, file_path, file_size, file_type, date_uploaded)
 			VALUES ($1, $2, $3, $4, $5, NOW())`,
-			userID, originalName, parentPath, fh.Size, contentType)
+			userID, originalName, dbPath, fh.Size, contentType)
 		if err != nil {
 			_ = os.Remove(dst)
 			uploaded = append(uploaded, gin.H{"file": fh.Filename, "error": "db insert failed"})
@@ -798,6 +822,10 @@ func renameFile(c *gin.Context) {
 
 	// sanitize new name
 	newName := filepath.Base(req.NewName)
+	if newName == ".trash" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid new_name"})
+		return
+	}
 	if strings.TrimSpace(newName) == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid new_name"})
 		return
@@ -868,6 +896,11 @@ func createFolder(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid folder_name"})
 		return
 	}
+	// block creating the special .trash folder
+	if name == ".trash" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "creation of folder named .trash is not allowed"})
+		return
+	}
 	// normalize parent path
 	parent := req.ParentPath
 	if parent == "" {
@@ -880,6 +913,11 @@ func createFolder(c *gin.Context) {
 			parent = parent + "/"
 		}
 		parent = "/" + parent // ensure leading slash
+	}
+	// do not allow creating under .trash
+	if strings.HasPrefix(parent, "/.trash") {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "cannot create folders inside trash"})
+		return
 	}
 
 	// find user id
@@ -1218,4 +1256,124 @@ func moveFolder(c *gin.Context) {
 		"new_parent":      dest,
 		"db_rows_updated": affected,
 	})
+}
+
+func onlyofficeConfig(c *gin.Context) {
+	fileID := c.Query("file_id")
+	token := c.Query("token")
+	username := c.Query("username")
+
+	// Vérif session
+	session, ok := sessions[token]
+	if !ok || session.Username != username || username == "" {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid session"})
+		return
+	}
+
+	// Récup info fichier
+	var file DriveFile
+	var userName string
+	err := db.QueryRow(`
+        SELECT f.file_id, f.user_id, f.file_name, f.file_path, f.file_type, u.username
+        FROM DriveFiles f
+        JOIN Users u ON f.user_id=u.user_id
+        WHERE f.file_id=$1
+    `, fileID).Scan(&file.FileID, &file.UserID, &file.FileName, &file.FilePath, &file.FileType, &userName)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "file not found"})
+		return
+	}
+
+	// Construire l'URL de téléchargement depuis ton API
+	downloadURL := fmt.Sprintf("https://ton-domaine/api/download?file_id=%s&token=%s&username=%s", fileID, token, username)
+
+	// URL de callback pour OnlyOffice (où il renverra le fichier sauvegardé)
+	callbackURL := fmt.Sprintf("https://ton-domaine/api/onlyoffice/callback?file_id=%s&token=%s&username=%s", fileID, token, username)
+
+	// Config OnlyOffice
+	config := gin.H{
+		"document": gin.H{
+			"fileType": strings.TrimPrefix(filepath.Ext(file.FileName), "."),
+			"key":      fmt.Sprintf("%d-%d", file.UserID, file.FileID),
+			"title":    file.FileName,
+			"url":      downloadURL,
+			"permissions": gin.H{
+				"edit": true,
+			},
+		},
+		"editorConfig": gin.H{
+			"callbackUrl": callbackURL,
+			"user": gin.H{
+				"id":   fmt.Sprintf("%d", file.UserID),
+				"name": username,
+			},
+		},
+		"type": "desktop", // ou "embedded"
+	}
+
+	c.JSON(http.StatusOK, config)
+}
+func onlyofficeCallback(c *gin.Context) {
+	fileID := c.Query("file_id")
+	username := c.Query("username")
+	token := c.Query("token")
+
+	// Vérif session
+	session, ok := sessions[token]
+	if !ok || session.Username != username || username == "" {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid session"})
+		return
+	}
+
+	var body struct {
+		Status int    `json:"status"`
+		URL    string `json:"url"`
+	}
+	if err := c.ShouldBindJSON(&body); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid JSON"})
+		return
+	}
+
+	// Seul status=2 (Document saved) ou 6 (force save) nous intéresse
+	if body.Status != 2 && body.Status != 6 {
+		c.JSON(http.StatusOK, gin.H{"message": "ignored"})
+		return
+	}
+
+	// Télécharger la nouvelle version
+	resp, err := http.Get(body.URL)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "cannot download updated file"})
+		return
+	}
+	defer resp.Body.Close()
+
+	// Trouver chemin du fichier existant
+	var file DriveFile
+	err = db.QueryRow("SELECT file_name, file_path FROM DriveFiles WHERE file_id=$1", fileID).Scan(&file.FileName, &file.FilePath)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "file not found"})
+		return
+	}
+
+	path := filepath.Join("uploads", username)
+	if file.FilePath != "" && file.FilePath != "/" {
+		path = filepath.Join(path, file.FilePath)
+	}
+	finalPath := filepath.Join(path, file.FileName)
+
+	out, err := os.Create(finalPath)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "cannot overwrite file"})
+		return
+	}
+	defer out.Close()
+
+	_, err = io.Copy(out, resp.Body)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "cannot save file"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "file updated"})
 }
