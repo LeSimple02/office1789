@@ -38,7 +38,6 @@ func main() {
 	r.POST("/api/getinfop", getinfop)
 	r.POST("/api/changeinfo", ChangeI)
 	r.POST("/api/chat/createconv", createConv)
-
 	r.GET("/api/drive/download", downloadFile)
 	r.POST("/api/drive/upload", uploadFile)
 	r.POST("/api/drive/getfiles", getfiles)
@@ -50,9 +49,10 @@ func main() {
 	r.POST("/api/drive/restore", restoreFile)
 	r.POST("/api/drive/moveFile", moveFile)
 	r.POST("/api/drive/moveFolder", moveFolder)
-
 	r.GET("/api/onlyoffice/config", onlyofficeConfig)
 	r.POST("/api/onlyoffice/callback", onlyofficeCallback)
+	r.POST("/api/drive/shareFile", createShareFile)
+	r.POST("/api/drive/deactivateShareFile", deactivateShareFile)
 
 	r.Run(":8080")
 }

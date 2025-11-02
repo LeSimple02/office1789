@@ -1619,3 +1619,11 @@ func onlyofficeCallback(c *gin.Context) {
 	log.Printf("onlyoffice callback: saved file_id=%d bytes=%d path=%s", file.FileID, n, file.FilePath)
 	c.JSON(http.StatusOK, gin.H{"error": 0})
 }
+
+func createShareFile(c *gin.Context) {
+	// Implementation for creating a shared file
+}
+
+func deactivateShareFile(c *gin.Context) {
+	// Implementation for deactivating a shared file
+}

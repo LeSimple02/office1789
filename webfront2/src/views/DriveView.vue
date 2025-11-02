@@ -366,22 +366,49 @@
     </div>
 
     <!-- SHARE MODAL -->
-    <div v-if="showShareModal" class="modal-wrap" @keydown.esc="showShareModal = false">
-      <div class="modal" role="dialog" aria-modal="true" aria-label="Partager">
-        <h3>Lien de partage</h3>
-        <input readonly :value="shareLink" @focus="$event.target.select()" />
+    <div v-if="showShareModal" class="modal-wrap" @keydown.esc="closeShareModal">
+      <div class="modal" role="dialog" aria-modal="true">
+        <h3>Partager "{{ selectedFile?.name }}"</h3>
+        
+        <div class="share-form">
+          <div class="form-group">
+            <label>Partager avec (nom d'utilisateur)</label>
+            <input v-model="shareWithUsername" placeholder="Nom d'utilisateur" />
+          </div>
+          
+          <div class="form-group">
+            <label>Permission</label>
+            <select v-model="sharePermission">
+              <option value="editor">Éditeur</option>
+              <option value="viewer">Lecteur seul</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="shared-with-list" v-if="currentShares.length">
+          <h4>Partagé avec</h4>
+          <ul>
+            <li v-for="share in currentShares" :key="share.id">
+              {{ share.shared_with_name }}
+              ({{ share.permission }})
+              <button class="dv-mini danger" @click="unshareWith(share)">✖️</button>
+            </li>
+          </ul>
+        </div>
+
         <div class="modal-actions">
-          <button class="dv-btn" @click="copyShareLink">Copier</button>
-          <button class="dv-btn" @click="showShareModal = false">Fermer</button>
+          <button class="dv-btn" @click="closeShareModal">Fermer</button>
+          <button class="dv-btn primary" @click="shareWithUser">Partager</button>
         </div>
       </div>
-      <div class="backdrop" @click="showShareModal = false"></div>
+      <div class="backdrop" @click="closeShareModal"></div>
     </div>
   </div>
 </template>
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
 import { gls } from '@/stores/global.js'
+import { a } from 'vitest/dist/chunks/suite.d.FvehnV49'
 
 // ---------- helpers pour résolution d'URL API ----------
 function resolveAPI(pathOrUrl) {
@@ -1469,6 +1496,30 @@ async function openInOnlyOffice(file) {
     alert('Erreur lors de l\'ouverture dans OnlyOffice. Voir console.')
   }
 }
+
+function shareFile(file_id){
+  showShareModal.value = true
+
+  async function fetchShareLink(){
+    try {
+      const payload = { username: userName, token: gls().sessionT, file_id: file_id }
+      const res = await fetch(API_SHARE_LINK, {
+        method: 'POST',
+        mode: 'cors',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(payload)
+      })
+      if (!res.ok) throw new Error('share link fetch failed')
+      const data = await res.json()
+      shareLink.value = data.share_link || ''
+    } catch (err) {
+      console.error(err)
+    }
+  }  
+  fetchShareLink()
+
+}
+
 onMounted(async () => {
   try {
     await fetchFiles()

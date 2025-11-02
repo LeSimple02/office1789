@@ -169,6 +169,16 @@ CREATE TABLE IF NOT EXISTS DriveFiles (
     FOREIGN KEY (user_id) REFERENCES Users(user_id) ON DELETE CASCADE
 );
 
+CREATE TABLE IF NOT EXISTS SharedFiles (
+    share_id SERIAL PRIMARY KEY,
+    file_id INT REFERENCES DriveFiles(file_id) ON DELETE CASCADE,
+    shared_with_user_id INT REFERENCES Users(user_id) ON DELETE CASCADE,
+    shared_by_user_id INT REFERENCES Users(user_id) ON DELETE CASCADE,
+    permission VARCHAR(20) NOT NULL DEFAULT 'editor',
+    active BOOLEAN DEFAULT true,
+    date_shared TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(file_id, shared_with_user_id)
+);
 
 -- Création de la table Groups avec les membres intégrés
 CREATE TABLE IF NOT EXISTS Groups (
