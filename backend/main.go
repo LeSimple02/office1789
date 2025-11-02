@@ -51,8 +51,9 @@ func main() {
 	r.POST("/api/drive/moveFolder", moveFolder)
 	r.GET("/api/onlyoffice/config", onlyofficeConfig)
 	r.POST("/api/onlyoffice/callback", onlyofficeCallback)
-	r.POST("/api/drive/shareFile", createShareFile)
-	r.POST("/api/drive/deactivateShareFile", deactivateShareFile)
+	r.POST("/api/drive/share", createShareFile)
+	r.POST("/api/drive/unshare", deactivateShareFile)
+	r.POST("/api/drive/shares", getSharedFiles)
 
 	r.Run(":8080")
 }

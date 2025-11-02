@@ -1620,10 +1620,208 @@ func onlyofficeCallback(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"error": 0})
 }
 
+type ShareFileRequest struct {
+	Username string `json:"username"`
+	Token    string `json:"token"`
+	FileID   int    `json:"file_id"`
+}
+
 func createShareFile(c *gin.Context) {
-	// Implementation for creating a shared file
+    type inT struct {
+        Username           string `json:"username"`
+        Token              string `json:"token"`
+        FileID             int    `json:"file_id"`
+        ShareWithUsername  string `json:"share_with_username"`
+        Permission         string `json:"permission"` // "viewer" or "editor"
+    }
+    var req inT
+    if err := c.ShouldBindJSON(&req); err != nil {
+        c.JSON(http.StatusBadRequest, gin.H{"error": 1, "message": "invalid request"})
+        return
+    }
+    if session, ok := sessions[req.Token]; !ok || session.Username != req.Username || req.Username == "" {
+        c.JSON(http.StatusUnauthorized, gin.H{"error": 1, "message": "invalid session"})
+        return
+    }
+
+    // get sharer id
+    var sharerID int
+    if err := db.QueryRow("SELECT user_id FROM Users WHERE username=$1", req.Username).Scan(&sharerID); err != nil {
+        c.JSON(http.StatusNotFound, gin.H{"error": 1, "message": "user not found"})
+        return
+    }
+
+    // target user id
+    var targetID int
+    if err := db.QueryRow("SELECT user_id FROM Users WHERE username=$1", req.ShareWithUsername).Scan(&targetID); err != nil {
+        c.JSON(http.StatusNotFound, gin.H{"error": 1, "message": "target user not found"})
+        return
+    }
+
+    // verify file exists and owner is sharer
+    var ownerID int
+    if err := db.QueryRow("SELECT user_id FROM DriveFiles WHERE file_id=$1", req.FileID).Scan(&ownerID); err != nil {
+        c.JSON(http.StatusNotFound, gin.H{"error": 1, "message": "file not found"})
+        return
+    }
+    if ownerID != sharerID {
+        c.JSON(http.StatusForbidden, gin.H{"error": 1, "message": "only owner can share file"})
+        return
+    }
+
+    perm := strings.ToLower(req.Permission)
+    if perm != "viewer" {
+        perm = "editor"
+    }
+
+    // upsert into SharedFiles
+    _, err := db.Exec(`
+        INSERT INTO SharedFiles (file_id, shared_with_user_id, shared_by_user_id, permission, active, date_shared)
+        VALUES ($1,$2,$3,$4,true,NOW())
+        ON CONFLICT (file_id, shared_with_user_id)
+        DO UPDATE SET permission = EXCLUDED.permission, active = true, date_shared = NOW(), shared_by_user_id = EXCLUDED.shared_by_user_id
+    `, req.FileID, targetID, sharerID, perm)
+    if err != nil {
+        c.JSON(http.StatusInternalServerError, gin.H{"error": 1, "message": "failed to create share", "err": err.Error()})
+        return
+    }
+
+    c.JSON(http.StatusOK, gin.H{"error": 0, "message": "shared"})
 }
 
 func deactivateShareFile(c *gin.Context) {
-	// Implementation for deactivating a shared file
+    type inT struct {
+        Username              string `json:"username"`
+        Token                 string `json:"token"`
+        FileID                int    `json:"file_id"`
+        UnshareWithUsername   string `json:"unshare_with_username"`
+    }
+    var req inT
+    if err := c.ShouldBindJSON(&req); err != nil {
+        c.JSON(http.StatusBadRequest, gin.H{"error": 1, "message": "invalid request"})
+        return
+    }
+    if session, ok := sessions[req.Token]; !ok || session.Username != req.Username || req.Username == "" {
+        c.JSON(http.StatusUnauthorized, gin.H{"error": 1, "message": "invalid session"})
+        return
+    }
+
+    // get requester id
+    var requesterID int
+    if err := db.QueryRow("SELECT user_id FROM Users WHERE username=$1", req.Username).Scan(&requesterID); err != nil {
+        c.JSON(http.StatusNotFound, gin.H{"error": 1, "message": "user not found"})
+        return
+    }
+
+    // get target id
+    var targetID int
+    if err := db.QueryRow("SELECT user_id FROM Users WHERE username=$1", req.UnshareWithUsername).Scan(&targetID); err != nil {
+        c.JSON(http.StatusNotFound, gin.H{"error": 1, "message": "target user not found"})
+        return
+    }
+
+    // verify file exists and requester is owner
+    var ownerID int
+    if err := db.QueryRow("SELECT user_id FROM DriveFiles WHERE file_id=$1", req.FileID).Scan(&ownerID); err != nil {
+        c.JSON(http.StatusNotFound, gin.H{"error": 1, "message": "file not found"})
+        return
+    }
+    if ownerID != requesterID {
+        c.JSON(http.StatusForbidden, gin.H{"error": 1, "message": "only owner can unshare"})
+        return
+    }
+
+    _, err := db.Exec(`UPDATE SharedFiles SET active = false WHERE file_id=$1 AND shared_with_user_id=$2`, req.FileID, targetID)
+    if err != nil {
+        c.JSON(http.StatusInternalServerError, gin.H{"error": 1, "message": "failed to deactivate share", "err": err.Error()})
+        return
+    }
+
+    c.JSON(http.StatusOK, gin.H{"error": 0, "message": "unshared"})
+}
+
+func getSharedFiles(c *gin.Context) {
+    type reqT struct {
+        Username string `json:"username"`
+        Token    string `json:"token"`
+        FileID   int    `json:"file_id,omitempty"`
+    }
+    var req reqT
+    if err := c.ShouldBindJSON(&req); err != nil {
+        c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request"})
+        return
+    }
+    // session check
+    if session, ok := sessions[req.Token]; !ok || session.Username != req.Username || req.Username == "" {
+        c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid session"})
+        return
+    }
+    // get user id
+    var userID int
+    if err := db.QueryRow("SELECT user_id FROM Users WHERE username=$1", req.Username).Scan(&userID); err != nil {
+        c.JSON(http.StatusNotFound, gin.H{"error": "user not found"})
+        return
+    }
+
+    // If file_id provided, ensure requester is owner of that file (owner can list shares for their file)
+    var rows *sql.Rows
+    var err error
+    if req.FileID != 0 {
+        var ownerID int
+        if err := db.QueryRow("SELECT user_id FROM DriveFiles WHERE file_id=$1", req.FileID).Scan(&ownerID); err != nil {
+            c.JSON(http.StatusNotFound, gin.H{"error": "file not found"})
+            return
+        }
+        if ownerID != userID {
+            c.JSON(http.StatusForbidden, gin.H{"error": "access denied"})
+            return
+        }
+        rows, err = db.Query(`
+            SELECT s.share_id, s.file_id, f.file_name, s.permission, s.active, s.date_shared,
+                   ub.username AS shared_by, uw.username AS shared_with, f.file_type, f.file_size
+            FROM SharedFiles s
+            LEFT JOIN DriveFiles f ON s.file_id = f.file_id
+            LEFT JOIN Users ub ON s.shared_by_user_id = ub.user_id
+            LEFT JOIN Users uw ON s.shared_with_user_id = uw.user_id
+            WHERE s.file_id = $1
+            ORDER BY s.date_shared DESC
+        `, req.FileID)
+    } else {
+        // list shares where the user is the recipient (shared with me) and active
+        rows, err = db.Query(`
+            SELECT s.share_id, s.file_id, f.file_name, s.permission, s.active, s.date_shared,
+                   ub.username AS shared_by, uw.username AS shared_with, f.file_type, f.file_size
+            FROM SharedFiles s
+            LEFT JOIN DriveFiles f ON s.file_id = f.file_id
+            LEFT JOIN Users ub ON s.shared_by_user_id = ub.user_id
+            LEFT JOIN Users uw ON s.shared_with_user_id = uw.user_id
+            WHERE s.shared_with_user_id = $1 AND s.active = true
+            ORDER BY s.date_shared DESC
+        `, userID)
+    }
+    if err != nil {
+        c.JSON(http.StatusInternalServerError, gin.H{"error": "db query failed", "err": err.Error()})
+        return
+    }
+    defer rows.Close()
+
+    type shareInfo struct {
+        ShareID        int       `json:"share_id"`
+        FileID         int       `json:"file_id"`
+        FileName       string    `json:"file_name"`
+        Permission     string    `json:"permission"`
+        Active         bool      `json:"active"`
+        DateShared     time.Time `json:"date_shared"`
+        SharedBy       string    `json:"shared_by"`
+        SharedWith     string    `json:"shared_with"`
+        FileType       string    `json:"file_type"`
+        FileSize       int64     `json:"file_size"`
+    }
+    var list []shareInfo
+    for rows.Next() {
+        var s shareInfo
+        _ = rows.Scan(&s.ShareID, &s.FileID, &s.FileName, &s.Permission, &s.Active, &s.DateShared, &s.SharedBy, &s.SharedWith, &s.FileType, &s.FileSize)
+        list = append(list, s)
+    }
+    c.JSON(http.StatusOK, gin.H{"shared_files": list})
 }

@@ -408,7 +408,7 @@
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
 import { gls } from '@/stores/global.js'
-import { a } from 'vitest/dist/chunks/suite.d.FvehnV49'
+
 
 // ---------- helpers pour résolution d'URL API ----------
 function resolveAPI(pathOrUrl) {
@@ -432,6 +432,9 @@ const API_RESTORE = resolveAPI(import.meta.env.VITE_API_DRIVE_RESTORE || '/api/d
 const API_CREATE_FOLDER = resolveAPI(import.meta.env.VITE_API_DRIVE_CREATE_FOLDER || '/api/drive/createFolder')
 const API_MOVE_FILE = resolveAPI(import.meta.env.VITE_API_DRIVE_MOVE_FILE || '/api/drive/moveFile')
 const API_MOVE_FOLDER = resolveAPI(import.meta.env.VITE_API_DRIVE_MOVE_FOLDER || '/api/drive/moveFolder')
+const API_SHARE = resolveAPI(import.meta.env.VITE_API_DRIVE_SHARE || '/api/drive/share')
+const API_UNSHARE = resolveAPI(import.meta.env.VITE_API_DRIVE_UNSHARE || '/api/drive/unshare')
+const API_GET_SHARES = resolveAPI(import.meta.env.VITE_API_DRIVE_GET_SHARES || '/api/drive/shares')
 
 // ---------- état / UI ----------
 const userName = gls().username
@@ -479,7 +482,10 @@ const showShareModal = ref(false)
 const renameValue = ref('')
 const newFolderName = ref('')
 const shareLink = ref('')
-
+// share modal state (was missing -> runtime error when clicking "Partager")
+const shareWithUsername = ref('')
+const sharePermission = ref('editor')
+const currentShares = ref([])
 // upload queue: item = { id, file, name, size, progress, status, xhr }
 const uploadQueue = ref([])
 
@@ -1497,27 +1503,109 @@ async function openInOnlyOffice(file) {
   }
 }
 
-function shareFile(file_id){
+function shareFile(file){
+  // open share modal and load current shares for this file (if owner)
+  selectedFile.value = file
+  shareWithUsername.value = ''
+  sharePermission.value = 'editor'
+  currentShares.value = []
   showShareModal.value = true
+  loadCurrentShares(file)
+}
 
-  async function fetchShareLink(){
-    try {
-      const payload = { username: userName, token: gls().sessionT, file_id: file_id }
-      const res = await fetch(API_SHARE_LINK, {
-        method: 'POST',
-        mode: 'cors',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify(payload)
-      })
-      if (!res.ok) throw new Error('share link fetch failed')
-      const data = await res.json()
-      shareLink.value = data.share_link || ''
-    } catch (err) {
-      console.error(err)
+async function loadCurrentShares(file) {
+  if (!file) return
+  const payload = { username: userName, token: gls().sessionT, file_id: file.file_id ?? file.id }
+  try {
+    const res = await fetch(API_GET_SHARES, {
+      method: 'POST',
+      mode: 'cors',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(payload)
+    })
+    if (!res.ok) {
+      console.error('loadCurrentShares failed', res.status, await res.text().catch(()=>''))
+      currentShares.value = []
+      return
     }
-  }  
-  fetchShareLink()
+    const j = await res.json()
+    currentShares.value = Array.isArray(j.shared_files) ? j.shared_files : []
+  } catch (err) {
+    console.error('loadCurrentShares error', err)
+    currentShares.value = []
+  }
+}
 
+async function shareWithUser() {
+  if (!selectedFile.value) return
+  if (!shareWithUsername.value || !shareWithUsername.value.trim()) {
+    window.alert('Nom d\'utilisateur cible requis')
+    return
+  }
+  const payload = {
+    username: userName,
+    token: gls().sessionT,
+    file_id: selectedFile.value.file_id ?? selectedFile.value.id,
+    share_with_username: shareWithUsername.value.trim(),
+    permission: sharePermission.value || 'editor'
+  }
+  try {
+    const res = await fetch(API_SHARE, {
+      method: 'POST',
+      mode: 'cors',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(payload)
+    })
+    if (!res.ok) {
+      const txt = await res.text().catch(()=> '')
+      console.error('share failed', res.status, txt)
+      window.alert('Échec du partage : ' + (txt || res.statusText))
+      return
+    }
+    await loadCurrentShares(selectedFile.value)
+    shareWithUsername.value = ''
+  } catch (err) {
+    console.error('shareWithUser error', err)
+    window.alert('Erreur lors du partage')
+  }
+}
+
+async function unshareWith(share) {
+  if (!selectedFile.value || !share) return
+  if (!window.confirm(`Arrêter le partage avec ${share.shared_with || share.shared_with_name || share.shared_with_username || share.shared_with_name}?`)) return
+  const payload = {
+    username: userName,
+    token: gls().sessionT,
+    file_id: selectedFile.value.file_id ?? selectedFile.value.id,
+    unshare_with_username: share.shared_with || share.shared_with_name || share.shared_with_username
+  }
+  try {
+    const res = await fetch(API_UNSHARE, {
+      method: 'POST',
+      mode: 'cors',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(payload)
+    })
+    if (!res.ok) {
+      const txt = await res.text().catch(()=> '')
+      console.error('unshare failed', res.status, txt)
+      window.alert('Échec annulation partage : ' + (txt || res.statusText))
+      return
+    }
+    await loadCurrentShares(selectedFile.value)
+  } catch (err) {
+    console.error('unshareWith error', err)
+    window.alert('Erreur lors de l\'annulation du partage')
+  }
+}
+
+// small helper to close modal
+function closeShareModal() {
+  showShareModal.value = false
+  selectedFile.value = null
+  shareWithUsername.value = ''
+  sharePermission.value = 'editor'
+  currentShares.value = []
 }
 
 onMounted(async () => {
@@ -1687,8 +1775,6 @@ watch(selectedFile, async (v) => {
   width: 100%;
   height: 100%;
   min-height: 60vh;
-  border: 0;
-  overflow: hidden;
-  border-radius: 6px;
+
 }
 </style>
