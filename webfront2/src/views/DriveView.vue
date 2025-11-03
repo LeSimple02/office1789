@@ -224,9 +224,15 @@
 
                 <!-- DOCX / other office: try opening in new tab (browser may download or display depending on support) -->
                 <template v-else-if="selectedFile.url && ['docx','xlsx','pptx'].includes(selectedFile.name.split('.').pop().toLowerCase())">
-                  <!-- OnlyOffice container : s'ouvre automatiquement et prend toute la zone preview -->
-                  <div id="onlyoffice-wrapper" class="preview office-open" :key="selectedFile.id" style="padding:0">
-                    <div id="onlyofficeContainer" style="width:100%;height:100%;"></div>
+                  <!-- OnlyOffice: open in modal -->
+                  <div class="onlyoffice-placeholder" style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;">
+                    <div style="text-align:center">
+                      <p style="margin:0 0 8px 0">Ce document doit être ouvert dans l'éditeur OnlyOffice.</p>
+                      <div style="display:flex;gap:8px;justify-content:center">
+                        <button class="dv-btn" @click="(showOnlyofficeModal = true, openInOnlyOffice(selectedFile))">Ouvrir dans OnlyOffice</button>
+                        <button class="dv-btn" @click="downloadFile(selectedFile)">Télécharger</button>
+                      </div>
+                    </div>
                   </div>
                 </template>
 
@@ -403,6 +409,20 @@
       </div>
       <div class="backdrop" @click="closeShareModal"></div>
     </div>
+
+    <!-- ONLYOFFICE MODAL -->
+    <div v-if="showOnlyofficeModal" class="modal-wrap" @keydown.esc="showOnlyofficeModal = false">
+      <div class="modal" role="dialog" aria-modal="true" style="width:90vw; max-width:1200px; height:90vh; padding:12px; display:flex; flex-direction:column;">
+        <div style="display:flex; justify-content:space-between; align-items:center; gap:8px;">
+          <h3 style="margin:0; font-size:1rem;">{{ selectedFile?.name }}</h3>
+          <div>
+            <button class="dv-btn" @click="showOnlyofficeModal = false">Fermer</button>
+          </div>
+        </div>
+        <div id="onlyofficeModalContainer" style="width:100%;height:calc(100% - 48px); margin-top:8px;"></div>
+      </div>
+      <div class="backdrop" @click="showOnlyofficeModal = false"></div>
+    </div>
   </div>
 </template>
 <script setup>
@@ -482,6 +502,7 @@ const showShareModal = ref(false)
 const renameValue = ref('')
 const newFolderName = ref('')
 const shareLink = ref('')
+const showOnlyofficeModal = ref(false) // montre le modal OnlyOffice
 // share modal state (was missing -> runtime error when clicking "Partager")
 const shareWithUsername = ref('')
 const sharePermission = ref('editor')
@@ -584,7 +605,14 @@ function selectMultiple() {
 async function fetchFiles() {
   try {
     const payload = { username: userName, token: gls().sessionT }
-    const api = curr.value === 'trash' ? API_GTRASH : API_GETFILES
+    let api
+    if (curr.value === 'shared') {
+      api = API_GET_SHARES
+    } else if (curr.value === 'trash') {
+      api = API_GTRASH
+    } else {
+      api = API_GETFILES
+    }
     const res = await fetch(api, {
       method: 'POST',
       mode: 'cors',
@@ -880,6 +908,7 @@ function openAction(it) {
   
   // Ajouter cette condition pour les fichiers Office
   if (['docx','xlsx','pptx'].includes(it.name.split('.').pop().toLowerCase())) {
+    showOnlyofficeModal.value = true
     openInOnlyOffice(it)
     return
   }
@@ -1473,8 +1502,8 @@ async function openInOnlyOffice(file) {
     // load api.js
     await loadOnlyOfficeScript()
 
-    const container = document.getElementById('onlyofficeContainer')
-    if (!container) { console.error('onlyofficeContainer missing'); return }
+    const container = document.getElementById('onlyofficeModalContainer') || document.getElementById('onlyofficeContainer')
+    if (!container) { console.error('onlyoffice container missing'); return }
     container.innerHTML = ''
 
     const DocEditorCtor = window.DocEditor || (window.DocsAPI && window.DocsAPI.DocEditor)
@@ -1490,9 +1519,10 @@ async function openInOnlyOffice(file) {
 
     // instantiate and keep reference
     try {
-      const editor = new DocEditorCtor('onlyofficeContainer', cfg)
+      const containerId = (container && container.id) ? container.id : 'onlyofficeContainer'
+      const editor = new DocEditorCtor(containerId, cfg)
       window._onlyofficeEditor = editor
-      console.log('OnlyOffice editor created')
+      console.log('OnlyOffice editor created in', containerId)
     } catch (err) {
       console.error('Failed to instantiate OnlyOffice editor', err)
       alert('Erreur lors de l\'initialisation de l\'éditeur OnlyOffice (voir console).')
@@ -1608,6 +1638,19 @@ function closeShareModal() {
   currentShares.value = []
 }
 
+// destroy onlyoffice editor when modal closed
+watch(showOnlyofficeModal, (v) => {
+  if (!v) {
+    try {
+      if (window._onlyofficeEditor && typeof window._onlyofficeEditor.destroy === 'function') {
+        window._onlyofficeEditor.destroy()
+      }
+    } catch (e) { console.error('destroy onlyoffice editor failed', e) }
+    try { const el = document.getElementById('onlyofficeModalContainer'); if (el) el.innerHTML = '' } catch(e) {}
+    window._onlyofficeEditor = null
+  }
+})
+
 onMounted(async () => {
   try {
     await fetchFiles()
@@ -1623,15 +1666,7 @@ watch(() => gls().sessionT, (newToken) => {
   }
 })
 
-// call editor automatically when onlyoffice-wrapper is present / file changes
-watch(selectedFile, async (v) => {
-  if (!v) return
-  const ext = (v.name || '').split('.').pop().toLowerCase()
-  if (['docx','xlsx','pptx'].includes(ext)) {
-    // small delay to ensure DOM container is rendered
-    setTimeout(() => openInOnlyOffice(v), 50)
-  }
-})
+// don't auto-open OnlyOffice on selection; user opens editor via the "Ouvrir" button which opens the modal
 </script>
 
 
@@ -1777,4 +1812,6 @@ watch(selectedFile, async (v) => {
   min-height: 60vh;
 
 }
+
+.dark .preview{ background:#1b1b1b; border-color:#2b2b2b; }
 </style>

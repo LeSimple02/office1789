@@ -344,10 +344,26 @@ func downloadFile(c *gin.Context) {
 		return
 	}
 
-	// authorize: owner must match requested username (username filled from session or token)
+	// authorize: owner must match requested username OR file must be shared with user
 	if ownerUsername != username {
-		c.JSON(http.StatusForbidden, gin.H{"error": "access denied"})
-		return
+		// Check if file is shared with this user
+		var sharedUserID int
+		err := db.QueryRow("SELECT user_id FROM Users WHERE username=$1", username).Scan(&sharedUserID)
+		if err != nil {
+			log.Printf("Authorization failed: user not found username=%s", username)
+			c.JSON(http.StatusForbidden, gin.H{"error": "access denied"})
+			return
+		}
+		
+		var hasAccess bool
+		err = db.QueryRow(`SELECT EXISTS(SELECT 1 FROM SharedFiles 
+			WHERE file_id=$1 AND shared_with_user_id=$2 AND active=true)`, fid, sharedUserID).Scan(&hasAccess)
+		if err != nil || !hasAccess {
+			log.Printf("Authorization failed: file owner=%s requester=%s not shared", ownerUsername, username)
+			c.JSON(http.StatusForbidden, gin.H{"error": "access denied"})
+			return
+		}
+		log.Printf("Access granted via share: file_id=%d owner=%s requester=%s", fid, ownerUsername, username)
 	}
 
 	// build path on disk (trim leading slash)
@@ -1430,18 +1446,45 @@ func onlyofficeConfig(c *gin.Context) {
 	downloadURL := fmt.Sprintf("%s/api/drive/download?download_token=%s", baseURL, dtok)
 	callbackURL := fmt.Sprintf("%s/api/onlyoffice/callback?file_id=%s&username=%s&download_token=%s", baseURL, fileID, username, dtok)
 
-	// 7️⃣ Construire la config OnlyOffice
+	// 6.5️⃣ Check if user has edit permission (owner or editor share)
+	var userID int
+	db.QueryRow("SELECT user_id FROM Users WHERE username=$1", username).Scan(&userID)
+	
+	editorMode := "edit"
+	if userID != file.UserID {
+		// User is not owner, check shared permission
+		var permission string
+		err := db.QueryRow(`SELECT permission FROM SharedFiles 
+			WHERE file_id=$1 AND shared_with_user_id=$2 AND active=true`, file.FileID, userID).Scan(&permission)
+		if err != nil || permission != "editor" {
+			editorMode = "view" // Read-only for viewers or if not shared
+		}
+	}
+
+	// 7️⃣ Construire la config OnlyOffice avec clé unique pour collaboration
+	// Use timestamp in key to enable real-time collaboration
 	config := gin.H{
 		"document": gin.H{
 			"fileType": fileType,
-			"key":      fmt.Sprintf("%d-%d", file.UserID, file.FileID),
+			"key":      fmt.Sprintf("file-%d", file.FileID), // Same key for all users = collaborative editing
 			"title":    file.FileName,
 			"url":      downloadURL,
+			"permissions": gin.H{
+				"comment":  editorMode == "edit",
+				"download": true,
+				"edit":     editorMode == "edit",
+				"print":    true,
+				"review":   editorMode == "edit",
+			},
 		},
 		"documentType": documentType,
 		"editorConfig": gin.H{
 			"callbackUrl": callbackURL,
-			"mode":        "edit",
+			"mode":        editorMode,
+			"user": gin.H{
+				"id":   username,
+				"name": username,
+			},
 			"user": gin.H{
 				"id":   fmt.Sprintf("%d", file.UserID),
 				"name": username,
@@ -1788,13 +1831,13 @@ func getSharedFiles(c *gin.Context) {
         `, req.FileID)
     } else {
         // list shares where the user is the recipient (shared with me) and active
+        // Return full file info compatible with DriveFiles format
         rows, err = db.Query(`
-            SELECT s.share_id, s.file_id, f.file_name, s.permission, s.active, s.date_shared,
-                   ub.username AS shared_by, uw.username AS shared_with, f.file_type, f.file_size
+            SELECT s.share_id, f.file_id, f.file_name, f.file_path, f.file_size, f.file_type, f.date_uploaded,
+                   s.permission, ub.username AS owner_username, s.active, s.date_shared
             FROM SharedFiles s
-            LEFT JOIN DriveFiles f ON s.file_id = f.file_id
-            LEFT JOIN Users ub ON s.shared_by_user_id = ub.user_id
-            LEFT JOIN Users uw ON s.shared_with_user_id = uw.user_id
+            JOIN DriveFiles f ON s.file_id = f.file_id
+            JOIN Users ub ON s.shared_by_user_id = ub.user_id
             WHERE s.shared_with_user_id = $1 AND s.active = true
             ORDER BY s.date_shared DESC
         `, userID)
@@ -1809,19 +1852,35 @@ func getSharedFiles(c *gin.Context) {
         ShareID        int       `json:"share_id"`
         FileID         int       `json:"file_id"`
         FileName       string    `json:"file_name"`
+        FilePath       string    `json:"file_path"`
+        FileSize       int64     `json:"file_size"`
+        FileType       string    `json:"file_type"`
+        DateUploaded   time.Time `json:"date_uploaded"`
         Permission     string    `json:"permission"`
+        OwnerUsername  string    `json:"owner"`
         Active         bool      `json:"active"`
         DateShared     time.Time `json:"date_shared"`
-        SharedBy       string    `json:"shared_by"`
-        SharedWith     string    `json:"shared_with"`
-        FileType       string    `json:"file_type"`
-        FileSize       int64     `json:"file_size"`
+        IsShared       bool      `json:"is_shared"`
     }
     var list []shareInfo
     for rows.Next() {
         var s shareInfo
-        _ = rows.Scan(&s.ShareID, &s.FileID, &s.FileName, &s.Permission, &s.Active, &s.DateShared, &s.SharedBy, &s.SharedWith, &s.FileType, &s.FileSize)
+        if req.FileID != 0 {
+            // For specific file shares (owner viewing who has access)
+            var sharedBy, sharedWith string
+            _ = rows.Scan(&s.ShareID, &s.FileID, &s.FileName, &s.Permission, &s.Active, &s.DateShared, &sharedBy, &sharedWith, &s.FileType, &s.FileSize)
+        } else {
+            // For shared-with-me view
+            _ = rows.Scan(&s.ShareID, &s.FileID, &s.FileName, &s.FilePath, &s.FileSize, &s.FileType, &s.DateUploaded, &s.Permission, &s.OwnerUsername, &s.Active, &s.DateShared)
+            s.IsShared = true
+        }
         list = append(list, s)
     }
-    c.JSON(http.StatusOK, gin.H{"shared_files": list})
+    
+    // If listing shared-with-me files, return in DriveFiles format
+    if req.FileID == 0 {
+        c.JSON(http.StatusOK, gin.H{"files": list})
+    } else {
+        c.JSON(http.StatusOK, gin.H{"shared_files": list})
+    }
 }
