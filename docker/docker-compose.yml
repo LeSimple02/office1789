@@ -32,7 +32,11 @@ services:
       ROUNDCUBE_DB_PASSWORD: guillotine
       ROUNDCUBE_DEFAULT_HOST: mail.localhost
       ROUNDCUBE_SMTP_SERVER: mail.localhost
+      ROUNDCUBE_SMTP_PORT: 587
       ROUNDCUBE_PLUGINS: archive,zipdownload
+      # Configuration SSO
+      ROUNDCUBE_ENABLE_INSTALLER: "false"
+      ROUNDCUBE_AUTO_CREATE_USER: "true"
 
   onlyoffice:
     image: onlyoffice/documentserver:latest

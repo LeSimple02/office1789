@@ -1448,7 +1448,8 @@ func onlyofficeConfig(c *gin.Context) {
 
 	// 6.5️⃣ Check if user has edit permission (owner or editor share)
 	var userID int
-	db.QueryRow("SELECT user_id FROM Users WHERE username=$1", username).Scan(&userID)
+	var userEmail string
+	db.QueryRow("SELECT user_id, email FROM Users WHERE username=$1", username).Scan(&userID, &userEmail)
 	
 	editorMode := "edit"
 	if userID != file.UserID {
@@ -1462,7 +1463,12 @@ func onlyofficeConfig(c *gin.Context) {
 	}
 
 	// 7️⃣ Construire la config OnlyOffice avec clé unique pour collaboration
-	// Use timestamp in key to enable real-time collaboration
+	// Use a consistent user identifier for proper name display
+	userIdentifier := userEmail
+	if userIdentifier == "" {
+		userIdentifier = username
+	}
+	
 	config := gin.H{
 		"document": gin.H{
 			"fileType": fileType,
@@ -1482,18 +1488,24 @@ func onlyofficeConfig(c *gin.Context) {
 			"callbackUrl": callbackURL,
 			"mode":        editorMode,
 			"user": gin.H{
-				"id":   username,
-				"name": username,
+				"id":   userIdentifier,  // Use email or username as unique ID
+				"name": username,         // Display name in editor
 			},
-			"user": gin.H{
-				"id":   fmt.Sprintf("%d", file.UserID),
-				"name": username,
+			"customization": gin.H{
+				"autosave":      true,
+				"forcesave":     true,
+				"compactHeader": false,
+				"feedback":      false,
+				"goback": gin.H{
+					"blank": false,
+					"url":   baseURL,
+				},
 			},
 		},
 		"type": "desktop",
 	}
 
-	log.Printf("onlyoffice config OK: user=%s file_id=%s token=%s", username, fileID, dtok)
+	log.Printf("onlyoffice config OK: user=%s (id=%s) file_id=%s token=%s", username, userIdentifier, fileID, dtok)
 	c.JSON(http.StatusOK, config)
 }
 

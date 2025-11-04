@@ -412,19 +412,23 @@
 
     <!-- ONLYOFFICE MODAL -->
     <div v-if="showOnlyofficeModal" class="modal-wrap" @keydown.esc="showOnlyofficeModal = false">
-      <div class="modal" role="dialog" aria-modal="true" style="width:90vw; max-width:1200px; height:90vh; padding:12px; display:flex; flex-direction:column;">
-        <div style="display:flex; justify-content:space-between; align-items:center; gap:8px;">
+      <div class="modal onlyoffice-modal" :class="{ 'fullscreen': isOnlyofficeFullscreen }" role="dialog" aria-modal="true">
+        <div class="onlyoffice-header">
           <h3 style="margin:0; font-size:1rem;">{{ selectedFile?.name }}</h3>
-          <div>
+          <div style="display:flex; gap:8px;">
+            <button class="dv-btn small" @click="toggleOnlyofficeFullscreen" :title="isOnlyofficeFullscreen ? 'Quitter plein écran' : 'Plein écran'">
+              {{ isOnlyofficeFullscreen ? '⛶' : '⛶' }}
+            </button>
             <button class="dv-btn" @click="showOnlyofficeModal = false">Fermer</button>
           </div>
         </div>
-        <div id="onlyofficeModalContainer" style="width:100%;height:calc(100% - 48px); margin-top:8px;"></div>
+        <div id="onlyofficeModalContainer" class="onlyoffice-container"></div>
       </div>
       <div class="backdrop" @click="showOnlyofficeModal = false"></div>
     </div>
   </div>
 </template>
+
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
 import { gls } from '@/stores/global.js'
@@ -1638,9 +1642,17 @@ function closeShareModal() {
   currentShares.value = []
 }
 
+// OnlyOffice fullscreen state
+const isOnlyofficeFullscreen = ref(false)
+
+function toggleOnlyofficeFullscreen() {
+  isOnlyofficeFullscreen.value = !isOnlyofficeFullscreen.value
+}
+
 // destroy onlyoffice editor when modal closed
 watch(showOnlyofficeModal, (v) => {
   if (!v) {
+    isOnlyofficeFullscreen.value = false
     try {
       if (window._onlyofficeEditor && typeof window._onlyofficeEditor.destroy === 'function') {
         window._onlyofficeEditor.destroy()
@@ -1780,6 +1792,49 @@ watch(() => gls().sessionT, (newToken) => {
 .modal-actions { display:flex; gap:8px; justify-content:flex-end; margin-top:12px; }
 .modal input, .modal textarea, .modal .compose-input { width:100%; padding:10px; border-radius:8px; border:1px solid #e6e6ee; }
 .dark .modal input, .dark .modal .compose-input { background:#121212; border:1px solid #333; color:#eee; }
+
+/* OnlyOffice modal styles */
+.modal.onlyoffice-modal {
+  width: 90vw;
+  max-width: 1200px;
+  height: 90vh;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  transition: all 0.3s ease;
+}
+
+.modal.onlyoffice-modal.fullscreen {
+  width: 100vw;
+  height: 100vh;
+  max-width: 100vw;
+  border-radius: 0;
+  padding: 8px;
+}
+
+.onlyoffice-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #e6e6ee;
+}
+
+.dark .onlyoffice-header {
+  border-bottom-color: #2b2b2b;
+}
+
+.onlyoffice-container {
+  width: 100%;
+  height: calc(100% - 48px);
+  min-height: 60vh;
+}
+
+.modal.onlyoffice-modal.fullscreen .onlyoffice-container {
+  height: calc(100vh - 56px);
+}
 
 /* responsive */
 @media (max-width: 900px) {

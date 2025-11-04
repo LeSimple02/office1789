@@ -2,6 +2,7 @@
 import { ref, onMounted, computed, watch } from "vue"
 import { gls } from "@/stores/global"
 import router from "@/router/index"
+import MailAccess from "@/components/MailAccess.vue"
 
 if (gls().log != 1) {
   router.push("login")
@@ -221,7 +222,10 @@ onMounted(() => {
     <!-- Zone principale -->
     <main id="content">
       <header id="mail-header">
-        <h2>{{$t(curr)}}</h2>
+        <div class="header-left">
+          <h2>{{$t(curr)}}</h2>
+          <MailAccess />
+        </div>
         <input class="search-input" :placeholder="$t('userids')" />
       </header>
 
@@ -403,9 +407,15 @@ onMounted(() => {
   justify-content: space-between;
   margin-bottom: 20px;
 }
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
 #mail-header h2 {
   font-size: 1.5rem;
   font-weight: 500;
+  margin: 0;
 }
 .search-input {
   width: 220px;

@@ -13,6 +13,14 @@ type session struct {
 	expiry time .Time
 }
 
+// Tokens SSO pour Roundcube
+var ssoTokens = map[string]ssoTokenData{}
+
+type ssoTokenData struct {
+	Username string
+	Expiry   time.Time
+}
+
 type sessionSend struct {
 	Username string `json:username`
 	Token string	`json:token`
