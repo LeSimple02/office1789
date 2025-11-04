@@ -10,8 +10,13 @@ ENV ROUNDCUBE_DB_TYPE=pgsql \
     ROUNDCUBE_SMTP_SERVER=mail.localhost \
     ROUNDCUBE_PLUGINS=archive,zipdownload
 
-# Copier le fichier de config personnalisé si besoin
-# COPY config.inc.php /var/www/html/config/config.inc.php
+# Copier la configuration personnalisée pour autoriser l'iframe
+COPY config.inc.php /var/www/html/config/config.inc.php
+
+# Modifier les en-têtes Apache pour autoriser l'iframe
+RUN echo 'Header always unset X-Frame-Options' >> /etc/apache2/conf-enabled/security.conf && \
+    echo 'Header set Content-Security-Policy "frame-ancestors http://localhost:5173 http://localhost:8080;"' >> /etc/apache2/conf-enabled/security.conf && \
+    a2enmod headers
 
 EXPOSE 80
 CMD ["apache2-foreground"]
