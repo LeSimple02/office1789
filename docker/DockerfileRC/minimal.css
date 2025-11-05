@@ -1,0 +1,1 @@
+#logo,.logo,img[alt*="Roundcube"],a.logo{display:none!important}#messagelist tr.selected,#messagelist tr.selected td{background:linear-gradient(30deg,blue,red)!important}.folderlist li.selected>a,.folderlist li.selected>div>a{background:linear-gradient(30deg,blue,red)!important;color:#fff!important}button:hover,.button:hover{background:linear-gradient(30deg,blue,red)!important}

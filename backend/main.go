@@ -55,10 +55,8 @@ func main() {
 	r.POST("/api/drive/unshare", deactivateShareFile)
 	r.POST("/api/drive/shares", getSharedFiles)
 	
-	// Mail SSO routes
-	r.POST("/api/mail/auth", getRoundcubeAuth)
-	r.GET("/api/mail/validate-sso", validateRoundcubeSSOToken)
-	r.POST("/api/session/check", checkSessionStatus)
+	// Mail SSO route
+	r.POST("/api/mail/sso-token", GenerateMailSSOToken)
 
 	r.Run(":8080")
 }

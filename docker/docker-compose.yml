@@ -17,12 +17,16 @@ services:
 
   roundcube:
     build:
-      dockerfile: DockerfileRC/Dockerfile
+      context: ./DockerfileRC
+      dockerfile: Dockerfile
     container_name: roundcube
     ports:
       - "8081:80"
     depends_on:
       - postgres_db
+      - mailserver
+    volumes:
+      - ./DockerfileRC/config.inc.php:/var/www/html/config/config.local.inc.php:ro
     environment:
       ROUNDCUBE_DB_TYPE: pgsql
       ROUNDCUBE_DB_HOST: postgres_db
@@ -30,8 +34,8 @@ services:
       ROUNDCUBE_DB_NAME: office1789
       ROUNDCUBE_DB_USER: robespierre
       ROUNDCUBE_DB_PASSWORD: guillotine
-      ROUNDCUBE_DEFAULT_HOST: mail.localhost
-      ROUNDCUBE_SMTP_SERVER: mail.localhost
+      ROUNDCUBE_DEFAULT_HOST: mailserver
+      ROUNDCUBE_SMTP_SERVER: mailserver
       ROUNDCUBE_SMTP_PORT: 587
       ROUNDCUBE_PLUGINS: archive,zipdownload
       # Configuration SSO
@@ -50,5 +54,39 @@ services:
       - ALLOW_META_IP_ADDRESS=true          
     restart: always
 
+  mailserver:
+    image: mailserver/docker-mailserver:latest
+    container_name: mailserver
+    hostname: mail.office1789.local
+    domainname: office1789.local
+    ports:
+      - "25:25"     # SMTP
+      - "143:143"   # IMAP
+      - "587:587"   # SMTP Submission
+      - "993:993"   # IMAPS
+    volumes:
+      - maildata:/var/mail
+      - mailstate:/var/mail-state
+      - maillogs:/var/log/mail
+      - ./config:/tmp/docker-mailserver/
+    environment:
+      - ENABLE_SPAMASSASSIN=0
+      - ENABLE_CLAMAV=0
+      - ENABLE_FAIL2BAN=0
+      - ENABLE_POSTGREY=0
+      - ONE_DIR=1
+      - DMS_DEBUG=0
+      - PERMIT_DOCKER=network
+      - SSL_TYPE=
+      - TLS_LEVEL=
+      - SMTP_ONLY=0
+      - DOVECOT_TLS=no
+    cap_add:
+      - NET_ADMIN
+    restart: always
+
 volumes:
   pgdata:
+  maildata:
+  mailstate:
+  maillogs:

@@ -1,0 +1,14 @@
+/* Office1789 */
+
+/* Cacher logo */
+#logo, .logo, img[alt*="Roundcube"] { 
+  display: none !important; 
+}
+
+/* Gradient sur sélection */
+#messagelist tr.selected,
+#messagelist tr.selected td,
+#mailboxlist li.selected > a {
+  background: -webkit-linear-gradient(30deg, blue, red) !important;
+  color: #fff !important;
+}

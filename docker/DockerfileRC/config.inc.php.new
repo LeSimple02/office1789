@@ -1,0 +1,43 @@
+<?php
+// Ce fichier est chargé APRÈS config.docker.inc.php, donc il peut écraser les valeurs par défaut
+
+// Configuration de la base de données PostgreSQL (écrase la config SQLite par défaut)
+$config['db_dsnw'] = 'pgsql://robespierre:guillotine@postgres_db:5432/office1789';
+$config['db_prefix'] = 'roundcube_';
+
+// Configuration du serveur mail
+$config['default_host'] = 'mailserver';
+$config['default_port'] = 143;
+$config['imap_host'] = array('mailserver:143');  // Utiliser un array pour forcer la valeur
+$config['smtp_server'] = 'tls://mailserver';
+$config['smtp_port'] = 587;
+$config['username_domain'] = 'office1789.local';
+
+// Debug (pour développement)
+$config['imap_debug'] = true;
+$config['smtp_debug'] = true;
+$config['log_driver'] = 'stdout';
+$config['sql_debug'] = true;
+
+// Paramètres utilisateur
+$config['auto_create_user'] = true;
+$config['language'] = 'fr_FR';
+$config['des_key'] = 'rcmail-!24ByteDESkey*Str';
+$config['enable_spellcheck'] = true;
+$config['spellcheck_engine'] = 'pspell';
+
+// Options de connexion SSL/TLS (désactiver la vérification pour dev)
+$config['imap_conn_options'] = array(
+    'ssl' => array(
+        'verify_peer' => false,
+        'verify_peer_name' => false,
+        'allow_self_signed' => true,
+    ),
+);
+$config['smtp_conn_options'] = array(
+    'ssl' => array(
+        'verify_peer' => false,
+        'verify_peer_name' => false,
+        'allow_self_signed' => true,
+    ),
+);

@@ -1,0 +1,143 @@
+/* ========================================
+   Office1789 Mail - Design Minimaliste
+   Synchronisé avec App.vue
+   ======================================== */
+
+:root {
+  --bg: #3B1C32;
+  --text: #fff;
+  --gradient: -webkit-linear-gradient(30deg, blue, red);
+}
+
+* { font-family: roboto, arial, sans-serif !important; }
+
+/* ===== FOND & LAYOUT ===== */
+body, html, #layout, .content-frame-body { 
+  background: var(--bg) !important; 
+  color: var(--text) !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+/* ===== CACHER LOGO ROUNDCUBE ===== */
+#logo, .logo, a.logo, img[alt*="Roundcube"], .brand-logo,
+.logo-img, .logo-container, #topline .logo { 
+  display: none !important; 
+}
+
+/* ===== HEADER/MENU - Transparent ===== */
+#layout-menu, #taskmenu, .menu, #topline {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+
+/* ===== BOUTONS - Dégradé Clean ===== */
+button, .button, a.button, .btn {
+  background: var(--gradient) !important;
+  border-radius: 8px !important;
+  color: var(--text) !important;
+  border: none !important;
+  padding: 8px 16px !important;
+  transition: all 0.2s !important;
+}
+
+button:hover, .button:hover { 
+  box-shadow: 0 0 12px rgba(41,121,255,0.3) !important;
+  filter: brightness(1.1) !important;
+}
+
+/* ===== SIDEBAR - Transparent ===== */
+#layout-sidebar, .sidebar {
+  background: rgba(0,0,0,0.2) !important;
+  border-right: 1px solid rgba(255,255,255,0.1) !important;
+}
+
+/* ===== MAILS - Minimaliste ===== */
+#messagelist tr, .listing tr {
+  background: transparent !important;
+  border-bottom: 1px solid rgba(255,255,255,0.05) !important;
+}
+
+#messagelist tr:hover { background: rgba(255,255,255,0.05) !important; }
+
+#messagelist tr.selected {
+  background: var(--gradient) !important;
+  border-radius: 8px !important;
+  box-shadow: 0 0 12px rgba(41,121,255,0.3) !important;
+}
+
+/* ===== INPUTS ===== */
+input, textarea, select {
+  background: rgba(0,0,0,0.3) !important;
+  border: 1px solid rgba(255,255,255,0.1) !important;
+  color: var(--text) !important;
+  border-radius: 8px !important;
+  padding: 8px !important;
+}
+
+input:focus, textarea:focus {
+  border-color: #2979ff !important;
+  outline: none !important;
+}
+
+/* ===== TOOLBAR ===== */
+#toolbar, .toolbar { 
+  background: rgba(0,0,0,0.2) !important;
+  border: none !important;
+}
+
+/* ===== SCROLLBAR ===== */
+::-webkit-scrollbar { width: 8px; }
+::-webkit-scrollbar-track { background: rgba(0,0,0,0.2); }
+::-webkit-scrollbar-thumb { 
+  background: var(--gradient);
+  border-radius: 4px;
+}
+
+/* ===== DOSSIERS ===== */
+#mailboxlist li a, .folderlist li a {
+  color: var(--text) !important;
+  border-radius: 8px !important;
+  transition: all 0.2s !important;
+}
+
+#mailboxlist li a:hover { background: rgba(255,255,255,0.05) !important; }
+
+#mailboxlist li.selected a {
+  background: var(--gradient) !important;
+  border-radius: 8px !important;
+  font-weight: bold !important;
+}
+
+/* ===== CONTENU MAIL ===== */
+.message-part, iframe {
+  background: var(--bg) !important;
+  color: var(--text) !important;
+}
+
+/* ===== POPUP/MODAL ===== */
+.popup, .popupmenu {
+  background: rgba(59, 28, 50, 0.95) !important;
+  border: 1px solid rgba(255,255,255,0.1) !important;
+  border-radius: 8px !important;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.5) !important;
+}
+
+/* ===== TABLES ===== */
+table { background: transparent !important; }
+th { 
+  background: rgba(0,0,0,0.3) !important;
+  border-bottom: 2px solid rgba(255,255,255,0.1) !important;
+}
+
+/* ===== LOGIN PAGE ===== */
+#login-form {
+  background: rgba(0,0,0,0.3) !important;
+  border: 1px solid rgba(255,255,255,0.1) !important;
+  border-radius: 12px !important;
+  padding: 30px !important;
+}
+
+/* ===== SUPPRESSION BORDURES INUTILES ===== */
+.border, .border-bottom, .border-top { border: none !important; }

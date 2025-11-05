@@ -1,0 +1,4 @@
+/* Office1789 - CSS Ultra-Minimal */
+#logo, .logo, img[alt*="Roundcube"], a.logo { display: none !important; }
+#messagelist tr.selected, #messagelist tr.selected td { background: -webkit-linear-gradient(30deg, blue, red) !important; }
+button:hover, .button:hover { background: -webkit-linear-gradient(30deg, blue, red) !important; }
