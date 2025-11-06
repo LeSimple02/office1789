@@ -13,6 +13,7 @@
       <div class="dv-actions">
         <button class="dv-btn primary" @click="openUploadModal">📤 Upload</button>
         <button class="dv-btn" @click="showNewFolderModal = true">📁 Nouveau dossier</button>
+        <button class="dv-btn" @click="showNewFileModal = true">📄 Nouveau fichier</button>
       </div>
 
       <nav class="dv-nav" aria-label="navigation drive">
@@ -358,6 +359,31 @@
       <div class="backdrop" @click="showNewFolderModal = false"></div>
     </div>
 
+    <!-- NEW FILE MODAL -->
+    <div v-if="showNewFileModal" class="modal-wrap" @keydown.esc="showNewFileModal = false">
+      <div class="modal" role="dialog" aria-modal="true" aria-label="Nouveau fichier">
+        <h3>Nouveau fichier</h3>
+        <div class="form-group">
+          <label>Type de fichier</label>
+          <select v-model="newFileType" style="width:100%; padding:8px; border-radius:6px; border:1px solid #e6e6ee; margin-bottom:12px;">
+            <option value="docx">📄 Document Word (.docx)</option>
+            <option value="xlsx">📊 Feuille Excel (.xlsx)</option>
+            <option value="pptx">📽️ Présentation PowerPoint (.pptx)</option>
+          </select>
+        </div>
+        <input v-model="newFileName" placeholder="Nom du fichier (sans extension)" class="compose-input" @keyup.enter="createFile" />
+        <div class="modal-actions" style="justify-content:space-between;">
+          <div>
+            <button class="dv-btn ghost" @click="showNewFileModal = false">Annuler</button>
+          </div>
+          <div style="display:flex; gap:8px;">
+            <button class="dv-btn primary" @click="createFile">Créer et ouvrir</button>
+          </div>
+        </div>
+      </div>
+      <div class="backdrop" @click="showNewFileModal = false"></div>
+    </div>
+
     <!-- RENAME MODAL -->
     <div v-if="showRenameModal" class="modal-wrap" @keydown.esc="showRenameModal = false">
       <div class="modal" role="dialog" aria-modal="true" aria-label="Renommer">
@@ -454,6 +480,7 @@ const API_TRASH = resolveAPI(import.meta.env.VITE_API_DRIVE_TRASH || '/api/drive
 const API_GTRASH = resolveAPI(import.meta.env.VITE_API_DRIVE_GTRASH || '/api/drive/gettrash')
 const API_RESTORE = resolveAPI(import.meta.env.VITE_API_DRIVE_RESTORE || '/api/drive/restore')
 const API_CREATE_FOLDER = resolveAPI(import.meta.env.VITE_API_DRIVE_CREATE_FOLDER || '/api/drive/createFolder')
+const API_CREATE_FILE = resolveAPI(import.meta.env.VITE_API_DRIVE_CREATE_FILE || '/api/drive/createFile')
 const API_MOVE_FILE = resolveAPI(import.meta.env.VITE_API_DRIVE_MOVE_FILE || '/api/drive/moveFile')
 const API_MOVE_FOLDER = resolveAPI(import.meta.env.VITE_API_DRIVE_MOVE_FOLDER || '/api/drive/moveFolder')
 const API_SHARE = resolveAPI(import.meta.env.VITE_API_DRIVE_SHARE || '/api/drive/share')
@@ -501,10 +528,13 @@ const dragTarget = ref(null)
 const uploadInput = ref(null)
 const showUploadModal = ref(false)
 const showNewFolderModal = ref(false)
+const showNewFileModal = ref(false)
 const showRenameModal = ref(false)
 const showShareModal = ref(false)
 const renameValue = ref('')
 const newFolderName = ref('')
+const newFileName = ref('')
+const newFileType = ref('docx')
 const shareLink = ref('')
 const showOnlyofficeModal = ref(false) // montre le modal OnlyOffice
 // share modal state (was missing -> runtime error when clicking "Partager")
@@ -754,6 +784,64 @@ async function createFolder() {
   } catch (err) {
     console.error('createFolder error', err)
     window.alert('Impossible de créer le dossier')
+  }
+}
+
+async function createFile() {
+  const name = (newFileName.value || '').trim()
+  if (!name) {
+    window.alert('Le nom du fichier est vide')
+    return
+  }
+
+  const payload = {
+    username: userName,
+    token: gls().sessionT,
+    parent_path: currentPath.value || '/',
+    file_name: name,
+    file_type: newFileType.value
+  }
+
+  try {
+    const res = await fetch(API_CREATE_FILE, {
+      method: 'POST',
+      mode: 'cors',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    })
+
+    if (res.status === 401) {
+      window.alert('Session invalide')
+      return
+    }
+    if (res.status === 409) {
+      const j = await res.json().catch(()=>({}))
+      window.alert(j.error || 'Un fichier du même nom existe déjà')
+      return
+    }
+    if (!res.ok) {
+      const txt = await res.text().catch(()=> '')
+      console.error('createFile failed', res.status, txt)
+      window.alert('Erreur lors de la création du fichier')
+      return
+    }
+
+    const result = await res.json()
+    await fetchFiles()
+    
+    // Ouvrir automatiquement le fichier dans OnlyOffice
+    const newFile = files.value.find(f => f.id === result.file_id)
+    if (newFile) {
+      selectedFile.value = newFile
+      showOnlyofficeModal.value = true
+      await openInOnlyOffice(newFile)
+    }
+    
+    showNewFileModal.value = false
+    newFileName.value = ''
+  } catch (err) {
+    console.error('createFile error', err)
+    window.alert('Impossible de créer le fichier')
   }
 }
 

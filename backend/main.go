@@ -43,6 +43,7 @@ func main() {
 	r.POST("/api/drive/getfiles", getfiles)
 	r.POST("/api/drive/gettrash", getTrashFiles)
 	r.POST("/api/drive/createFolder", createFolder)
+	r.POST("/api/drive/createFile", createFile)
 	r.POST("/api/drive/rename", renameFile)
 	r.POST("/api/drive/delete", deletePermanent)
 	r.POST("/api/drive/trash", moveToTrash)

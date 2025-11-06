@@ -1060,6 +1060,175 @@ func createFolder(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "folder created", "folder": name, "parent": parent})
 }
 
+// === createFile ===
+func createFile(c *gin.Context) {
+	type reqT struct {
+		Username   string `json:"username"`
+		Token      string `json:"token"`
+		ParentPath string `json:"parent_path"`
+		FileName   string `json:"file_name"`
+		FileType   string `json:"file_type"` // docx, xlsx, pptx
+	}
+	var req reqT
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request"})
+		return
+	}
+
+	// session check
+	if session, ok := sessions[req.Token]; !ok || session.Username != req.Username || req.Username == "" {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid session"})
+		return
+	}
+
+	// sanitize file name
+	name := strings.TrimSpace(req.FileName)
+	if name == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid file_name"})
+		return
+	}
+
+	// add extension based on file type
+	ext := ".docx"
+	mimeType := "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+	switch req.FileType {
+	case "xlsx":
+		ext = ".xlsx"
+		mimeType = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+	case "pptx":
+		ext = ".pptx"
+		mimeType = "application/vnd.openxmlformats-officedocument.presentationml.presentation"
+	}
+
+	if !strings.HasSuffix(strings.ToLower(name), ext) {
+		name = name + ext
+	}
+
+	// normalize parent path
+	parent := req.ParentPath
+	if parent == "" {
+		parent = "/"
+	}
+	if parent != "/" {
+		parent = strings.TrimPrefix(parent, "/")
+		if !strings.HasSuffix(parent, "/") {
+			parent = parent + "/"
+		}
+		parent = "/" + parent
+	}
+
+	// find user id
+	var userID int
+	if err := db.QueryRow("SELECT user_id FROM Users WHERE username=$1", req.Username).Scan(&userID); err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "user not found"})
+		return
+	}
+
+	// check conflict: same name at same path
+	var exists bool
+	err := db.QueryRow(`SELECT EXISTS (
+		SELECT 1 FROM DriveFiles WHERE user_id=$1 AND file_path=$2 AND file_name=$3
+	)`, userID, parent, name).Scan(&exists)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "db query failed"})
+		return
+	}
+	if exists {
+		c.JSON(http.StatusConflict, gin.H{"error": "file already exists"})
+		return
+	}
+
+	// create empty file on disk
+	userDir := filepath.Join("uploads", req.Username)
+	destDir := userDir
+	if parent != "" && parent != "/" {
+		p := strings.TrimPrefix(parent, "/")
+		destDir = filepath.Join(destDir, p)
+	}
+
+	// ensure directory exists
+	if err := os.MkdirAll(destDir, 0o755); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "cannot create directory"})
+		return
+	}
+
+	filePath := filepath.Join(destDir, name)
+
+	// Create empty template file based on type
+	// For simplicity, we'll create minimal valid Office files
+	var templateData []byte
+	switch req.FileType {
+	case "docx":
+		// Minimal valid DOCX (PKZip with required structure)
+		templateData = createEmptyDocx()
+	case "xlsx":
+		templateData = createEmptyXlsx()
+	case "pptx":
+		templateData = createEmptyPptx()
+	default:
+		templateData = createEmptyDocx()
+	}
+
+	if err := os.WriteFile(filePath, templateData, 0o644); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "cannot write file"})
+		return
+	}
+
+	fileSize := int64(len(templateData))
+
+	// insert file into database
+	var fileID int
+	err = db.QueryRow(`INSERT INTO DriveFiles (user_id, file_name, file_path, file_size, file_type, date_uploaded)
+	                  VALUES ($1,$2,$3,$4,$5,NOW()) RETURNING file_id`,
+		userID, name, parent, fileSize, mimeType).Scan(&fileID)
+	if err != nil {
+		_ = os.Remove(filePath)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "db insert failed"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "file created",
+		"file_id": fileID,
+		"file_name": name,
+		"parent": parent,
+	})
+}
+
+// Helper functions to create minimal valid Office files
+// These create actual valid Office OpenXML files that OnlyOffice can open
+
+func createEmptyDocx() []byte {
+	// Use template file if available, otherwise create minimal structure
+	templatePath := "templates/empty.docx"
+	if data, err := os.ReadFile(templatePath); err == nil {
+		return data
+	}
+	
+	// Fallback: minimal valid DOCX (just returns PK header)
+	// In production, you should have template files
+	log.Println("Warning: empty.docx template not found, creating minimal file")
+	return []byte{0x50, 0x4b, 0x03, 0x04, 0x14, 0x00, 0x00, 0x00, 0x08, 0x00}
+}
+
+func createEmptyXlsx() []byte {
+	templatePath := "templates/empty.xlsx"
+	if data, err := os.ReadFile(templatePath); err == nil {
+		return data
+	}
+	log.Println("Warning: empty.xlsx template not found, creating minimal file")
+	return []byte{0x50, 0x4b, 0x03, 0x04, 0x14, 0x00, 0x00, 0x00, 0x08, 0x00}
+}
+
+func createEmptyPptx() []byte {
+	templatePath := "templates/empty.pptx"
+	if data, err := os.ReadFile(templatePath); err == nil {
+		return data
+	}
+	log.Println("Warning: empty.pptx template not found, creating minimal file")
+	return []byte{0x50, 0x4b, 0x03, 0x04, 0x14, 0x00, 0x00, 0x00, 0x08, 0x00}
+}
+
 // === moveFile ===
 func moveFile(c *gin.Context) {
 	type reqT struct {

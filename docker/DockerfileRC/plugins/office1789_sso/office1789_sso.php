@@ -7,14 +7,15 @@
 
 class office1789_sso extends rcube_plugin
 {
-    public $task = 'login|mail';
+    public $task = '.*';
     private $secret = 'Office1789-SecretKey-ChangeInProduction'; // Même secret que backend Go
 
     function init()
     {
-        rcube::write_log('console', 'SSO Plugin: Initialisation');
+        error_log('[SSO] Plugin: Initialisation');
         $this->add_hook('startup', array($this, 'startup'));
         $this->add_hook('authenticate', array($this, 'authenticate'));
+        $this->add_hook('login_after', array($this, 'login_after'));
     }
 
     function startup($args)
@@ -25,44 +26,46 @@ class office1789_sso extends rcube_plugin
         $sso_token = rcube_utils::get_input_value('sso_token', rcube_utils::INPUT_GPC);
         
         // Si token présent ET pas encore authentifié
-        if (!empty($sso_token) && !$_SESSION['user_id']) {
-            rcube::write_log('console', 'SSO: Token détecté: ' . substr($sso_token, 0, 20) . '...');
+        if (!empty($sso_token) && !isset($_SESSION['user_id'])) {
+            error_log('[SSO] Token détecté: ' . substr($sso_token, 0, 20) . '...');
             
             // Valider et décoder le token
             $claims = $this->validate_token($sso_token);
             
             if ($claims && isset($claims['username']) && isset($claims['email'])) {
-                rcube::write_log('console', 'SSO: Claims décodés pour ' . $claims['email']);
+                error_log('[SSO] Claims décodés pour ' . $claims['email']);
                 
                 // Vérifier l'expiration
                 if (isset($claims['exp']) && $claims['exp'] > time()) {
-                    rcube::write_log('console', 'SSO: Token valide, expiration OK');
+                    error_log('[SSO] Token valide, expiration OK');
                     
-                    // Stocker dans session
-                    $_SESSION['sso_validated'] = true;
-                    $_SESSION['sso_email'] = $claims['email'];
-                    $_SESSION['sso_pass'] = 'password123';
-                    $_SESSION['sso_host'] = 'mailserver';
+                    // Stocker dans session TEMPORAIRE pour authenticate
+                    $_SESSION['temp_sso_login'] = array(
+                        'user' => $claims['email'],
+                        'pass' => 'password123',
+                        'host' => 'mailserver'
+                    );
                     
-                    // Forcer le login
+                    // Préparer les variables POST pour Roundcube
+                    $_POST['_task'] = 'login';
+                    $_POST['_action'] = 'login';
                     $_POST['_user'] = $claims['email'];
                     $_POST['_pass'] = 'password123';
                     $_POST['_host'] = 'mailserver';
-                    $_POST['_task'] = 'login';
-                    $_POST['_action'] = 'login';
                     
+                    // Forcer task=login et action=login
                     $args['task'] = 'login';
                     $args['action'] = 'login';
                     
-                    rcube::write_log('console', 'SSO: Variables POST définies, déclenchement login');
+                    error_log('[SSO] Login préparé pour ' . $claims['email']);
                 } else {
-                    rcube::write_log('errors', 'SSO: Token expiré (exp: ' . $claims['exp'] . ', now: ' . time() . ')');
+                    error_log('[SSO] Token expiré (exp: ' . $claims['exp'] . ', now: ' . time() . ')');
                 }
             } else {
-                rcube::write_log('errors', 'SSO: Token invalide - validation échouée');
+                error_log('[SSO] Token invalide - validation échouée');
             }
-        } else if (!empty($sso_token)) {
-            rcube::write_log('console', 'SSO: Token présent mais utilisateur déjà authentifié');
+        } else if (!empty($sso_token) && isset($_SESSION['user_id'])) {
+            error_log('[SSO] Token présent mais utilisateur déjà authentifié (user_id: ' . $_SESSION['user_id'] . ')');
         }
         
         return $args;
@@ -70,30 +73,34 @@ class office1789_sso extends rcube_plugin
 
     function authenticate($args)
     {
-        rcube::write_log('console', 'SSO: Hook authenticate appelé');
-        rcube::write_log('console', 'SSO: Session sso_validated = ' . (isset($_SESSION['sso_validated']) ? 'true' : 'false'));
+        error_log('[SSO] Hook authenticate appelé');
         
-        // Si c'est une connexion SSO validée
-        if (isset($_SESSION['sso_validated']) && $_SESSION['sso_validated'] === true) {
-            rcube::write_log('console', 'SSO: Authentification SSO détectée');
+        // Si c'est une connexion SSO (données stockées temporairement)
+        if (isset($_SESSION['temp_sso_login'])) {
+            $sso_data = $_SESSION['temp_sso_login'];
             
-            $args['user'] = $_SESSION['sso_email'];
-            $args['pass'] = $_SESSION['sso_pass'];
-            $args['host'] = $_SESSION['sso_host'];
+            error_log('[SSO] Authentification SSO pour ' . $sso_data['user']);
+            
+            $args['user'] = $sso_data['user'];
+            $args['pass'] = $sso_data['pass'];
+            $args['host'] = $sso_data['host'];
             $args['valid'] = true;
             $args['cookiecheck'] = false;
             
-            rcube::write_log('console', 'SSO: Auto-login configuré pour ' . $args['user'] . ' sur ' . $args['host']);
+            // Nettoyer immédiatement
+            unset($_SESSION['temp_sso_login']);
             
-            // Nettoyer la session SSO
-            unset($_SESSION['sso_validated']);
-            unset($_SESSION['sso_email']);
-            unset($_SESSION['sso_pass']);
-            unset($_SESSION['sso_host']);
+            error_log('[SSO] Auto-login configuré et session nettoyée');
         } else {
-            rcube::write_log('console', 'SSO: Pas d\'authentification SSO, passage normal');
+            error_log('[SSO] Authentification normale (pas de SSO)');
         }
         
+        return $args;
+    }
+    
+    function login_after($args)
+    {
+        error_log('[SSO] Hook login_after - Login réussi pour user_id: ' . (isset($_SESSION['user_id']) ? $_SESSION['user_id'] : 'N/A'));
         return $args;
     }
 
@@ -112,7 +119,7 @@ class office1789_sso extends rcube_plugin
         $expected_signature = str_replace(['+', '/'], ['-', '_'], rtrim($expected_signature, '='));
         
         if ($signature !== $expected_signature) {
-            rcube::write_log('errors', 'SSO: Invalid signature');
+            error_log('[SSO] Invalid signature - Expected: ' . $expected_signature . ', Got: ' . $signature);
             return false;
         }
         
@@ -121,7 +128,7 @@ class office1789_sso extends rcube_plugin
         $claims = json_decode($claimsJSON, true);
         
         if (!$claims) {
-            rcube::write_log('errors', 'SSO: Invalid claims JSON');
+            error_log('[SSO] Invalid claims JSON: ' . $claimsJSON);
             return false;
         }
         

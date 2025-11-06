@@ -26,7 +26,8 @@ services:
       - postgres_db
       - mailserver
     volumes:
-      - ./DockerfileRC/config.inc.php:/var/www/html/config/config.local.inc.php:ro
+      - ./DockerfileRC/config.inc.php:/var/www/html/config/config.inc.php:ro
+      - ./DockerfileRC/config.local.inc.php:/var/www/html/config/config.local.inc.php:ro
     environment:
       ROUNDCUBE_DB_TYPE: pgsql
       ROUNDCUBE_DB_HOST: postgres_db
@@ -37,7 +38,7 @@ services:
       ROUNDCUBE_DEFAULT_HOST: mailserver
       ROUNDCUBE_SMTP_SERVER: mailserver
       ROUNDCUBE_SMTP_PORT: 587
-      ROUNDCUBE_PLUGINS: archive,zipdownload
+      ROUNDCUBE_PLUGINS: office1789_sso,office1789_darkmode,archive,zipdownload
       # Configuration SSO
       ROUNDCUBE_ENABLE_INSTALLER: "false"
       ROUNDCUBE_AUTO_CREATE_USER: "true"
