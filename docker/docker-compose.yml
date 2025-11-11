@@ -1,10 +1,8 @@
-version: "3.9"
+version: "3.8"
 
 services:
   postgres_db:
-    build:
-      context: ../
-      dockerfile: docker/DockerfileDB/Dockerfile
+    image: postgres:16
     container_name: postgres_db
     environment:
       POSTGRES_USER: robespierre
@@ -14,46 +12,8 @@ services:
       - "5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
-
-  roundcube:
-    build:
-      context: ./DockerfileRC
-      dockerfile: Dockerfile
-    container_name: roundcube
-    ports:
-      - "8081:80"
-    depends_on:
-      - postgres_db
-      - mailserver
-    volumes:
-      - ./DockerfileRC/config.inc.php:/var/www/html/config/config.inc.php:ro
-      - ./DockerfileRC/config.local.inc.php:/var/www/html/config/config.local.inc.php:ro
-    environment:
-      ROUNDCUBE_DB_TYPE: pgsql
-      ROUNDCUBE_DB_HOST: postgres_db
-      ROUNDCUBE_DB_PORT: 5432
-      ROUNDCUBE_DB_NAME: office1789
-      ROUNDCUBE_DB_USER: robespierre
-      ROUNDCUBE_DB_PASSWORD: guillotine
-      ROUNDCUBE_DEFAULT_HOST: mailserver
-      ROUNDCUBE_SMTP_SERVER: mailserver
-      ROUNDCUBE_SMTP_PORT: 587
-      ROUNDCUBE_PLUGINS: office1789_sso,office1789_darkmode,archive,zipdownload
-      # Configuration SSO
-      ROUNDCUBE_ENABLE_INSTALLER: "false"
-      ROUNDCUBE_AUTO_CREATE_USER: "true"
-
-  onlyoffice:
-    image: onlyoffice/documentserver:latest
-    container_name: onlyoffice
-    ports:
-      - "8082:80"
-    environment:
-      - JWT_ENABLED=false
-      - JWT_SECRET=changeme_verysecret
-      - ALLOW_PRIVATE_IP_ADDRESS=true        
-      - ALLOW_META_IP_ADDRESS=true          
-    restart: always
+    networks:
+      - office_network
 
   mailserver:
     image: mailserver/docker-mailserver:latest
@@ -61,10 +21,10 @@ services:
     hostname: mail.office1789.local
     domainname: office1789.local
     ports:
-      - "25:25"     # SMTP
-      - "143:143"   # IMAP
-      - "587:587"   # SMTP Submission
-      - "993:993"   # IMAPS
+      - "25:25"
+      - "143:143"
+      - "587:587"
+      - "993:993"
     volumes:
       - maildata:/var/mail
       - mailstate:/var/mail-state
@@ -78,16 +38,46 @@ services:
       - ONE_DIR=1
       - DMS_DEBUG=0
       - PERMIT_DOCKER=network
-      - SSL_TYPE=
-      - TLS_LEVEL=
-      - SMTP_ONLY=0
-      - DOVECOT_TLS=no
+      - SSL_TYPE=none
     cap_add:
       - NET_ADMIN
     restart: always
+    networks:
+      - office_network
+
+  snappymail:
+    image: ghcr.io/the-djmaze/snappymail:latest
+    container_name: snappymail
+    ports:
+      - "8081:8888"
+    depends_on:
+      - mailserver
+    volumes:
+      - snappydata:/var/lib/snappymail
+    networks:
+      - office_network
+
+  onlyoffice:
+    image: onlyoffice/documentserver:latest
+    container_name: onlyoffice
+    ports:
+      - "8082:80"
+    environment:
+      - JWT_ENABLED=false
+      - JWT_SECRET=changeme_verysecret
+      - ALLOW_PRIVATE_IP_ADDRESS=true
+      - ALLOW_META_IP_ADDRESS=true
+    restart: always
+    networks:
+      - office_network
+
+networks:
+  office_network:
+    driver: bridge
 
 volumes:
   pgdata:
   maildata:
   mailstate:
   maillogs:
+  snappydata:
