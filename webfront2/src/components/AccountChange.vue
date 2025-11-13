@@ -81,18 +81,29 @@ function send() {
     .then(r => r.json())
     .then(a => {
       saving.value = false
-      if (newusername.value !== "" && a["Username"] !== "no" && a["Email"] !== "no" && a["Phone"] !== "no") {
+      
+      // Si le serveur retourne des erreurs de validation (vInfo)
+      if (a["username"] || a["email"] || a["phone"]) {
+        if (a["username"]) usernameR.value = true
+        if (a["email"]) emailR.value = true
+        if (a["phone"]) phonenumberR.value = true
+        return
+      }
+      
+      // Si changement de username (sessionSend avec Token)
+      if (a["Token"]) {
+        // Mettre à jour les cookies avec la nouvelle session
         document.cookie = `name=${gls().username}; expires=Fri, 31 Dec 1900 23:59:59 GMT; Secure`
         document.cookie = `sessionToken=${gls().sessionT}; expires=Fri, 31 Dec 1900 23:59:59 GMT; Secure`
-        gls().sessionT = a["Token"]
         gls().username = a["Username"]
+        gls().sessionT = a["Token"]
         document.cookie = `name=${a["Username"]}; expires=${a["Expiry"]}; Secure`
         document.cookie = `sessionToken=${a["Token"]}; expires=${a["Expiry"]}; Secure`
         window.location.href = "/account"
-      } else {
-        if (a["Username"]) usernameR.value = true
-        if (a["Email"]) emailR.value = true
-        if (a["Phone"]) phonenumberR.value = true
+      } 
+      // Sinon, succès simple (pas de changement username)
+      else if (a["success"]) {
+        window.location.href = "/account"
       }
     })
     .catch(() => {

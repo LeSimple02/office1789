@@ -60,6 +60,9 @@ func main() {
 
 	// Account deletion route
 	r.POST("/api/account/delete", DeleteAccount)
+	
+	// Password change route (synchronise Office1789 + Mail + Matrix)
+	r.POST("/api/account/change-password", ChangePassword)
 
 	// Calendar routes
 	r.POST("/api/calendar/events/get", GetCalendarEvents)

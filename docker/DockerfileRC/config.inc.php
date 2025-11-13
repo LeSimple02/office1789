@@ -21,5 +21,9 @@
     $config['temp_dir'] = '/tmp/roundcube-temp';
     $config['skin'] = 'elastic';
     
+    // BLOQUER le changement de mot de passe dans Roundcube
+    // Les utilisateurs doivent utiliser Office1789 pour synchroniser tous les services
+    $config['dont_override'] = ['password'];
+    
     // Plugins Office1789 - DÉFINIS EN DERNIER APRÈS TOUTES LES AUTRES CONFIGS
     $config['plugins'] = ['office1789_sso', 'office1789_darkmode', 'archive', 'zipdownload'];

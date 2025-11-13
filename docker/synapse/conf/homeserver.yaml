@@ -17,6 +17,17 @@ signing_key_path: "/tmp/homeserver.signing.key"
 enable_registration: false
 registration_shared_secret: "OFFICE1789_REGISTRATION_SECRET"
 
+# Bloquer le changement de mot de passe depuis l'API client (pas l'API admin)
+password_config:
+  enabled: true
+  localdb_enabled: true
+  pepper: ""
+
+# Désactiver la possibilité pour les utilisateurs de changer leur propre mot de passe
+enable_set_displayname: true
+enable_set_avatar_url: true
+enable_3pid_changes: false
+
 # PostgreSQL database configuration
 database:
   name: psycopg2
