@@ -117,31 +117,11 @@ func ChangeI(c *gin.Context) {
 	// Pas d'erreur, on procède aux modifications
 	fmt.Println("DEBUG ChangeI - Validation OK, procède aux modifications")
 
-	// Changement de mot de passe avec synchronisation Mail + Matrix
+	// Changement de mot de passe UNIQUEMENT pour Office1789 (pas Mail/Matrix)
 	if cha.Password != "" {
-		// Hash pour Office1789
 		newHash := HashPassword(cha.Password)
 		db.Exec("UPDATE Users SET password_hash=$1 WHERE user_id=$2", newHash, sess.UserID)
-		
-		// Synchroniser avec Mail (asynchrone)
-		go func() {
-			err := changeMailPassword(cha.LastUsername, cha.Password)
-			if err != nil {
-				fmt.Printf("Warning: Failed to change mail password for %s: %v\n", cha.LastUsername, err)
-			} else {
-				fmt.Printf("Mail password changed for %s@office1789.local\n", cha.LastUsername)
-			}
-		}()
-		
-		// Synchroniser avec Matrix (asynchrone)
-		go func() {
-			err := changeMatrixPassword(cha.LastUsername, cha.Password)
-			if err != nil {
-				fmt.Printf("Warning: Failed to change matrix password for %s: %v\n", cha.LastUsername, err)
-			} else {
-				fmt.Printf("Matrix password changed for @%s:office1789.com\n", cha.LastUsername)
-			}
-		}()
+		fmt.Printf("DEBUG ChangeI - Password changed for user %s\n", cha.LastUsername)
 	}
 
 	if cha.Email != "" {
