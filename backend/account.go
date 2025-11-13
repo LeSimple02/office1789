@@ -12,14 +12,14 @@ import (
 )
 
 type ChangeIn struct {
-	Username     string `json:username`
-	LastUsername string `json:lastusername`
-	Password     string `json:password`
-	Email        string `json:email`
-	Domain       string `json:email`
-	PhoneNumber  string `json:phonenumber`
-	Nboffer      int    `json:nboffer`
-	Token        string `json:token`
+	Username     string `json:"username"`
+	LastUsername string `json:"lastusername"`
+	Password     string `json:"password"`
+	Email        string `json:"email"`
+	Domain       string `json:"domain"`
+	PhoneNumber  string `json:"phonenumber"`
+	Nboffer      int    `json:"nboffer"`
+	Token        string `json:"token"`
 }
 
 func getinfop(c *gin.Context) {

@@ -87,9 +87,9 @@ let passf2 = ref('')
 let email = ref('')
 let phonenumber = ref('')
 
-let usernameR = ref('')
-let emailR = ref('')
-let phonenumberR = ref('')
+let usernameR = ref(0)
+let emailR = ref(0)
+let phonenumberR = ref(0)
 
 function verif(){
   if(passf1.value == passf2.value && passf2.value !="" && passf1.value != "")
@@ -98,7 +98,7 @@ function verif(){
 
 function connect(){  
   let d = new Date()
-  let dc = `${d.getFullYear()}-${(d.getMonth()+1).toString().padStart(2, '0')}-${d.getDate()} ${d.getHours()}:${d.getMinutes()}`
+  let dc = `${d.getFullYear()}-${(d.getMonth()+1).toString().padStart(2, '0')}-${d.getDate().toString().padStart(2, '0')} ${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}:${d.getSeconds().toString().padStart(2, '0')}`
 
   fetch("http://127.0.0.1:8080/api/subscribe", { 
     method: "POST", 
@@ -115,7 +115,8 @@ function connect(){
     }) 
   }).then((v)=>{return v.json()}).then(
   (v)=>{
-    if(v["Username"] != "no" && v["Phone"] !="no" && v["Email"] !="no"){
+    // Si on a un Token, c'est que la création a réussi
+    if(v["Token"]){
       localStorage.setItem("log", 1)
       gls().log = 1
       gls().username = v["Username"]
@@ -126,14 +127,21 @@ function connect(){
       
       router.push("mail")
     }
-    else {
-      if(v["Username"]){
+    // Erreur de validation (champs déjà pris)
+    else if(v["username"] || v["phone"] || v["email"]) {
+      // Reset les erreurs
+      usernameR.value = 0
+      emailR.value = 0
+      phonenumberR.value = 0
+      
+      // Afficher les erreurs spécifiques
+      if(v["username"] == "no"){
         usernameR.value = 1      
       }
-      if(v["Email"]){
+      if(v["email"] == "no"){
         emailR.value = 1 
       }
-      if(v["Phone"]){
+      if(v["phone"] == "no"){
         phonenumberR.value = 1 
       }
     }
