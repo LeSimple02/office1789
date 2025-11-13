@@ -1,0 +1,37 @@
+server_name: "office1789.com"
+report_stats: false
+
+listeners:
+  - port: 8008
+    tls: false
+    type: http
+    x_forwarded: false
+    bind_addresses: ['0.0.0.0']
+    resources:
+      - names: [client]
+        compress: false
+
+media_store_path: "/data/media_store"
+signing_key_path: "/tmp/homeserver.signing.key"
+
+enable_registration: true
+enable_registration_without_verification: true
+
+# PostgreSQL database configuration
+database:
+  name: psycopg2
+  args:
+    user: synapse
+    password: synapse1789
+    database: synapse
+    host: postgres_synapse
+    port: 5432
+    cp_min: 5
+    cp_max: 10
+
+# TURN / VoIP configuration
+turn_uris:
+  - "turn:localhost:3478?transport=udp"
+  - "turn:localhost:3478?transport=tcp"
+turn_shared_secret: "MY_TURN_SECRET_1789"
+turn_user_lifetime: 1h

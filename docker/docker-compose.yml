@@ -45,17 +45,7 @@ services:
     networks:
       - office_network
 
-  snappymail:
-    image: ghcr.io/the-djmaze/snappymail:latest
-    container_name: snappymail
-    ports:
-      - "8090:8888"  # moved to 8090 to free 8081 for Roundcube
-    depends_on:
-      - mailserver
-    volumes:
-      - snappydata:/var/lib/snappymail
-    networks:
-      - office_network
+  
 
   onlyoffice:
     image: onlyoffice/documentserver:latest
@@ -150,8 +140,7 @@ services:
       POSTGRES_USER: synapse
       POSTGRES_PASSWORD: synapse1789
     volumes:
-      # Mount entire synapse config/data directory (expected layout for official image)
-      - ./synapse:/data
+      - ./synapse/conf:/data
     depends_on:
       postgres_synapse:
         condition: service_healthy
@@ -172,8 +161,22 @@ services:
     depends_on:
       - synapse
     volumes:
-      # Mount entire element directory (contains config.json inside)
-      - ./element:/app
+      # Mount only config.json file (directory exists at ./element/config.json/config.json)
+      - ./element/config.json/config.json:/app/config.json:ro
+    networks:
+      - office_network
+
+  # TURN server for Matrix (VoIP)
+  coturn:
+    image: instrumentisto/coturn:latest
+    container_name: coturn
+    ports:
+      - "3478:3478/tcp"
+      - "3478:3478/udp"
+      - "49160-49200:49160-49200/udp"
+      - "49160-49200:49160-49200/tcp"
+    volumes:
+      - ./coturn/turnserver.conf:/etc/coturn/turnserver.conf:ro
     networks:
       - office_network
 
@@ -186,7 +189,6 @@ volumes:
   maildata:
   mailstate:
   maillogs:
-  snappydata:
   roundcube_db:
   synapse_db:
   synapse_data:
