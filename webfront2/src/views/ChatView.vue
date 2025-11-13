@@ -60,19 +60,10 @@ if (gls().log != 1) {
   router.push("login")
 }
 
-const chatUrl = "http://localhost:8083"
+const chatUrl = "http://localhost:8083/#/login"
 
 function openChatInNewWindow() {
-  const width = 1200
-  const height = 800
-  const left = (screen.width - width) / 2
-  const top = (screen.height - height) / 2
-  
-  window.open(
-    chatUrl,
-    'Office1789_Chat',
-    `width=${width},height=${height},left=${left},top=${top},resizable=yes,scrollbars=yes,status=yes`
-  )
+  window.open(chatUrl, '_blank')
 }
 </script>
 

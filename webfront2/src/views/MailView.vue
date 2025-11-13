@@ -63,16 +63,7 @@ if (gls().log != 1) {
 const mailUrl = "http://localhost:8081"
 
 function openMailInNewWindow() {
-  const width = 1200
-  const height = 800
-  const left = (screen.width - width) / 2
-  const top = (screen.height - height) / 2
-  
-  window.open(
-    mailUrl,
-    'Office1789_Mail',
-    `width=${width},height=${height},left=${left},top=${top},resizable=yes,scrollbars=yes,status=yes`
-  )
+  window.open(mailUrl, '_blank')
 }
 </script>
 
