@@ -1,3 +1,78 @@
+<template>
+  <div class="create-view">
+    <!-- Hero Card -->
+    <div class="hero-card">
+      <div class="icon-wrapper">
+        <svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"/>
+        </svg>
+      </div>
+      <h1>✨ {{$t("createac")}}</h1>
+      <h2>Rejoignez la révolution numérique française</h2>
+    </div>
+
+    <!-- Form Card -->
+    <div class="form-card">
+      <div class="form-section">
+        <h3>Informations du compte</h3>
+        
+        <div class="form-group">
+          <label>Nom d'utilisateur *</label>
+          <div class="input-with-suffix">
+            <input v-model="username" type="text" class="input-field" required />
+            <span class="suffix">@office1789.com</span>
+          </div>
+          <p v-if="usernameR" class="error-message">❌ {{$t('dejaUP')}}</p>
+        </div>
+
+        <div class="form-group">
+          <label>Mot de passe *</label>
+          <div class="input-with-icon">
+            <input v-model="passf1" :type="passw" class="input-field" required />
+            <button @click="show()" class="toggle-password">👁</button>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>Confirmer le mot de passe *</label>
+          <div class="input-with-icon">
+            <input v-model="passf2" :type="passw2" class="input-field" required />
+            <button @click="show2()" class="toggle-password">👁</button>
+          </div>
+          <p v-if="passf1!=passf2 && passf2!=''" class="error-message">❌ {{$t('passwordd')}}</p>
+        </div>
+      </div>
+
+      <div class="form-section">
+        <h3>Informations personnelles</h3>
+        
+        <div class="form-group">
+          <label>Email</label>
+          <input v-model="email" type="email" class="input-field" />
+          <p v-if="emailR" class="error-message">❌ {{$t('dejaEP')}}</p>
+        </div>
+
+        <div class="form-group">
+          <label>Numéro de téléphone</label>
+          <input v-model="phonenumber" type="tel" class="input-field" />
+          <p v-if="phonenumberR" class="error-message">❌ {{$t('dejaPP')}}</p>
+        </div>
+      </div>
+
+      <button @click="verif()" class="btn-submit">
+        <svg class="btn-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+        </svg>
+        Créer mon compte
+      </button>
+
+      <RouterLink to="/login" class="back-link">← Déjà un compte ? Se connecter</RouterLink>
+    </div>
+  </div>
+</template>
+
 <script setup>
 import {ref} from "vue"
 import {gls} from "@/stores/global"
@@ -17,245 +92,357 @@ let emailR = ref('')
 let phonenumberR = ref('')
 
 function verif(){
-	if(passf1.value == passf2.value && passf2.value !="" && passf1.value != "")
-		connect()
+  if(passf1.value == passf2.value && passf2.value !="" && passf1.value != "")
+    connect()
 }
 
-function connect(){	
-	let d = new Date()
-	let dc = `${d.getFullYear()}-${(d.getMonth()+1).toString().padStart(2, '0')}-${d.getDate()} ${d.getHours()}:${d.getMinutes()}`
+function connect(){  
+  let d = new Date()
+  let dc = `${d.getFullYear()}-${(d.getMonth()+1).toString().padStart(2, '0')}-${d.getDate()} ${d.getHours()}:${d.getMinutes()}`
 
-	fetch("http://127.0.0.1:8080/api/subscribe", { 
-		method: "POST", 
-		mode: "cors", 
-		credentials: "same-origin", 
-		headers: { "Content-Type": "application/json"}, 
-		body : JSON.stringify({
-			"username" : username.value, 
-			"password": passf1.value, 
-			"email": email.value, 
-			"phonenumber": phonenumber.value, 
-			"datejoined": dc, 
-			"lastlogin": dc
-		}) 
-	}).then((v)=>{return v.json()}).then(
-	(v)=>{
-		if(v["Username"] != "no" && v["Phone"] !="no" && v["Email"] !="no"){
-			localStorage.setItem("log", 1)
-			gls().log = 1
-			gls().username = v["Username"]
-			gls().sessionT = v["Token"]
-			
-			document.cookie = `name=${v["Username"]}; expires=${v["Expiry"]}; Secure`
-			document.cookie = `sessionToken=${v["Token"]}; expires=${v["Expiry"]}; Secure`
-			
-			router.push("mail")
-		}
-		else {
-			if(v["Username"]){
-				usernameR.value = 1			
-			}
-			if(v["Email"]){
-				emailR.value = 1 
-			}
-			if(v["Phone"]){
-				phonenumberR.value = 1 
-			}
-		}
-	})
+  fetch("http://127.0.0.1:8080/api/subscribe", { 
+    method: "POST", 
+    mode: "cors", 
+    credentials: "same-origin", 
+    headers: { "Content-Type": "application/json"}, 
+    body : JSON.stringify({
+      "username" : username.value, 
+      "password": passf1.value, 
+      "email": email.value, 
+      "phonenumber": phonenumber.value, 
+      "datejoined": dc, 
+      "lastlogin": dc
+    }) 
+  }).then((v)=>{return v.json()}).then(
+  (v)=>{
+    if(v["Username"] != "no" && v["Phone"] !="no" && v["Email"] !="no"){
+      localStorage.setItem("log", 1)
+      gls().log = 1
+      gls().username = v["Username"]
+      gls().sessionT = v["Token"]
+      
+      document.cookie = `name=${v["Username"]}; expires=${v["Expiry"]}; Secure`
+      document.cookie = `sessionToken=${v["Token"]}; expires=${v["Expiry"]}; Secure`
+      
+      router.push("mail")
+    }
+    else {
+      if(v["Username"]){
+        usernameR.value = 1      
+      }
+      if(v["Email"]){
+        emailR.value = 1 
+      }
+      if(v["Phone"]){
+        phonenumberR.value = 1 
+      }
+    }
+  })
 }
 
 function show(){
-	if (passw.value=="password")
-		passw.value = "text"
-	else if(passw.value=="text")
-		passw.value="password"
+  if (passw.value=="password")
+    passw.value = "text"
+  else if(passw.value=="text")
+    passw.value="password"
 }
+
 function show2(){
-	if (passw2.value=="password")
-		passw2.value = "text"
-	else if(passw2.value=="text")
-		passw2.value="password"
+  if (passw2.value=="password")
+    passw2.value = "text"
+  else if(passw2.value=="text")
+    passw2.value="password"
 }
 </script>
 
-<template>
-<div id="create-bg">
-	<div id="forma">
-		<h1 id="tac">{{$t("createac")}} :</h1>
-		<div id="champ">
-			<ul id="col1" v-html="$t('createacl')"></ul>
-			<ul id="col2">
-				<p class="pr" v-if="usernameR">{{$t('dejaUP')}}</p>
-				<li><input v-model="username" type="text" required/>@office1789.com</li>
-				
-				<li><input v-model="passf1" :type="passw" required/><input type="button" value="👁" @click="show()" class="show2" /></li>
-				<li><input v-model="passf2" :type="passw2" required/><input type="button" value="👁" @click="show2()" class="show2"/></li>
-				<p class="pr" v-if="emailR">{{$t('dejaEP')}}</p>
-				<li><input v-model="email" type="text"/></li>
-				<p class="pr" v-if="phonenumberR">{{$t('dejaPP')}}</p>
-				<li><input v-model="phonenumber" type="text"/></li>
-			</ul>
-		</div>
-		<p v-if="passf1!=passf2 && passf2!=''" style="color: red">{{$t('passwordd')}}</p>
-		<button id="bform" @click="verif()">Submit</button>
-	</div>
-</div>
-</template>
-
 <style scoped>
-#create-bg {
+.create-view {
   min-height: 100vh;
-  width: 100vw;
-  background: linear-gradient(120deg, #e0e7ef 0%, #f5f5f7 100%);
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 32px;
+  padding: 32px 16px;
+  animation: fadeIn 0.5s ease-in;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Hero Card */
+.hero-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  max-width: 700px;
+  padding: 40px 32px;
+  background: rgba(245, 245, 247, 0.85);
+  border-radius: 32px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.10);
+  gap: 20px;
+}
+
+.dark .hero-card {
+  background: #1C1C1E;
+}
+
+.icon-wrapper {
+  width: 80px;
+  height: 80px;
+  background: -webkit-linear-gradient(30deg, blue, red);
+  border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  position: relative;
-  overflow: hidden;
-}
-#create-bg::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background: rgba(240,240,245,0.7);
-  backdrop-filter: blur(16px);
-  z-index: 0;
+  animation: pulse 2s ease-in-out infinite;
 }
 
-/* messages d'erreur */
-.pr {
-  font-size: 11px;
-  color: red;
-  margin: 0;
-  grid-column: 2; /* force l'affichage côté inputs */
+@keyframes pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.05); }
 }
 
-/* carte */
-#forma {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 28px;
-  width: 100%;
-  max-width: 700px; /* un peu plus large pour la grille */
-  padding: 48px 32px 32px 32px;
-  border-radius: 24px;
-  background: rgba(255,255,255,0.85);
-  box-shadow: 0 8px 32px rgba(0,0,0,0.18);
-  z-index: 1;
-  margin: 0 auto;
-}
-#forma button {
-  background: -webkit-linear-gradient(30deg, #00308F, #ff3c3c);
-  color: white;
-  border-radius: 20px;
-  border: none;
-  padding: 10px 18px;
-  cursor: pointer;
-}
-
-.dark #create-bg::before{
-  background: linear-gradient(120deg, #23243a 0%, #1a1b26 100%);
-}
-
-#col1 ::v-deep{
-    
-    
-    list-style: none;
-  margin: 0;
-  padding: 0;
-  font-family: arial;
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-  text-align: left;
-  li {
-      
-      
-      align-items: center;
-      display: flex;
-      height: 40px;
-
-  }
-    
-}
-
-/* dark mode */
-.dark #forma {
-  background: rgba(30,30,40, 1);
-  backdrop-filter: blur(16px);
-  color: #eee;
-}
-
-/* --- disposition grille --- */
-#champ {
-  display: grid;
-  grid-template-columns: 1fr 1fr; /* gauche = règles, droite = inputs */
-  gap: 20px;
-  align-items: start;
-  width: 100%;
-}
-
-#tac {
-  font-family: roboto;
-  text-align: center;
-  margin: 0;
-}
-
-/* listes */
-#col2 {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  
-  font-family: arial;
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-  text-align: left;
-  li{
-    display: flex;
-    gap: 10px;
-  }
-}
-
-/* chaque ligne d'inputs */
-#forma li {
-  display: flex;
-  justify-content: flex-start;
-  align-items: center;
-  width: 100%;
-}
-
-/* inputs */
-#forma input[type="text"],
-#forma input[type="password"],
-#forma input:not([type="button"]) {
-  width: 100%;
-  padding: 6px 10px;
-  border-radius: 8px;
-  border: 1px solid #d0d0d0;
-  box-sizing: border-box;
-  background: rgba(245,245,247,0.95);
+.icon {
+  width: 40px;
   height: 40px;
+  color: white;
 }
 
-/* icône œil */
-.show2 {
-  color: black;
-  border: none;
+.hero-card h1 {
+  font-family: roboto, sans-serif;
+  font-size: 2.2rem;
+  font-weight: 700;
+  text-align: center;
+  letter-spacing: 1px;
+  color: #222;
+  margin: 0;
+}
+
+.dark .hero-card h1 {
+  color: white;
+}
+
+.hero-card h2 {
+  font-family: roboto, sans-serif;
+  font-size: 1.1rem;
+  font-style: italic;
+  text-align: center;
+  background: -webkit-linear-gradient(30deg, blue, red);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  letter-spacing: 0.5px;
+  margin: 0;
+}
+
+/* Form Card */
+.form-card {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 700px;
+  padding: 40px;
+  background: rgba(245, 245, 247, 0.85);
+  border-radius: 32px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.10);
+  gap: 32px;
+}
+
+.dark .form-card {
+  background: #1C1C1E;
+}
+
+.form-section {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.form-section h3 {
+  font-family: roboto, sans-serif;
+  font-size: 1.3rem;
+  font-weight: 600;
+  color: #222;
+  margin: 0;
+  padding-bottom: 12px;
+  border-bottom: 2px solid rgba(0, 48, 143, 0.2);
+}
+
+.dark .form-section h3 {
+  color: white;
+  border-bottom-color: rgba(255, 255, 255, 0.2);
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.form-group label {
+  font-family: roboto, sans-serif;
+  font-size: 0.95rem;
+  font-weight: 500;
+  color: #333;
+}
+
+.dark .form-group label {
+  color: #ddd;
+}
+
+.input-field {
+  width: 100%;
+  padding: 14px 18px;
+  border-radius: 12px;
+  border: 2px solid rgba(0, 48, 143, 0.2);
+  font-size: 1rem;
+  font-family: roboto, sans-serif;
+  background: white;
+  transition: all 0.3s ease;
+  box-sizing: border-box;
+}
+
+.input-field:focus {
+  outline: none;
+  border-color: blue;
+  box-shadow: 0 4px 16px rgba(0, 48, 143, 0.15);
+}
+
+.dark .input-field {
+  background: rgba(30, 30, 40, 0.95);
+  color: white;
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.input-with-suffix {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.suffix {
+  font-family: roboto, sans-serif;
+  font-size: 1rem;
+  color: #666;
+  white-space: nowrap;
+}
+
+.dark .suffix {
+  color: #aaa;
+}
+
+.input-with-icon {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.input-with-icon .input-field {
+  padding-right: 50px;
+}
+
+.toggle-password {
+  position: absolute;
+  right: 12px;
   background: none;
-  height: 20px;
-  margin-left: -10px;
+  border: none;
   cursor: pointer;
+  font-size: 1.2rem;
+  padding: 4px 8px;
 }
 
-/* responsive : repasse en colonne */
-@media (max-width: 600px) {
-  #champ {
-    grid-template-columns: 1fr;
+.error-message {
+  font-family: roboto, sans-serif;
+  font-size: 0.9rem;
+  color: #ff3c3c;
+  margin: 0;
+}
+
+.btn-submit {
+  font-family: roboto, sans-serif;
+  font-size: 1.2rem;
+  padding: 16px 32px;
+  border-radius: 16px;
+  border: none;
+  cursor: pointer;
+  background: -webkit-linear-gradient(30deg, blue, red);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+  font-weight: 600;
+  margin-top: 8px;
+}
+
+.btn-submit:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+}
+
+.btn-icon {
+  width: 20px;
+  height: 20px;
+}
+
+.back-link {
+  font-family: roboto, sans-serif;
+  font-size: 1rem;
+  color: #666;
+  text-decoration: none;
+  text-align: center;
+  transition: color 0.3s ease;
+}
+
+.back-link:hover {
+  color: blue;
+}
+
+.dark .back-link {
+  color: #aaa;
+}
+
+.dark .back-link:hover {
+  color: red;
+}
+
+/* Responsive */
+@media (max-width: 767px) {
+  .hero-card, .form-card {
+    padding: 24px 20px;
+    border-radius: 20px;
+  }
+
+  .hero-card h1 {
+    font-size: 1.6rem;
+  }
+
+  .hero-card h2 {
+    font-size: 0.95rem;
+  }
+
+  .form-section {
+    gap: 16px;
+  }
+
+  .btn-submit {
+    font-size: 1rem;
+    padding: 14px 24px;
+  }
+
+  .input-with-suffix {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .suffix {
+    font-size: 0.9rem;
   }
 }
 </style>

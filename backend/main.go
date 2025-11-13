@@ -59,5 +59,13 @@ func main() {
 	// Mail SSO route
 	r.POST("/api/mail/sso-token", GenerateMailSSOToken)
 
+	// Account deletion route
+	r.POST("/api/account/delete", DeleteAccount)
+
+	// Calendar routes
+	r.POST("/api/calendar/events/get", GetCalendarEvents)
+	r.POST("/api/calendar/events/create", CreateCalendarEvent)
+	r.POST("/api/calendar/events/delete", DeleteCalendarEvent)
+
 	r.Run(":8080")
 }

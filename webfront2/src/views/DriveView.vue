@@ -1,7 +1,21 @@
 <template>
   <div id="drive-v2">
-    <!-- SIDEBAR -->
-    <aside class="dv-sidebar">
+    <!-- Hero Card -->
+    <div class="drive-hero-card">
+      <div class="hero-icon-wrapper">
+        <svg class="hero-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                d="M3 15a4 4 0 004 4h9a5 5 0 10-.1-9.999 5.002 5.002 0 10-9.78 2.096A4.001 4.001 0 003 15z"/>
+        </svg>
+      </div>
+      <h1>☁️ Drive Office1789</h1>
+      <p class="hero-subtitle">Gérez vos fichiers en toute sécurité</p>
+    </div>
+
+    <!-- Drive Content Wrapper -->
+    <div class="drive-content-wrapper">
+      <!-- SIDEBAR -->
+      <aside class="dv-sidebar">
       <div class="dv-user">
         <div class="dv-avatar">{{ userName[0] }}</div>
         <div class="dv-user-meta">
@@ -263,6 +277,7 @@
         </section>
       </section>
     </main>
+    </div> <!-- End drive-content-wrapper -->
 
     <!-- hidden file input -->
     <input ref="uploadInput" type="file" multiple style="display:none" @change="handleUpload" />
@@ -443,12 +458,12 @@
           <h3 style="margin:0; font-size:1rem;">{{ selectedFile?.name }}</h3>
           <div style="display:flex; gap:8px;">
             <button class="dv-btn small" @click="toggleOnlyofficeFullscreen" :title="isOnlyofficeFullscreen ? 'Quitter plein écran' : 'Plein écran'">
-              {{ isOnlyofficeFullscreen ? '⛶' : '⛶' }}
+              {{ isOnlyofficeFullscreen ? '⛶ Quitter' : '⛶ Plein écran' }}
             </button>
             <button class="dv-btn" @click="showOnlyofficeModal = false">Fermer</button>
           </div>
         </div>
-        <div id="onlyofficeModalContainer" class="onlyoffice-container"></div>
+        <div id="onlyofficeModalContainer" class="onlyoffice-container" tabindex="0" @click="focusOnlyOfficeEditor"></div>
       </div>
       <div class="backdrop" @click="showOnlyofficeModal = false"></div>
     </div>
@@ -1615,6 +1630,46 @@ async function openInOnlyOffice(file) {
       const editor = new DocEditorCtor(containerId, cfg)
       window._onlyofficeEditor = editor
       console.log('OnlyOffice editor created in', containerId)
+      
+      // Auto-focus avec plusieurs tentatives pour garantir le focus
+      const attemptFocus = (attempts = 0) => {
+        if (attempts > 5) return // Max 5 tentatives
+        
+        setTimeout(() => {
+          const iframe = container.querySelector('iframe')
+          if (iframe) {
+            try {
+              // Focus sur l'iframe
+              iframe.focus()
+              
+              // Focus sur le contenu de l'iframe si accessible
+              if (iframe.contentWindow) {
+                iframe.contentWindow.focus()
+              }
+              
+              // Focus sur le document à l'intérieur si accessible
+              if (iframe.contentDocument) {
+                iframe.contentDocument.body?.focus()
+              }
+              
+              // Simuler un clic pour activer l'éditeur
+              iframe.click()
+              
+              console.log(`OnlyOffice focus attempt ${attempts + 1} successful`)
+            } catch (e) {
+              console.log(`OnlyOffice focus attempt ${attempts + 1} failed:`, e)
+              // Réessayer après un délai plus long
+              attemptFocus(attempts + 1)
+            }
+          } else if (attempts < 5) {
+            // Si l'iframe n'est pas encore chargée, réessayer
+            attemptFocus(attempts + 1)
+          }
+        }, 300 + (attempts * 200)) // Délais progressifs: 300ms, 500ms, 700ms, etc.
+      }
+      
+      // Lancer les tentatives de focus
+      attemptFocus()
     } catch (err) {
       console.error('Failed to instantiate OnlyOffice editor', err)
       alert('Erreur lors de l\'initialisation de l\'éditeur OnlyOffice (voir console).')
@@ -1735,6 +1790,42 @@ const isOnlyofficeFullscreen = ref(false)
 
 function toggleOnlyofficeFullscreen() {
   isOnlyofficeFullscreen.value = !isOnlyofficeFullscreen.value
+  
+  // Auto-focus le conteneur après transition
+  setTimeout(() => {
+    focusOnlyOfficeEditor()
+  }, 100)
+}
+
+// Fonction pour forcer le focus sur l'éditeur OnlyOffice
+function focusOnlyOfficeEditor() {
+  const container = document.getElementById('onlyofficeModalContainer')
+  if (!container) return
+  
+  // Focus sur le conteneur
+  container.focus()
+  
+  // Essayer de focus sur l'iframe OnlyOffice
+  const iframe = container.querySelector('iframe')
+  if (iframe) {
+    try {
+      iframe.focus()
+      
+      // Focus sur le contenu de l'iframe
+      if (iframe.contentWindow) {
+        iframe.contentWindow.focus()
+      }
+      
+      // Focus sur le document à l'intérieur
+      if (iframe.contentDocument && iframe.contentDocument.body) {
+        iframe.contentDocument.body.focus()
+      }
+      
+      console.log('OnlyOffice editor focused')
+    } catch (e) {
+      console.log('Cannot focus OnlyOffice iframe:', e)
+    }
+  }
 }
 
 // destroy onlyoffice editor when modal closed
@@ -1771,8 +1862,78 @@ watch(() => gls().sessionT, (newToken) => {
 
 
 <style scoped>
+/* Drive Hero Card */
+.drive-hero-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 32px 24px;
+  background: rgba(245, 245, 247, 0.85);
+  border-radius: 24px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+  margin: 16px 16px 0 16px;
+  gap: 12px;
+  position: relative;
+  overflow: hidden;
+}
+
+.dark .drive-hero-card {
+  background: #1C1C1E;
+}
+
+.drive-hero-card .hero-icon-wrapper {
+  width: 70px;
+  height: 70px;
+  background: -webkit-linear-gradient(30deg, blue, red);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: pulse 2s ease-in-out infinite;
+  box-shadow: 0 6px 24px rgba(0, 0, 255, 0.3);
+}
+
+@keyframes pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.06); }
+}
+
+.drive-hero-card .hero-icon {
+  width: 36px;
+  height: 36px;
+  color: white;
+}
+
+.drive-hero-card h1 {
+  font-family: 'Roboto', sans-serif;
+  font-size: 1.8rem;
+  font-weight: 700;
+  text-align: center;
+  letter-spacing: 1px;
+  color: #222;
+  margin: 0;
+}
+
+.dark .drive-hero-card h1 {
+  color: white;
+}
+
+.drive-hero-card .hero-subtitle {
+  font-family: 'Roboto', sans-serif;
+  font-size: 1rem;
+  font-style: italic;
+  text-align: center;
+  background: -webkit-linear-gradient(30deg, blue, red);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  letter-spacing: 0.5px;
+  margin: 0;
+}
+
 #drive-v2 {
   display: flex;
+  flex-direction: column;
   height: 100vh;
   font-family: "Roboto", system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
   background: #f6f7fb;
@@ -1780,6 +1941,14 @@ watch(() => gls().sessionT, (newToken) => {
 }
 /* DARK MODE */
 .dark #drive-v2 { background: #121212; color: #e5e5e5; }
+
+/* Drive Content Wrapper */
+.drive-content-wrapper {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+}
+
 /* SIDEBAR */
 .dv-sidebar {
   width: 240px;
@@ -1819,7 +1988,7 @@ watch(() => gls().sessionT, (newToken) => {
 /* BODY SPLIT */
 .dv-body { display:grid; grid-template-columns: 420px 1fr; gap:20px; height: calc(100% - 60px); }
 /* LIST */
-.dv-list { background:#fff; border-radius:8px; padding:12px; overflow:auto; border:1px solid #eaeaf2; min-height:200px; transition: border-color .12s, background .12s; }
+.dv-list { background:#fff; border-radius:8px; padding:12px; overflow:auto; border:1px solid #eaeaf2; min-height:200px; transition: border-color .08s, background .08s; }
 .dark .dv-list { background:#151515; border-color:#2b2b2b; }
 .dv-list.drag-over { background:#f3fff6; border-color:#bff0c5; }
 .dv-empty { display:flex; flex-direction:column; align-items:center; justify-content:center; height:100%; padding:24px; text-align:center; color:#666; }
@@ -1827,7 +1996,7 @@ watch(() => gls().sessionT, (newToken) => {
 .dv-empty-text { font-size:1.0rem; margin:6px 0; }
 .dv-empty-sub { font-size:0.9rem; color:#999; }
 .dv-items { list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:8px; }
-.dv-item { display:flex; justify-content:space-between; align-items:center; padding:10px; border-radius:8px; cursor:pointer; transition: background .12s; }
+.dv-item { display:flex; justify-content:space-between; align-items:center; padding:10px; border-radius:8px; cursor:pointer; transition: background .08s; }
 .dv-item:hover { background:#fbfbfe; }
 .dv-item.active { background:#e9f1ff; }
 .dark .dv-item:hover { background:#1b1b1b; }
@@ -1889,7 +2058,7 @@ watch(() => gls().sessionT, (newToken) => {
   padding: 12px;
   display: flex;
   flex-direction: column;
-  transition: all 0.3s ease;
+  transition: all 0.2s ease;
 }
 
 .modal.onlyoffice-modal.fullscreen {
@@ -1898,6 +2067,7 @@ watch(() => gls().sessionT, (newToken) => {
   max-width: 100vw;
   border-radius: 0;
   padding: 8px;
+  transition: all 0.2s ease;
 }
 
 .onlyoffice-header {
@@ -1918,6 +2088,11 @@ watch(() => gls().sessionT, (newToken) => {
   width: 100%;
   height: calc(100% - 48px);
   min-height: 60vh;
+  outline: none;
+  /* Permettre le focus sur le conteneur */
+}
+.onlyoffice-container:focus {
+  outline: none;
 }
 
 .modal.onlyoffice-modal.fullscreen .onlyoffice-container {

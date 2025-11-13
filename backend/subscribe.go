@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"net/http"
 	"strings"
 	"time"
@@ -77,18 +76,9 @@ func Sub(c *gin.Context) {
 
 			if strings.TrimSpace(subi.Username) != "" {
 
-				// Garder le mot de passe en clair temporairement pour créer le compte mail
-				plainPassword := subi.Password
 				subi.Password = HashPassword(subi.Password)
 
 				db.Exec("INSERT INTO Users (username, password_hash, email, phonenumber, nboffer, date_joined, last_login, domain) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)", subi.Username, subi.Password, subi.Email, subi.PhoneNumber, subi.Nboffer, subi.DateJoined, subi.LastLogin, "@office1789")
-
-				// Créer automatiquement le compte mail
-				err := createMailAccount(subi.Username, plainPassword)
-				if err != nil {
-					fmt.Printf("⚠️  Erreur lors de la création du compte mail: %v\n", err)
-					// On continue même si la création du mail échoue
-				}
 
 				sessionToken := uuid.NewString()
 				expiresAtTime := time.Now().Add(120 * time.Second)

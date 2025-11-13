@@ -8,6 +8,7 @@ let domain = ref(0)
 let nboffer = ref(0)
 let phone  = ref(0)
 let email = ref(0)
+let loading = ref(true)
 
 fetch(import.meta.env.VITE_APP_API_INFO_USER, {
   method: "POST",
@@ -25,126 +26,457 @@ fetch(import.meta.env.VITE_APP_API_INFO_USER, {
   email.value = data['Email']
   phone.value = data['PhoneNumber']
   lj.value = data["LastLogin"]
+  loading.value = false
 })
+.catch(() => {
+  loading.value = false
+})
+
+const offerName = (num) => {
+  const offers = { 0: 'Free', 1: 'Standard', 2: 'Premium' }
+  return offers[num] || 'Unknown'
+}
 </script>
 
 <template>
   <div class="profile-container">
     <header class="profile-header">
-      <h1 class="title">{{ $t('infop') }}</h1>
-      <RouterLink to="/account/edit" class="edit-link">{{ $t('edit') }}</RouterLink>
+      <h1 class="title">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+          <circle cx="12" cy="7" r="4"></circle>
+        </svg>
+        {{ $t('infop') }}
+      </h1>
+      <RouterLink to="/account/edit" class="edit-btn">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+          <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+        </svg>
+        {{ $t('edit') }}
+      </RouterLink>
     </header>
 
-    <section class="profile-card">
-      <div class="profile-pic">
-        <img src="@/assets/napo.png" alt="profile" />
-        <span>{{ $t('picturep') }}</span>
+    <div v-if="loading" class="loading">
+      <div class="spinner"></div>
+    </div>
+
+    <section v-else class="profile-card">
+      <div class="profile-banner">
+        <div class="avatar-wrapper">
+          <img src="@/assets/napo.png" alt="profile" class="avatar" />
+          <div class="avatar-badge">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/>
+            </svg>
+          </div>
+        </div>
+        <div class="profile-info">
+          <h2 class="username">{{ gls().username }}</h2>
+          <p class="domain-tag">{{ domain }}</p>
+        </div>
       </div>
 
-      <ul class="info-list">
-        <li><strong>{{ $t('username') }} :</strong> {{ gls().username }}</li>
-        <li><strong>{{ $t('password') }} :</strong> ●●●●●</li>
-        <li><strong>{{ $t('doble') }} :</strong> ❌</li>
-        <li><strong>{{ $t('domainy') }} :</strong> {{ domain }}</li>
-        <li><strong>{{ $t('offery') }} :</strong> {{ nboffer }}</li>
-        <li><strong>{{ $t('emaily') }} :</strong> {{ email }}</li>
-        <li><strong>{{ $t('phoney') }} :</strong> {{ phone }}</li>
-        <li><strong>{{ $t('lastj') }} :</strong> {{ new Date(lj).toDateString() }}</li>
-        <li><strong>{{ $t('datej') }} :</strong> {{ new Date(dj).toDateString() }}</li>
-      </ul>
+      <div class="info-grid">
+        <div class="info-card">
+          <div class="info-icon email">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
+              <polyline points="22,6 12,13 2,6"></polyline>
+            </svg>
+          </div>
+          <div class="info-content">
+            <span class="info-label">{{ $t('emaily') }}</span>
+            <span class="info-value">{{ email }}</span>
+          </div>
+        </div>
+
+        <div class="info-card">
+          <div class="info-icon phone">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path>
+            </svg>
+          </div>
+          <div class="info-content">
+            <span class="info-label">{{ $t('phoney') }}</span>
+            <span class="info-value">{{ phone || '—' }}</span>
+          </div>
+        </div>
+
+        <div class="info-card">
+          <div class="info-icon offer">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10"></circle>
+              <polygon points="10,8 16,12 10,16"></polygon>
+            </svg>
+          </div>
+          <div class="info-content">
+            <span class="info-label">{{ $t('offery') }}</span>
+            <span class="info-value">{{ offerName(nboffer) }}</span>
+          </div>
+        </div>
+
+        <div class="info-card">
+          <div class="info-icon security">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+              <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+            </svg>
+          </div>
+          <div class="info-content">
+            <span class="info-label">{{ $t('password') }}</span>
+            <span class="info-value">●●●●●●●●</span>
+          </div>
+        </div>
+
+        <div class="info-card">
+          <div class="info-icon calendar">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+              <line x1="16" y1="2" x2="16" y2="6"></line>
+              <line x1="8" y1="2" x2="8" y2="6"></line>
+              <line x1="3" y1="10" x2="21" y2="10"></line>
+            </svg>
+          </div>
+          <div class="info-content">
+            <span class="info-label">{{ $t('datej') }}</span>
+            <span class="info-value">{{ new Date(dj).toLocaleDateString() }}</span>
+          </div>
+        </div>
+
+        <div class="info-card">
+          <div class="info-icon clock">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10"></circle>
+              <polyline points="12,6 12,12 16,14"></polyline>
+            </svg>
+          </div>
+          <div class="info-content">
+            <span class="info-label">{{ $t('lastj') }}</span>
+            <span class="info-value">{{ new Date(lj).toLocaleDateString() }}</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="security-section">
+        <h3 class="section-title">{{ $t('doble') || 'Two-Factor Auth' }}</h3>
+        <div class="security-item">
+          <span class="status-badge inactive">{{ $t('inactive') || 'Inactive' }}</span>
+          <button class="btn-link">{{ $t('configure') || 'Configure' }}</button>
+        </div>
+      </div>
     </section>
   </div>
 </template>
 
 <style scoped>
-
-
 * { box-sizing: border-box; font-family: 'Roboto', sans-serif; }
 
 .profile-container {
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 24px 16px;
-  background: #f4f6fb;
-  min-height: 100vh;
+  padding: 0;
+  width: 100%;
+  animation: fadeIn 0.5s ease-in;
 }
-.dark .profile-container { background: #0f1220; }
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
 
 .profile-header {
   width: 100%;
-  max-width: 900px;
   display: flex;
-  justify-content: space-between;
+  flex-direction: column;
   align-items: center;
-  margin-bottom: 24px;
+  justify-content: center;
+  min-height: 300px;
+  padding: 48px 32px;
+  background: rgba(245, 245, 247, 0.85);
+  border-radius: 32px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.10);
+  margin-bottom: 32px;
+  gap: 24px;
+  position: relative;
 }
+
+.dark .profile-container { background: transparent; }
+.dark .profile-header { background: #1C1C1E; }
+
 .title {
-  font-size: 28px;
+  font-size: 3rem;
   font-weight: 700;
   color: #222;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  letter-spacing: 2px;
+  margin: 0;
 }
-.dark .title { color: #eee; }
+.dark .title { color: white; }
 
-.edit-link {
-  color: grey;
-  text-decoration: none;
-  font-size: 16px;
+.title svg {
+  width: 48px;
+  height: 48px;
+  padding: 12px;
+  background: -webkit-linear-gradient(30deg, blue, red);
+  border-radius: 50%;
+  color: white;
+  animation: pulse 2s ease-in-out infinite;
 }
-.edit-link:hover { text-decoration: underline; }
+
+@keyframes pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+}
+
+.edit-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 14px 32px;
+  background: -webkit-linear-gradient(30deg, blue, red);
+  border-radius: 24px;
+  color: #fff;
+  text-decoration: none;
+  font-weight: 600;
+  font-size: 1.1rem;
+  transition: all 0.3s ease;
+  border: none;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+  cursor: pointer;
+}
+.edit-btn:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+}
+
+.loading {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 400px;
+}
+.spinner {
+  width: 50px;
+  height: 50px;
+  border: 4px solid rgba(255,255,255,0.3);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
 
 .profile-card {
   width: 100%;
-  max-width: 900px;
-  background: #fff;
-  border-radius: 16px;
-  padding: 24px;
-  box-shadow: 0 8px 30px rgba(15,20,40,0.08);
-  display: flex;
-  flex-direction: column;
-  gap: 24px;
+  background: transparent;
+  border-radius: 0;
+  padding: 0;
+  box-shadow: none;
+  overflow: visible;
 }
 .dark .profile-card {
-  background: #1f2230;
+  background: transparent;
   color: #eee;
-  box-shadow: 0 6px 24px rgba(0,0,0,0.4);
+  box-shadow: none;
 }
 
-.profile-pic {
+.profile-banner {
+  background: rgba(245, 245, 247, 0.85);
+  border-radius: 24px;
+  padding: 40px 32px;
+  display: flex;
+  align-items: center;
+  gap: 32px;
+  position: relative;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.10);
+  margin-bottom: 32px;
+}
+.dark .profile-banner {
+  background: #1C1C1E;
+}
+
+.avatar-wrapper {
+  position: relative;
+  flex-shrink: 0;
+}
+.avatar {
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  border: 5px solid rgba(0, 48, 143, 0.2);
+  box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+  object-fit: cover;
+}
+.avatar-badge {
+  position: absolute;
+  bottom: 5px;
+  right: 5px;
+  width: 32px;
+  height: 32px;
+  background: -webkit-linear-gradient(30deg, blue, red);
+  border-radius: 50%;
+  border: 3px solid #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+}
+
+.profile-info {
+  flex: 1;
+}
+.username {
+  font-size: 2rem;
+  font-weight: 700;
+  color: #222;
+  margin: 0 0 8px;
+  letter-spacing: 1px;
+}
+.dark .username { color: white; }
+
+.domain-tag {
+  display: inline-block;
+  padding: 6px 14px;
+  background: -webkit-linear-gradient(30deg, blue, red);
+  border-radius: 20px;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 600;
+  margin: 0;
+}
+
+.info-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 24px;
+  padding: 0;
+  margin-bottom: 32px;
+}
+
+.info-card {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 24px;
+  background: rgba(245, 245, 247, 0.85);
+  border-radius: 20px;
+  transition: all 0.3s ease;
+  border: 2px solid rgba(0, 48, 143, 0.1);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+}
+.dark .info-card {
+  background: #1C1C1E;
+  border-color: rgba(255, 255, 255, 0.1);
+}
+.info-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 24px rgba(0,0,0,0.12);
+}
+.dark .info-card:hover {
+  box-shadow: 0 12px 24px rgba(0,0,0,0.4);
+}
+
+.info-icon {
+  width: 50px;
+  height: 50px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  background: -webkit-linear-gradient(30deg, blue, red);
+  color: #fff;
+}
+
+.info-content {
   display: flex;
   flex-direction: column;
+  gap: 6px;
+}
+.info-label {
+  font-size: 0.85rem;
+  color: #6c757d;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+.dark .info-label { color: #9ca3af; }
+.info-value {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #212529;
+}
+.dark .info-value { color: #e5e7eb; }
+
+.security-section {
+  padding: 32px;
+  background: rgba(245, 245, 247, 0.85);
+  border-radius: 24px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+}
+.dark .security-section { 
+  background: #1C1C1E;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+}
+
+.section-title {
+  font-size: 18px;
+  font-weight: 600;
+  margin: 0 0 16px;
+  color: #212529;
+}
+.dark .section-title { color: #e5e7eb; }
+
+.security-item {
+  display: flex;
   align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  background: #f8f9fa;
+  border-radius: 12px;
+}
+.dark .security-item { background: #2a2d3a; }
+
+.status-badge {
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-size: 13px;
   font-weight: 600;
 }
-.profile-pic img {
-  width: 140px;
-  height: 140px;
-  border-radius: 50%;
-  margin-bottom: 12px;
+.status-badge.inactive {
+  background: #fef3c7;
+  color: #92400e;
+}
+.dark .status-badge.inactive {
+  background: #78350f;
+  color: #fef3c7;
 }
 
-.info-list {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-  display: grid;
-  gap: 12px;
-  font-size: 1rem;
+.btn-link {
+  padding: 8px 16px;
+  background: transparent;
+  border: 1px solid #667eea;
+  color: #667eea;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: all 0.3s ease;
 }
-.info-list li strong {
-  font-weight: 600;
-  margin-right: 6px;
+.btn-link:hover {
+  background: #667eea;
+  color: #fff;
 }
 
-/* Responsive */
 @media (max-width: 768px) {
-  .title { font-size: 22px; }
-  .profile-card { padding: 16px; }
-  .profile-pic img { width: 100px; height: 100px; }
-}
-@media (max-width: 480px) {
-  .title { font-size: 20px; text-align: center; }
-  .profile-header { flex-direction: column; gap: 8px; }
-  .info-list { font-size: 0.9rem; }
+  .title { font-size: 24px; }
+  .profile-banner { flex-direction: column; text-align: center; padding: 32px 24px; }
+  .username { font-size: 22px; }
+  .avatar { width: 100px; height: 100px; }
+  .info-grid { grid-template-columns: 1fr; padding: 24px; }
 }
 </style>

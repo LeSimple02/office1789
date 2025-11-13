@@ -2,6 +2,7 @@ package main
 
 import (
 	"net/http"
+	"os"
 	"strings"
 	"time"
 
@@ -116,3 +117,72 @@ func ChangeI(c *gin.Context) {
 		}
 	}
 }
+
+type DeleteAccountRequest struct {
+	Username string `json:"username"`
+	Token    string `json:"token"`
+}
+
+type DeleteAccountResponse struct {
+	Success bool   `json:"success"`
+	Message string `json:"message"`
+}
+
+func DeleteAccount(c *gin.Context) {
+	var req DeleteAccountRequest
+	
+	if err := c.BindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, DeleteAccountResponse{
+			Success: false,
+			Message: "Invalid request",
+		})
+		return
+	}
+
+	// Vérifier que la session est valide
+	session, exists := sessions[req.Token]
+	if !exists || session.Username != req.Username {
+		c.JSON(http.StatusUnauthorized, DeleteAccountResponse{
+			Success: false,
+			Message: "Unauthorized",
+		})
+		return
+	}
+
+	// Supprimer tous les fichiers/uploads de l'utilisateur
+	uploadsPath := "./uploads/" + req.Username
+	// Ignorer l'erreur si le dossier n'existe pas
+	_ = removeDirectory(uploadsPath)
+
+	// Supprimer l'avatar de l'utilisateur
+	avatarPath := "./avatars/" + req.Username + ".png"
+	_ = removeFile(avatarPath)
+
+	// Supprimer l'utilisateur de la base de données
+	_, err := db.Exec("DELETE FROM Users WHERE username=$1", req.Username)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, DeleteAccountResponse{
+			Success: false,
+			Message: "Failed to delete account",
+		})
+		return
+	}
+
+	// Supprimer la session
+	delete(sessions, req.Token)
+
+	c.JSON(http.StatusOK, DeleteAccountResponse{
+		Success: true,
+		Message: "Account deleted successfully",
+	})
+}
+
+// Helper functions for file/directory removal
+func removeFile(path string) error {
+	return os.Remove(path)
+}
+
+func removeDirectory(path string) error {
+	return os.RemoveAll(path)
+}
+

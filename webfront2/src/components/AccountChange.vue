@@ -1,6 +1,9 @@
 <script setup>
 import { ref } from "vue"
 import { gls } from "@/stores/global.js"
+import { useRouter } from 'vue-router'
+
+const router = useRouter()
 
 let dj = ref(0)
 let lj = ref(0)
@@ -23,8 +26,15 @@ let passf2 = ref('')
 let usernameR = ref(false)
 let emailR = ref(false)
 let phonenumberR = ref(false)
+let loading = ref(true)
+let saving = ref(false)
 
-// Récupère les infos utilisateur (comme avant)
+// Modal pour suppression
+let showDeleteModal = ref(false)
+let deleteConfirm = ref('')
+let deleting = ref(false)
+
+// Récupère les infos utilisateur
 fetch(import.meta.env.VITE_APP_API_INFO_USER, {
   method: "POST",
   mode: "cors",
@@ -38,20 +48,22 @@ fetch(import.meta.env.VITE_APP_API_INFO_USER, {
     email.value = a['Email']
     phone.value = a['PhoneNumber']
     lj.value = a["LastLogin"]
+    loading.value = false
   })
   .catch(() => {
-    // ignore fetch errors for now
+    loading.value = false
   })
 
 function send() {
-  // Reset previous errors
   usernameR.value = false
   emailR.value = false
   phonenumberR.value = false
 
   if (passf1.value !== passf2.value) {
-    return // you may show an error — handled in template
+    return
   }
+
+  saving.value = true
 
   fetch(import.meta.env.VITE_APP_API_INFO_CHANGE, {
     method: "POST",
@@ -68,8 +80,8 @@ function send() {
   })
     .then(r => r.json())
     .then(a => {
+      saving.value = false
       if (newusername.value !== "" && a["Username"] !== "no" && a["Email"] !== "no" && a["Phone"] !== "no") {
-        // succes: update cookies / store
         document.cookie = `name=${gls().username}; expires=Fri, 31 Dec 1900 23:59:59 GMT; Secure`
         document.cookie = `sessionToken=${gls().sessionT}; expires=Fri, 31 Dec 1900 23:59:59 GMT; Secure`
         gls().sessionT = a["Token"]
@@ -78,14 +90,55 @@ function send() {
         document.cookie = `sessionToken=${a["Token"]}; expires=${a["Expiry"]}; Secure`
         window.location.href = "/account"
       } else {
-        // Show field-specific errors if present
         if (a["Username"]) usernameR.value = true
         if (a["Email"]) emailR.value = true
         if (a["Phone"]) phonenumberR.value = true
       }
     })
     .catch(() => {
-      // handle error silently for now
+      saving.value = false
+    })
+}
+
+function openDeleteModal() {
+  showDeleteModal.value = true
+  deleteConfirm.value = ''
+}
+
+function closeDeleteModal() {
+  showDeleteModal.value = false
+  deleteConfirm.value = ''
+}
+
+function deleteAccount() {
+  if (deleteConfirm.value !== gls().username) {
+    return
+  }
+
+  deleting.value = true
+
+  fetch(import.meta.env.VITE_APP_API_DELETE_ACCOUNT, {
+    method: "POST",
+    mode: "cors",
+    body: JSON.stringify({
+      "username": gls().username,
+      "token": gls().sessionT
+    })
+  })
+    .then(r => r.json())
+    .then(a => {
+      deleting.value = false
+      if (a.success) {
+        // Clear cookies and redirect to login
+        document.cookie = `name=${gls().username}; expires=Fri, 31 Dec 1900 23:59:59 GMT; Secure`
+        document.cookie = `sessionToken=${gls().sessionT}; expires=Fri, 31 Dec 1900 23:59:59 GMT; Secure`
+        gls().username = ''
+        gls().sessionT = ''
+        window.location.href = '/login'
+      }
+    })
+    .catch(() => {
+      deleting.value = false
     })
 }
 
@@ -99,276 +152,715 @@ function togglePassword2() {
 
 <template>
   <div class="container">
-    <h1 id="title">{{ $t('infop') }}</h1>
+    <header class="header">
+      <RouterLink class="back-btn" to="/account">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="19" y1="12" x2="5" y2="12"></line>
+          <polyline points="12 19 5 12 12 5"></polyline>
+        </svg>
+        {{ $t('back') || 'Back' }}
+      </RouterLink>
+      <h1 class="title">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+          <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+        </svg>
+        {{ $t('edit') || 'Edit Profile' }}
+      </h1>
+    </header>
 
-    <section id="enso" class="card">
-      <!-- top: back link + avatar -->
-      <div class="top-row">
-        <RouterLink class="back" to="/account">⬅️</RouterLink>
+    <div v-if="loading" class="loading">
+      <div class="spinner"></div>
+    </div>
 
-        <div id="pic">
-          <img src="@/assets/napo.png" alt="avatar" />
-          <p class="pic-label">{{ $t('picturep') }}</p>
-        </div>
+    <section v-else class="card">
+      <div class="avatar-section">
+        <img src="@/assets/napo.png" alt="avatar" class="avatar" />
+        <button class="change-avatar-btn">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
+            <circle cx="12" cy="13" r="4"></circle>
+          </svg>
+          {{ $t('picturep') || 'Change' }}
+        </button>
       </div>
 
-      <!-- grid with two columns: label | field -->
       <form class="form-grid" @submit.prevent="send" novalidate>
         <!-- Username -->
-        <div class="form-label">{{ $t('username') }}</div>
-        <div class="form-field">
-          <input v-model="newusername" :placeholder="gls().username" />
-          <p v-if="usernameR" class="error small">{{ $t('dejaUP') }}</p>
+        <div class="form-group">
+          <label class="label">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+              <circle cx="12" cy="7" r="4"></circle>
+            </svg>
+            {{ $t('username') }}
+          </label>
+          <input v-model="newusername" :placeholder="gls().username" class="input" />
+          <p v-if="usernameR" class="error">{{ $t('dejaUP') }}</p>
         </div>
 
-        <!-- Password (two inputs stacked in field column) -->
-        <div class="form-label">{{ $t('password') }}</div>
-        <div class="form-field">
-          <div class="password-row">
-            <input :type="passwordt" v-model="passf1" :placeholder="$t('passwordN')" />
-            <button type="button" class="icon-btn" @click="togglePassword1" aria-label="toggle password">👁</button>
+        <!-- Password -->
+        <div class="form-group">
+          <label class="label">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+              <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+            </svg>
+            {{ $t('password') }}
+          </label>
+          <div class="password-input">
+            <input :type="passwordt" v-model="passf1" :placeholder="$t('passwordN') || 'New password'" class="input" />
+            <button type="button" class="icon-btn" @click="togglePassword1">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                <circle cx="12" cy="12" r="3"></circle>
+              </svg>
+            </button>
           </div>
-          <div class="password-row">
-            <input :type="passwordt2" v-model="passf2" :placeholder="$t('repassword')" />
-            <button type="button" class="icon-btn" @click="togglePassword2" aria-label="toggle confirm">👁</button>
+          <div class="password-input">
+            <input :type="passwordt2" v-model="passf2" :placeholder="$t('repassword') || 'Confirm password'" class="input" />
+            <button type="button" class="icon-btn" @click="togglePassword2">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                <circle cx="12" cy="12" r="3"></circle>
+              </svg>
+            </button>
           </div>
-          <p v-if="passf1 !== passf2 && passf2 !== ''" class="error small">{{ $t('passwordd') }}</p>
-        </div>
-
-        <!-- Doble (example static) -->
-        <div class="form-label">{{ $t('doble') }}</div>
-        <div class="form-field">
-          <button class="small-btn">config</button>
-        </div>
-
-        <!-- Domain (read-only) -->
-        <div class="form-label">{{ $t('domainy') }}</div>
-        <div class="form-field">
-          <input readonly :value="domain || '-'" />
-        </div>
-
-        <!-- Offer selector -->
-        <div class="form-label">{{ $t('offery') }}</div>
-        <div class="form-field">
-          <select v-model="newoffer">
-            <option value="0">0</option>
-            <option value="1">1</option>
-            <option value="2">2</option>
-          </select>
-          <RouterLink class="warn" to="/about">⚠️ {{ $t('About') }}</RouterLink>
+          <p v-if="passf1 !== passf2 && passf2 !== ''" class="error">{{ $t('passwordd') }}</p>
         </div>
 
         <!-- Email -->
-        <div class="form-label">{{ $t('emaily') }}</div>
-        <div class="form-field">
-          <input v-model="newemail" :placeholder="email" />
-          <p v-if="emailR" class="error small">{{ $t('dejaEP') }}</p>
+        <div class="form-group">
+          <label class="label">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
+              <polyline points="22,6 12,13 2,6"></polyline>
+            </svg>
+            {{ $t('emaily') }}
+          </label>
+          <input v-model="newemail" :placeholder="email" class="input" type="email" />
+          <p v-if="emailR" class="error">{{ $t('dejaEP') }}</p>
         </div>
 
         <!-- Phone -->
-        <div class="form-label">{{ $t('phoney') }}</div>
-        <div class="form-field">
-          <input v-model="newphone" :placeholder="phone" />
-          <p v-if="phonenumberR" class="error small">{{ $t('dejaPP') }}</p>
+        <div class="form-group">
+          <label class="label">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path>
+            </svg>
+            {{ $t('phoney') }}
+          </label>
+          <input v-model="newphone" :placeholder="phone" class="input" type="tel" />
+          <p v-if="phonenumberR" class="error">{{ $t('dejaPP') }}</p>
         </div>
 
-        <!-- Last login (read-only) -->
-        <div class="form-label">{{ $t('lastj') }}</div>
-        <div class="form-field"><span>{{ lj ? (new Date(lj).toDateString()) : '-' }}</span></div>
+        <!-- Domain (read-only) -->
+        <div class="form-group">
+          <label class="label">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10"></circle>
+              <line x1="2" y1="12" x2="22" y2="12"></line>
+              <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
+            </svg>
+            {{ $t('domainy') }}
+          </label>
+          <input readonly :value="domain || '-'" class="input readonly" />
+        </div>
 
-        <!-- Date joined -->
-        <div class="form-label">{{ $t('datej') }}</div>
-        <div class="form-field"><span>{{ dj ? (new Date(dj).toDateString()) : '-' }}</span></div>
+        <!-- Offer -->
+        <div class="form-group">
+          <label class="label">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10"></circle>
+              <polygon points="10,8 16,12 10,16"></polygon>
+            </svg>
+            {{ $t('offery') }}
+          </label>
+          <select v-model="newoffer" class="input">
+            <option value="0">Free</option>
+            <option value="1">Standard</option>
+            <option value="2">Premium</option>
+          </select>
+          <RouterLink class="info-link" to="/about">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10"></circle>
+              <line x1="12" y1="16" x2="12" y2="12"></line>
+              <line x1="12" y1="8" x2="12.01" y2="8"></line>
+            </svg>
+            {{ $t('About') || 'Learn more' }}
+          </RouterLink>
+        </div>
       </form>
 
-      <!-- actions -->
+      <!-- Actions -->
       <div class="actions">
-        <button type="button" class="btn primary" @click="send">✔ {{ $t('save') || 'Save' }}</button>
-        <RouterLink class="btn ghost" to="/account">✖ {{ $t('cancel') || 'Cancel' }}</RouterLink>
+        <button type="button" class="btn primary" @click="send" :disabled="saving">
+          <svg v-if="!saving" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="20 6 9 17 4 12"></polyline>
+          </svg>
+          <div v-else class="btn-spinner"></div>
+          {{ saving ? ($t('saving') || 'Saving...') : ($t('save') || 'Save Changes') }}
+        </button>
+        <RouterLink class="btn ghost" to="/account">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+          {{ $t('cancel') || 'Cancel' }}
+        </RouterLink>
+      </div>
+
+      <!-- Danger Zone -->
+      <div class="danger-zone">
+        <h3 class="danger-title">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+            <line x1="12" y1="9" x2="12" y2="13"></line>
+            <line x1="12" y1="17" x2="12.01" y2="17"></line>
+          </svg>
+          {{ $t('dangerZone') || 'Danger Zone' }}
+        </h3>
+        <div class="danger-content">
+          <div>
+            <p class="danger-text">{{ $t('deleteAccountWarning') || 'Once you delete your account, there is no going back. Please be certain.' }}</p>
+          </div>
+          <button type="button" class="btn danger" @click="openDeleteModal">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="3 6 5 6 21 6"></polyline>
+              <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+            </svg>
+            {{ $t('deleteAccount') || 'Delete Account' }}
+          </button>
+        </div>
       </div>
     </section>
+
+    <!-- Delete Confirmation Modal -->
+    <Teleport to="body">
+      <div v-if="showDeleteModal" class="modal-overlay" @click="closeDeleteModal">
+        <div class="modal" @click.stop>
+          <div class="modal-header">
+            <h2 class="modal-title">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+                <line x1="12" y1="9" x2="12" y2="13"></line>
+                <line x1="12" y1="17" x2="12.01" y2="17"></line>
+              </svg>
+              {{ $t('confirmDelete') || 'Confirm Account Deletion' }}
+            </h2>
+            <button class="modal-close" @click="closeDeleteModal">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="18" y1="6" x2="6" y2="18"></line>
+                <line x1="6" y1="6" x2="18" y2="18"></line>
+              </svg>
+            </button>
+          </div>
+          <div class="modal-body">
+            <p class="modal-text">{{ $t('deleteConfirmText') || 'This action cannot be undone. This will permanently delete your account and remove all your data from our servers.' }}</p>
+            <p class="modal-instruction">{{ $t('typeUsername') || 'Please type your username' }} <strong>{{ gls().username }}</strong> {{ $t('toConfirm') || 'to confirm' }}:</p>
+            <input v-model="deleteConfirm" :placeholder="gls().username" class="input" />
+          </div>
+          <div class="modal-actions">
+            <button type="button" class="btn ghost" @click="closeDeleteModal" :disabled="deleting">
+              {{ $t('cancel') || 'Cancel' }}
+            </button>
+            <button 
+              type="button" 
+              class="btn danger" 
+              @click="deleteAccount" 
+              :disabled="deleteConfirm !== gls().username || deleting"
+            >
+              <div v-if="deleting" class="btn-spinner"></div>
+              {{ deleting ? ($t('deleting') || 'Deleting...') : ($t('deleteAccount') || 'Delete Account') }}
+            </button>
+          </div>
+        </div>
+      </div>
+    </Teleport>
   </div>
 </template>
 
 <style scoped>
-
-
 * { box-sizing: border-box; font-family: 'Roboto', sans-serif; }
 
 .container {
   display: flex;
   flex-direction: column;
   align-items: center;
-  
-  padding: 28px 16px;
-  background: #f4f6fb;
-  min-height: 100vh;
-  
-}
-.dark .container { background: #0f1220; }
-
-#title {
+  padding: 0;
   width: 100%;
-  max-width: 900px;
-  margin: 0 auto 16px;
-  font-size: 26px;
+  animation: fadeIn 0.5s ease-in;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.dark .container { background: transparent; }
+
+.header {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 300px;
+  padding: 48px 32px;
+  background: rgba(245, 245, 247, 0.85);
+  border-radius: 32px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.10);
+  margin-bottom: 32px;
+  gap: 24px;
+  position: relative;
+}
+
+.dark .header { background: #1C1C1E; }
+
+.back-btn {
+  position: absolute;
+  top: 24px;
+  left: 32px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 20px;
+  background: rgba(255, 255, 255, 0.9);
+  border-radius: 16px;
+  color: #495057;
+  text-decoration: none;
+  font-weight: 600;
+  transition: all 0.3s ease;
+  border: 2px solid rgba(0, 48, 143, 0.2);
+}
+.dark .back-btn {
+  background: rgba(30, 30, 40, 0.95);
+  border-color: rgba(255, 255, 255, 0.2);
+  color: #e5e7eb;
+}
+.back-btn:hover {
+  background: white;
+  transform: translateX(-4px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+.dark .back-btn:hover {
+  background: rgba(40, 40, 50, 0.95);
+}
+
+.title {
+  font-size: 3rem;
   font-weight: 700;
   color: #222;
-  text-align: left;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 0;
+  letter-spacing: 2px;
 }
-.dark #title { color: #eee; }
+.dark .title { color: white; }
 
-/* Card */
+.title svg {
+  width: 48px;
+  height: 48px;
+  padding: 12px;
+  background: -webkit-linear-gradient(30deg, blue, red);
+  border-radius: 50%;
+  color: white;
+  animation: pulse 2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+}
+
+.loading {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 400px;
+}
+.spinner {
+  width: 50px;
+  height: 50px;
+  border: 4px solid rgba(255,255,255,0.3);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
 .card {
   width: 100%;
-  max-width: 900px;
-  background: #fff;
-  border-radius: 16px;
-  padding: 20px;
-  box-shadow: 0 8px 30px rgba(15,20,40,0.06);
+  background: transparent;
+  border-radius: 0;
+  padding: 0;
+  box-shadow: none;
 }
-.dark .card { background: #1f2230; color: #eee; box-shadow: 0 6px 24px rgba(0,0,0,0.4); }
+.dark .card {
+  background: transparent;
+  color: #eee;
+  box-shadow: none;
+}
 
-.top-row {
+.avatar-section {
   display: flex;
-  justify-content: space-between;
+  flex-direction: column;
   align-items: center;
-  margin-bottom: 18px;
+  gap: 20px;
+  padding: 40px 32px;
+  background: rgba(245, 245, 247, 0.85);
+  border-radius: 24px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.10);
+  margin-bottom: 32px;
 }
-.back {
-  color: #666;
-  text-decoration: none;
-  font-size: 18px;
+.dark .avatar-section { 
+  background: #1C1C1E;
 }
-#pic {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-#pic img {
-  width: 84px;
-  height: 84px;
-  border-radius: 999px;
+
+.avatar {
+  width: 100px;
+  height: 100px;
+  border-radius: 50%;
   object-fit: cover;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+  box-shadow: 0 8px 24px rgba(0,0,0,0.1);
 }
-.pic-label { font-weight: 600; color: #333; }
-.dark .pic-label { color: #ddd; }
+.change-avatar-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  background: #f8f9fa;
+  border: 1px solid #e9ecef;
+  border-radius: 10px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: all 0.3s ease;
+  color: #495057;
+}
+.dark .change-avatar-btn {
+  background: #2a2d3a;
+  border-color: #3a3d4a;
+  color: #e5e7eb;
+}
+.change-avatar-btn:hover {
+  background: #e9ecef;
+  transform: translateY(-2px);
+}
+.dark .change-avatar-btn:hover {
+  background: #3a3d4a;
+}
 
-/* Grid: labels and fields aligned exactly opposite */
 .form-grid {
   display: grid;
-  grid-template-columns: 1fr 2fr; /* label | field */
-  gap: 12px 20px;
-  align-items: center;
-  margin-top: 6px;
+  gap: 32px;
+  padding: 32px;
+  background: rgba(245, 245, 247, 0.85);
+  border-radius: 24px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.10);
+  margin-bottom: 32px;
 }
 
-/* Labels (right-aligned so they're directly facing fields) */
-.form-label {
-  justify-self: end;
-  text-align: right;
-  color: #444;
-  font-weight: 500;
-  padding-right: 6px;
-}
-.dark .form-label { color: #ddd; }
-
-/* Field column */
-.form-field { justify-self: start; width: 100%; }
-
-/* Inputs */
-input[type="text"],
-input[type="password"],
-input[readonly],
-select,
-textarea {
-  width: 100%;
-  padding: 10px 12px;
-  border-radius: 10px;
-  border: 1px solid #e2e6ef;
-  background: #fff;
-  font-size: 14px;
-}
-.dark input, .dark select, .dark textarea, .dark input[readonly] {
-  background: #2b2d3b; color: #eee; border-color: #444;
+.dark .form-grid {
+  background: #1C1C1E;
 }
 
-/* Password rows */
-.password-row {
+.form-group {
   display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.label {
+  display: flex;
+  align-items: center;
   gap: 8px;
-  align-items: center;
-  margin-bottom: 8px;
+  font-weight: 700;
+  color: #333;
+  font-size: 0.95rem;
+  text-transform: uppercase;
+  letter-spacing: 1px;
 }
-.icon-btn {
-  border: none;
-  background: none;
-  cursor: pointer;
-  padding: 6px;
-  font-size: 18px;
+.dark .label { color: #eee; }
+
+.input {
+  width: 100%;
+  padding: 14px 18px;
+  border-radius: 12px;
+  border: 2px solid rgba(0, 48, 143, 0.2);
+  background: white;
+  font-size: 1rem;
+  transition: all 0.3s ease;
+  font-family: 'Roboto', sans-serif;
+}
+.input:focus {
+  outline: none;
+  border-color: blue;
+  background: #fff;
+  box-shadow: 0 0 0 3px rgba(0, 48, 143, 0.1);
+}
+.dark .input {
+  background: rgba(30, 30, 40, 0.95);
+  border-color: rgba(255, 255, 255, 0.2);
+  color: white;
+}
+.dark .input:focus {
+  background: rgba(30, 30, 40, 0.95);
+  border-color: rgba(255, 255, 255, 0.5);
+  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.1);
+}
+.input.readonly {
+  cursor: not-allowed;
+  opacity: 0.6;
 }
 
-/* small buttons inside form */
-.small-btn {
-  padding: 8px 12px;
-  border-radius: 8px;
-  border: 1px solid #e6e6e6;
-  background: #f4f6fb;
-  cursor: pointer;
-}
-
-/* error text */
-.error { color: #d9534f; margin-top: 6px; }
-.small { font-size: 12px; margin: 6px 0 0 0; }
-
-/* Actions */
-.actions {
-  margin-top: 18px;
+.password-input {
+  position: relative;
   display: flex;
-  gap: 12px;
-  justify-content: flex-end;
+  align-items: center;
+  gap: 8px;
 }
+
+.icon-btn {
+  position: absolute;
+  right: 12px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  padding: 4px;
+  color: #6c757d;
+  transition: color 0.3s ease;
+}
+.icon-btn:hover { color: #495057; }
+.dark .icon-btn { color: #9ca3af; }
+.dark .icon-btn:hover { color: #e5e7eb; }
+
+.info-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: #667eea;
+  text-decoration: none;
+  font-size: 13px;
+  font-weight: 500;
+  margin-top: 4px;
+}
+.info-link:hover { text-decoration: underline; }
+
+.error {
+  color: #dc3545;
+  font-size: 13px;
+  margin-top: 4px;
+}
+
+.actions {
+  display: flex;
+  gap: 16px;
+  justify-content: center;
+  padding: 24px 32px;
+  background: rgba(245, 245, 247, 0.5);
+  border-radius: 24px;
+  margin-bottom: 32px;
+}
+.dark .actions { 
+  background: rgba(30, 30, 40, 0.5);
+}
+
 .btn {
-  padding: 10px 16px;
-  border-radius: 10px;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 32px;
+  border-radius: 16px;
   border: none;
   cursor: pointer;
   font-weight: 600;
+  font-size: 1.05rem;
+  transition: all 0.3s ease;
+  text-decoration: none;
+  font-family: 'Roboto', sans-serif;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+.btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 .btn.primary {
-  background: linear-gradient(135deg,#4facfe 0%,#00f2fe 100%);
-  color: white;
-  box-shadow: 0 6px 18px rgba(64,150,255,0.12);
+  background: -webkit-linear-gradient(30deg, blue, red);
+  color: #fff;
+}
+.btn.primary:hover:not(:disabled) {
+  transform: translateY(-3px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
 }
 .btn.ghost {
   background: transparent;
-  color: #c0392b;
-  border: 1px solid #eee;
+  color: #6c757d;
+  border: 1px solid #dee2e6;
+}
+.btn.ghost:hover {
+  background: #f8f9fa;
+  border-color: #adb5bd;
+}
+.dark .btn.ghost {
+  color: #9ca3af;
+  border-color: #3a3d4a;
+}
+.dark .btn.ghost:hover {
+  background: #2a2d3a;
+}
+.btn.danger {
+  background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+  color: #fff;
+  box-shadow: 0 4px 12px rgba(245,87,108,0.3);
+}
+.btn.danger:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(245,87,108,0.4);
 }
 
-/* Responsive: on small screens show stacked layout where label is above field */
-@media (max-width: 820px) {
-  .form-grid {
-    grid-template-columns: 1fr; /* single column */
-  }
-  .form-label {
-    justify-self: start;
-    text-align: left;
-    padding-right: 0;
-  }
-  #pic {
-    justify-self: center;
-  }
-  .actions {
-    justify-content: center;
-  }
-  #title { font-size: 20px; }
+.btn-spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(255,255,255,0.3);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
 }
 
-/* Very small screens tweak */
-@media (max-width: 420px) {
-  #pic img { width: 72px; height:72px; }
-  .btn { padding: 10px 12px; font-size: 14px; }
+.danger-zone {
+  margin-top: 48px;
+  padding: 24px;
+  background: linear-gradient(135deg, rgba(245,87,108,0.05) 0%, rgba(240,147,251,0.05) 100%);
+  border: 2px solid rgba(245,87,108,0.2);
+  border-radius: 16px;
+}
+.dark .danger-zone {
+  background: rgba(245,87,108,0.08);
+  border-color: rgba(245,87,108,0.3);
+}
+
+.danger-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 18px;
+  font-weight: 700;
+  color: #dc3545;
+  margin: 0 0 16px;
+}
+.dark .danger-title { color: #f5576c; }
+
+.danger-content {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+}
+
+.danger-text {
+  font-size: 14px;
+  color: #6c757d;
+  margin: 0;
+}
+.dark .danger-text { color: #9ca3af; }
+
+/* Modal */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.6);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  padding: 16px;
+}
+
+.modal {
+  background: #fff;
+  border-radius: 20px;
+  max-width: 500px;
+  width: 100%;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+  animation: modalSlide 0.3s ease;
+}
+.dark .modal { background: #1f2230; }
+
+@keyframes modalSlide {
+  from { opacity: 0; transform: translateY(-20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 24px;
+  border-bottom: 1px solid #e9ecef;
+}
+.dark .modal-header { border-bottom-color: #3a3d4a; }
+
+.modal-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 20px;
+  font-weight: 700;
+  color: #dc3545;
+  margin: 0;
+}
+.dark .modal-title { color: #f5576c; }
+
+.modal-close {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 4px;
+  color: #6c757d;
+  transition: color 0.3s ease;
+}
+.modal-close:hover { color: #dc3545; }
+
+.modal-body {
+  padding: 24px;
+}
+
+.modal-text {
+  font-size: 15px;
+  color: #495057;
+  margin: 0 0 20px;
+  line-height: 1.6;
+}
+.dark .modal-text { color: #e5e7eb; }
+
+.modal-instruction {
+  font-size: 14px;
+  color: #6c757d;
+  margin: 0 0 12px;
+}
+.dark .modal-instruction { color: #9ca3af; }
+
+.modal-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+  padding: 20px 24px;
+  border-top: 1px solid #e9ecef;
+}
+.dark .modal-actions { border-top-color: #3a3d4a; }
+
+/* Responsive */
+@media (max-width: 768px) {
+  .title { font-size: 22px; }
+  .card { padding: 24px; }
+  .danger-content { flex-direction: column; align-items: stretch; }
+  .actions, .modal-actions {
+    flex-direction: column;
+  }
+  .btn { justify-content: center; }
 }
 </style>

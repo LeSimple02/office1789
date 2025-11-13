@@ -50,7 +50,7 @@ function decof(){
         </button>
       </div>
     </nav>
-    <button id="bdeco" v-if="gls().log == 1" @click="popup = 1" title="Déconnexion">🔓</button>
+    <button id="bdeco" v-if="gls().log == 1" @click="popup = 1" title="Déconnexion">Déconnexion</button>
   </header>
   <div v-if="popup==1" id="sb"></div>
   <div v-if="popup==1" id="pop">
@@ -112,105 +112,196 @@ nav {
 }
 nav a.router-link-active {
   background: -webkit-linear-gradient(30deg, blue, red);
-  border-radius: 10px;
+  border-radius: 16px;
   color: #fff;
-  background: -webkit-linear-gradient(30deg, blue, red);
-  box-shadow:
-    0 0 16px 4px rgba(41,121,255,0.25),
-    0 0 32px 8px rgba(237,73,86,0.18),
-    0 2px 8px rgba(41,121,255,0.18);
-  border: 2px solid #2979ff;
-  outline: 2px solid #ed4956;
-  filter: brightness(1.12) drop-shadow(0 2px 8px #2979ff);
-  text-shadow: 0 2px 12px rgba(41,121,255,0.18);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+  border: none;
+  outline: none;
+  position: relative;
+  filter: brightness(1.05);
   transform: translateY(-2px) scale(1.04);
+  transition: all 0.3s ease;
+}
+nav a.router-link-active::before {
+  content: '';
+  position: absolute;
+  inset: -3px;
+  border-radius: 18px;
+  padding: 3px;
+  background: linear-gradient(45deg, #2979ff, #ed4956, #2979ff);
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  animation: borderGlow 3s linear infinite;
+}
+@keyframes borderGlow {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
 }
 nav a.router-link-active:hover {
   color: #fff;
   background: -webkit-linear-gradient(30deg, blue, red);
-  box-shadow: 0 0 12px 2px rgba(41,121,255,0.18), 0 0 24px 4px rgba(237,73,86,0.12);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25);
   filter: brightness(1.08);
-  text-shadow: 0 2px 8px rgba(41,121,255,0.12);
+  transform: translateY(-3px) scale(1.06);
 }
 nav a {
   padding: 0 1rem;
   font-size: 20px;
   border-left: 1px solid var(--color-border);
-  font-family: roboto;
+  font-family: 'Roboto', sans-serif;
   color: black;
   text-decoration: none;
+  transition: all 0.3s ease;
+}
+nav a:hover {
+  transform: translateY(-1px);
 }
 nav a:first-of-type {
   border: 0;
 }
 footer{
   position: fixed;
-  bottom: 0%;
-  right: 0%;
-  background: black;
-  padding: 10px;
-  border-top-left-radius: 10px;
+  bottom: 0;
+  right: 0;
+  background: rgba(0, 0, 0, 0.95);
+  padding: 16px 24px;
+  border-top-left-radius: 24px;
+  box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.15);
+  backdrop-filter: blur(10px);
+  z-index: 90;
 }
 footer a{
-  font-family: roboto;
-  padding: 10px;
+  font-family: 'Roboto', sans-serif;
+  padding: 0px 8px 0px 8px;
   text-decoration: none;
   color: white;
+  font-weight: 500;
+  font-size: 14px;
+  transition: all 0.3s ease;
+  border-radius: 12px;
+  display: inline-block;
+}
+footer a:hover {
+  background: rgba(255, 255, 255, 0.1);
+  transform: translateY(-2px);
 }
 footer a:first-of-type {
   border: 0;
 }
 .dark footer{
-  position: fixed;
-  bottom: 0%;
-  right: 0%;
-  background: white;
-  padding: 10px;
-  border-top-left-radius: 10px;
+  background: rgba(255, 255, 255, 0.95);
 }
 .dark footer a{
   color: black;
 }
+.dark footer a:hover {
+  background: rgba(0, 0, 0, 0.05);
+}
 #bdeco{
-  background: rgba(255, 0,0,0.5);
+  background: -webkit-linear-gradient(30deg, #ff4444, #ff0000);
   color: white;
   border: none;
-  height: 40px;
-  font-size: 20px;
+  height: 44px;
+  padding: 0 24px;
+  font-size: 18px;
+  font-family: 'Roboto', sans-serif;
+  font-weight: 600;
   margin-left: 20px;
-  border-radius: 20px;
+  border-radius: 22px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 12px rgba(255, 68, 68, 0.3);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+#bdeco:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(255, 68, 68, 0.4);
+  background: -webkit-linear-gradient(30deg, #ff0000, #cc0000);
+}
+#bdeco:active {
+  transform: translateY(0);
 }
 #sb{
   width: 100%;
   height: 100%;
-  position: absolute;
-  background: rgba(0,0,0,0.6);
-  left: 0%;
-  top: 0%;
+  position: fixed;
+  background: rgba(0, 0, 0, 0.7);
+  left: 0;
+  top: 0;
+  z-index: 999;
+  backdrop-filter: blur(8px);
+  animation: fadeIn 0.3s ease;
+}
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 #pop{
-  position: absolute;
+  position: fixed;
   background: white;
   text-align: center;
   left: 50%;
   top: 50%;
-  width: 300px;
-  padding: 30px;
-  border-radius: 10px;
-  margin-left: -165px;
-  margin-top: -50px;
-  z-index: 1;
-  font-family: arial;
+  transform: translate(-50%, -50%);
+  width: 90%;
+  max-width: 420px;
+  padding: 40px 32px;
+  border-radius: 32px;
+  z-index: 1000;
+  font-family: 'Roboto', sans-serif;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  animation: slideIn 0.3s ease;
+}
+@keyframes slideIn {
+  from { transform: translate(-50%, -60%); opacity: 0; }
+  to { transform: translate(-50%, -50%); opacity: 1; }
+}
+#pop p {
+  font-size: 1.2rem;
+  font-weight: 500;
+  color: #333;
+  margin: 0 0 32px 0;
+  line-height: 1.6;
 }
 #pop > #Cancel {
-  background: rgba(255, 0,0,0.5);
-  color: white;
-  border: none;
+  background: rgba(150, 150, 150, 0.2);
+  color: #333;
+  border: 2px solid #ddd;
+  padding: 12px 32px;
+  border-radius: 16px;
+  font-family: 'Roboto', sans-serif;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  margin-right: 12px;
+}
+#pop > #Cancel:hover {
+  background: rgba(150, 150, 150, 0.3);
+  border-color: #999;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
 #pop > #Yes {
-  background: rgba(0, 200,0, 0.5);
+  background: -webkit-linear-gradient(30deg, #ff4444, #ff0000);
   color: white;
   border: none;
+  padding: 12px 32px;
+  border-radius: 16px;
+  font-family: 'Roboto', sans-serif;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 12px rgba(255, 68, 68, 0.3);
+}
+#pop > #Yes:hover {
+  background: -webkit-linear-gradient(30deg, #ff0000, #cc0000);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(255, 68, 68, 0.4);
 }
 #toggle{
   border: none;
@@ -239,45 +330,99 @@ footer a:first-of-type {
   text-shadow: 0 2px 8px rgba(41,121,255,0.18);
 }
 .dark #pop{
-  color: black;
+  background: #1C1C1E;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
+}
+.dark #pop p {
+  color: white;
+}
+.dark #pop > #Cancel {
+  background: rgba(100, 100, 100, 0.3);
+  border-color: #444;
+  color: white;
+}
+.dark #pop > #Cancel:hover {
+  background: rgba(100, 100, 100, 0.5);
+  border-color: #666;
 }
 .dark button{
   color: white;
 }
 select {
   background: -webkit-linear-gradient(30deg, blue, red);
-  border-radius: 8px;
-  color: black;
-  padding: 4px 12px;
+  border-radius: 12px;
+  color: white;
+  padding: 8px 16px;
   border: none;
-  font-size: 16px;
-  margin-right: 8px;
-  transition: background 0.3s, color 0.3s;
+  font-size: 15px;
+  font-family: 'Roboto', sans-serif;
+  font-weight: 600;
+  margin-right: 12px;
+  transition: all 0.3s ease;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+select option {
+  background: white;
+  color: #333;
+  padding: 8px;
+}
+.dark select option {
+  background: #2C2C2E;
+  color: white;
+}
+select:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
 }
 #toggle {
   border: none;
   background: none;
+  padding: 0;
   font-size: 28px;
   cursor: pointer;
   margin-left: 8px;
-  transition: color 0.3s;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+#toggle:hover {
+  transform: scale(1.15) rotate(15deg);
+}
+.dark #toggle:hover {
+  transform: scale(1.15) rotate(-15deg);
 }
 header {
   display: flex;
   align-items: center;
   justify-content: flex-start;
   gap: 24px;
-  padding: 12px 32px;
-  background: rgba(245,245,247,0.95);
-  box-shadow: 0 2px 8px rgba(0,0,0,0.07);
-  border-radius: 0 0 24px 24px;
+  padding: 16px 40px;
+  background: rgba(255, 255, 255, 0.98);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+  border-radius: 0 0 32px 32px;
+  transition: all 0.3s ease;
+  backdrop-filter: blur(10px);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+header:hover {
+  box-shadow: 0 6px 28px rgba(0, 0, 0, 0.12);
 }
 .logo {
-  width: 40px;
-  height: 40px;
-  margin-right: 16px;
-  border-radius: 12px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.10);
+  width: 48px;
+  height: 48px;
+  margin-right: 8px;
+  border-radius: 16px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+  transition: all 0.3s ease;
+  cursor: pointer;
+}
+.logo:hover {
+  transform: scale(1.08) rotate(5deg);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.18);
 }
 .dark nav {
   background: rgba(30,30,40,0.85);
