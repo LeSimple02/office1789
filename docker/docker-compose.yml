@@ -49,7 +49,7 @@ services:
     image: ghcr.io/the-djmaze/snappymail:latest
     container_name: snappymail
     ports:
-      - "8081:8888"
+      - "8090:8888"  # moved to 8090 to free 8081 for Roundcube
     depends_on:
       - mailserver
     volumes:
@@ -71,6 +71,112 @@ services:
     networks:
       - office_network
 
+  # PostgreSQL for Roundcube
+  postgres_roundcube:
+    image: postgres:16
+    container_name: postgres_roundcube
+    environment:
+      POSTGRES_DB: roundcube
+      POSTGRES_USER: roundcube
+      POSTGRES_PASSWORD: roundcube1789
+    healthcheck:
+      # Use superuser for healthcheck to avoid failure if role roundcube not yet ready
+      test: ["CMD-SHELL", "pg_isready -U postgres || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    volumes:
+      - roundcube_db:/var/lib/postgresql/data
+    networks:
+      - office_network
+
+  # Roundcube Webmail
+  roundcube:
+    image: roundcube/roundcubemail:1.6.0-apache
+    container_name: roundcube
+    ports:
+      - "8081:80"
+    environment:
+      ROUNDCUBEMAIL_DB_TYPE: pgsql
+      ROUNDCUBEMAIL_DB_HOST: postgres_roundcube
+      ROUNDCUBEMAIL_DB_NAME: roundcube
+      ROUNDCUBEMAIL_DB_USER: roundcube
+      ROUNDCUBEMAIL_DB_PASSWORD: roundcube1789
+      ROUNDCUBEMAIL_DEFAULT_HOST: mailserver
+      ROUNDCUBEMAIL_DEFAULT_PORT: 143
+      ROUNDCUBEMAIL_SMTP_SERVER: mailserver
+      ROUNDCUBEMAIL_SMTP_PORT: 587
+      ROUNDCUBEMAIL_SKIN: elastic
+      ROUNDCUBEMAIL_PLUGINS: archive,zipdownload
+    depends_on:
+      mailserver:
+        condition: service_started
+      postgres_roundcube:
+        condition: service_healthy
+    networks:
+      - office_network
+
+  # PostgreSQL for Synapse (Matrix)
+  postgres_synapse:
+    image: postgres:16
+    container_name: postgres_synapse
+    environment:
+      POSTGRES_DB: synapse
+      POSTGRES_USER: synapse
+      POSTGRES_PASSWORD: synapse1789
+    healthcheck:
+      # Use superuser for healthcheck to avoid failure if role synapse not yet ready
+      test: ["CMD-SHELL", "pg_isready -U postgres || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    volumes:
+      - synapse_db:/var/lib/postgresql/data
+    networks:
+      - office_network
+
+  # Synapse Homeserver
+  synapse:
+    image: matrixdotorg/synapse:latest
+    container_name: synapse
+    ports:
+      - "8008:8008"
+    environment:
+      SYNAPSE_SERVER_NAME: office1789.com
+      SYNAPSE_REPORT_STATS: "no"
+      SYNAPSE_NO_TLS: "true"
+      POSTGRES_HOST: postgres_synapse
+      POSTGRES_DB: synapse
+      POSTGRES_USER: synapse
+      POSTGRES_PASSWORD: synapse1789
+    volumes:
+      # Mount entire synapse config/data directory (expected layout for official image)
+      - ./synapse:/data
+    depends_on:
+      postgres_synapse:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "python -c 'import urllib.request,sys;\n\nimport time\n\nURL=\"http://localhost:8008/_matrix/client/versions\"\n\ntry:\n urllib.request.urlopen(URL, timeout=5); sys.exit(0)\nexcept Exception as e:\n sys.exit(1)'" ]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+    networks:
+      - office_network
+
+  # Element Web (Matrix client)
+  element:
+    image: vectorim/element-web:latest
+    container_name: element
+    ports:
+      - "8083:80"
+    depends_on:
+      - synapse
+    volumes:
+      # Mount entire element directory (contains config.json inside)
+      - ./element:/app
+    networks:
+      - office_network
+
 networks:
   office_network:
     driver: bridge
@@ -81,3 +187,6 @@ volumes:
   mailstate:
   maillogs:
   snappydata:
+  roundcube_db:
+  synapse_db:
+  synapse_data:
