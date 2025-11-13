@@ -25,6 +25,18 @@ var (
 	downloadTokensLock sync.RWMutex
 )
 
+// getUserUploadDir retourne le chemin du répertoire d'upload basé sur user_id au lieu du username
+// Exemple: uploads/123 au lieu de uploads/matthis
+func getUserUploadDir(username string) string {
+	var userID int
+	err := db.QueryRow("SELECT user_id FROM Users WHERE username=$1", username).Scan(&userID)
+	if err != nil {
+		// Fallback sur username si erreur (ne devrait pas arriver)
+		return filepath.Join("uploads", username)
+	}
+	return filepath.Join("uploads", strconv.Itoa(userID))
+}
+
 // === Structures ===
 
 type DriveFile struct {
@@ -66,7 +78,8 @@ func getfiles(c *gin.Context) {
 	}
 
 	// Vérification de session sécurisée
-	if session, ok := sessions[verif.Token]; !ok || session.Username != verif.Username || verif.Username == "" {
+	_, valid := validateSession(verif.Token, verif.Username)
+	if !valid {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid session"})
 		return
 	}
@@ -119,7 +132,8 @@ func uploadFile(c *gin.Context) {
 	}
 
 	// Vérif session
-	if session, ok := sessions[token]; !ok || session.Username != username || username == "" {
+	_, valid := validateSession(token, username)
+	if !valid {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid session"})
 		return
 	}
@@ -156,7 +170,7 @@ func uploadFile(c *gin.Context) {
 	}
 
 	// Créer le dossier utilisateur si besoin
-	uploadDir := filepath.Join("uploads", username)
+	uploadDir := getUserUploadDir(username)
 	if parentPath != "" && parentPath != "/" {
 		// trim leading slash before Join so it's not treated as absolute
 		p := strings.TrimPrefix(parentPath, "/")
@@ -367,7 +381,7 @@ func downloadFile(c *gin.Context) {
 	}
 
 	// build path on disk (trim leading slash)
-	filePath := filepath.Join("uploads", ownerUsername)
+	filePath := getUserUploadDir(ownerUsername)
 	if file.FilePath != "" && file.FilePath != "/" {
 		p := strings.TrimPrefix(file.FilePath, "/")
 		if p != "" && p != "/" {
@@ -436,7 +450,8 @@ func restoreFile(c *gin.Context) {
 	}
 
 	// same session check style as other endpoints
-	if session, ok := sessions[req.Token]; !ok || session.Username != req.Username || req.Username == "" {
+	_, valid := validateSession(req.Token, req.Username)
+	if !valid {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid session"})
 		return
 	}
@@ -467,7 +482,7 @@ func restoreFile(c *gin.Context) {
 		return
 	}
 
-	userDir := filepath.Join("uploads", req.Username)
+	userDir := getUserUploadDir(req.Username)
 	trashPath := filepath.Join(userDir, ".trash", file.FileName)
 	destDir := userDir
 	dest := filepath.Join(destDir, file.FileName)
@@ -517,7 +532,8 @@ func moveToTrash(c *gin.Context) {
 	}
 
 	// session check (same style)
-	if session, ok := sessions[req.Token]; !ok || session.Username != req.Username || req.Username == "" {
+	_, valid := validateSession(req.Token, req.Username)
+	if !valid {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid session"})
 		return
 	}
@@ -547,7 +563,7 @@ func moveToTrash(c *gin.Context) {
 	}
 
 	// build safe paths
-	userDir := filepath.Clean(filepath.Join("uploads", req.Username))
+	userDir := filepath.Clean(getUserUploadDir(req.Username))
 	trashDir := filepath.Join(userDir, ".trash")
 	if err := os.MkdirAll(trashDir, 0o755); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "cannot create trash dir", "err": err.Error()})
@@ -749,7 +765,8 @@ func getTrashFiles(c *gin.Context) {
 	}
 
 	// same session check as getfiles / upload
-	if session, ok := sessions[verif.Token]; !ok || session.Username != verif.Username || verif.Username == "" {
+	_, valid := validateSession(verif.Token, verif.Username)
+	if !valid {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid session"})
 		return
 	}
@@ -788,7 +805,8 @@ func deletePermanent(c *gin.Context) {
 		return
 	}
 
-	if session, ok := sessions[req.Token]; !ok || session.Username != req.Username || req.Username == "" {
+	_, valid := validateSession(req.Token, req.Username)
+	if !valid {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid session"})
 		return
 	}
@@ -811,7 +829,7 @@ func deletePermanent(c *gin.Context) {
 		return
 	}
 
-	userDir := filepath.Join("uploads", req.Username)
+	userDir := getUserUploadDir(req.Username)
 
 	// si le fichier/dossier est dans la corbeille, on supprime récursivement
 	// détecter si c'est un dossier
@@ -882,7 +900,8 @@ func renameFile(c *gin.Context) {
 	}
 
 	// auth comme ailleurs
-	if session, ok := sessions[req.Token]; !ok || session.Username != req.Username || req.Username == "" {
+	_, valid := validateSession(req.Token, req.Username)
+	if !valid {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid session"})
 		return
 	}
@@ -922,7 +941,7 @@ func renameFile(c *gin.Context) {
 	}
 
 	// construire chemins sur disque en tenant compte de file_path
-	userDir := filepath.Join("uploads", req.Username)
+	userDir := getUserUploadDir(req.Username)
 	srcDir := userDir
 	if file.FilePath != "" && file.FilePath != "/" {
 		p := strings.TrimPrefix(file.FilePath, "/")
@@ -975,7 +994,8 @@ func createFolder(c *gin.Context) {
 	}
 
 	// session check (same style)
-	if session, ok := sessions[req.Token]; !ok || session.Username != req.Username || req.Username == "" {
+	_, valid := validateSession(req.Token, req.Username)
+	if !valid {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid session"})
 		return
 	}
@@ -1032,7 +1052,7 @@ func createFolder(c *gin.Context) {
 	}
 
 	// create folder on disk (mirror current logic: uploads/<username>/<parent>/<name>/)
-	userDir := filepath.Join("uploads", req.Username)
+	userDir := getUserUploadDir(req.Username)
 	destDir := userDir
 	if parent != "" && parent != "/" {
 		// parent begins with '/'
@@ -1076,7 +1096,8 @@ func createFile(c *gin.Context) {
 	}
 
 	// session check
-	if session, ok := sessions[req.Token]; !ok || session.Username != req.Username || req.Username == "" {
+	_, valid := validateSession(req.Token, req.Username)
+	if !valid {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid session"})
 		return
 	}
@@ -1139,7 +1160,7 @@ func createFile(c *gin.Context) {
 	}
 
 	// create empty file on disk
-	userDir := filepath.Join("uploads", req.Username)
+	userDir := getUserUploadDir(req.Username)
 	destDir := userDir
 	if parent != "" && parent != "/" {
 		p := strings.TrimPrefix(parent, "/")
@@ -1244,7 +1265,8 @@ func moveFile(c *gin.Context) {
 	}
 
 	// Vérif session
-	if session, ok := sessions[req.Token]; !ok || session.Username != req.Username || req.Username == "" {
+	_, valid := validateSession(req.Token, req.Username)
+	if !valid {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid session"})
 		return
 	}
@@ -1291,7 +1313,7 @@ func moveFile(c *gin.Context) {
 	}
 
 	// Construire chemins disques
-	userDir := filepath.Join("uploads", req.Username)
+	userDir := getUserUploadDir(req.Username)
 	srcBase := userDir
 	if file.FilePath != "" && file.FilePath != "/" {
 		p := strings.TrimPrefix(file.FilePath, "/")
@@ -1371,7 +1393,8 @@ func moveFolder(c *gin.Context) {
 	}
 
 	// Vérif session
-	if session, ok := sessions[req.Token]; !ok || session.Username != req.Username || req.Username == "" {
+	_, valid := validateSession(req.Token, req.Username)
+	if !valid {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid session"})
 		return
 	}
@@ -1418,7 +1441,7 @@ func moveFolder(c *gin.Context) {
 		username = req.Username
 	}
 
-	userDir := filepath.Join("uploads", username)
+	userDir := getUserUploadDir(username)
 
 	// chemin source physique: uploads/<username>/<src trimmed>
 	srcBase := userDir
@@ -1863,7 +1886,8 @@ func createShareFile(c *gin.Context) {
         c.JSON(http.StatusBadRequest, gin.H{"error": 1, "message": "invalid request"})
         return
     }
-    if session, ok := sessions[req.Token]; !ok || session.Username != req.Username || req.Username == "" {
+    _, valid := validateSession(req.Token, req.Username)
+    if !valid {
         c.JSON(http.StatusUnauthorized, gin.H{"error": 1, "message": "invalid session"})
         return
     }
@@ -1925,7 +1949,8 @@ func deactivateShareFile(c *gin.Context) {
         c.JSON(http.StatusBadRequest, gin.H{"error": 1, "message": "invalid request"})
         return
     }
-    if session, ok := sessions[req.Token]; !ok || session.Username != req.Username || req.Username == "" {
+    _, valid := validateSession(req.Token, req.Username)
+    if !valid {
         c.JSON(http.StatusUnauthorized, gin.H{"error": 1, "message": "invalid session"})
         return
     }
@@ -1976,7 +2001,8 @@ func getSharedFiles(c *gin.Context) {
         return
     }
     // session check
-    if session, ok := sessions[req.Token]; !ok || session.Username != req.Username || req.Username == "" {
+    _, valid := validateSession(req.Token, req.Username)
+    if !valid {
         c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid session"})
         return
     }
