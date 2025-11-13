@@ -259,3 +259,19 @@ CREATE TABLE IF NOT EXISTS CalendarEvents (
     date_created TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES Users(user_id) ON DELETE CASCADE
 );
+
+-- Table for storing user sessions with persistent storage
+CREATE TABLE IF NOT EXISTS sessions (
+    session_token VARCHAR(255) PRIMARY KEY,
+    user_id INT NOT NULL,
+    username VARCHAR(255) NOT NULL,
+    expiry TIMESTAMP NOT NULL,
+    last_activity TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES Users(user_id) ON DELETE CASCADE
+);
+
+-- Index pour améliorer les performances de recherche et nettoyage
+CREATE INDEX IF NOT EXISTS idx_sessions_expiry ON sessions(expiry);
+CREATE INDEX IF NOT EXISTS idx_sessions_user_id ON sessions(user_id);
+CREATE INDEX IF NOT EXISTS idx_sessions_username ON sessions(username);

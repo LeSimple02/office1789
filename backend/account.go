@@ -24,25 +24,22 @@ type ChangeIn struct {
 
 func getinfop(c *gin.Context) {
 
-	var verif sessionSend
+	var verif sessionVerify
 	var infop Subscribe
 
 	c.ShouldBindJSON(&verif)
 
-	if sessions[verif.Token].Username == verif.Username && verif.Username != "" {
-		rows := db.QueryRow("SELECT domain, nboffer, date_joined, last_login, phonenumber, email FROM Users WHERE username=$1", verif.Username)
-		rows.Scan(&infop.Domain, &infop.Nboffer, &infop.DateJoined, &infop.LastLogin, &infop.PhoneNumber, &infop.Email)
-
+	session, valid := validateSession(verif.Token, verif.Username)
+	if !valid {
+		infop.Username = "no"
 		c.JSON(http.StatusOK, infop)
 		return
-
-	} else {
-		infop.Username = "no"
-
-		c.JSON(http.StatusOK, infop)
-
 	}
 
+	rows := db.QueryRow("SELECT domain, nboffer, date_joined, last_login, phonenumber, email FROM Users WHERE user_id=$1", session.UserID)
+	rows.Scan(&infop.Domain, &infop.Nboffer, &infop.DateJoined, &infop.LastLogin, &infop.PhoneNumber, &infop.Email)
+
+	c.JSON(http.StatusOK, infop)
 }
 
 func ChangeI(c *gin.Context) {
@@ -52,69 +49,84 @@ func ChangeI(c *gin.Context) {
 
 	c.BindJSON(&cha)
 
-	if sessions[cha.Token].Username == cha.LastUsername {
+	sess, valid := validateSession(cha.Token, cha.LastUsername)
+	if !valid {
+		infova.Username = "no"
+		c.JSON(http.StatusUnauthorized, infova)
+		return
+	}
 
-		if strings.TrimSpace(cha.Username) != "" {
-			rows := db.QueryRow("SELECT count(*) FROM Users WHERE username=$1", cha.Username)
-			rows.Scan(&count)
+	if strings.TrimSpace(cha.Username) != "" {
+		rows := db.QueryRow("SELECT count(*) FROM Users WHERE username=$1", cha.Username)
+		rows.Scan(&count)
 
-			if count > 0 {
-				infova.Username = "no"
-			}
-
-		}
-		if strings.TrimSpace(cha.Email) != "" {
-			rows := db.QueryRow("SELECT count(*) FROM Users WHERE email=$1", cha.Email)
-			rows.Scan(&count)
-			if count > 0 {
-				infova.Email = "no"
-			}
-
-		}
-		if strings.TrimSpace(cha.PhoneNumber) != "" {
-			rows := db.QueryRow("SELECT count(*) FROM Users WHERE phonenumber=$1", cha.PhoneNumber)
-			rows.Scan(&count)
-			if count > 0 {
-				infova.Phone = "no"
-			}
+		if count > 0 {
+			infova.Username = "no"
 		}
 
-		if infova.Phone == "no" || infova.Username == "no" || infova.Email == "no" {
-			c.JSON(http.StatusOK, infova)
-		} else {
-
-			if strings.TrimSpace(cha.LastUsername) != "" {
-
-				if cha.Password != "" {
-					cha.Password = HashPassword(cha.Password)
-					db.Exec("UPDATE Users SET password_hash=$1 WHERE username=$2", cha.Password, cha.LastUsername)
-				}
-
-				if cha.Email != "" {
-					db.Exec("UPDATE Users SET email=$1 WHERE username=$2", cha.Email, cha.LastUsername)
-				}
-				if cha.PhoneNumber != "" {
-					db.Exec("UPDATE Users SET phonenumber=$1 WHERE username=$2", cha.PhoneNumber, cha.LastUsername)
-				}
-				if cha.Username != "" {
-					db.Exec("UPDATE Users SET username=$1 WHERE username=$2", cha.Username, cha.LastUsername)
-				}
-
-				sessionToken := uuid.NewString()
-				expiresAtTime := time.Now().Add(120 * time.Second)
-				if cha.Username != "" {
-					sessions[sessionToken] = session{
-						Username: cha.Username,
-						expiry:   expiresAtTime,
-					}
-					c.JSON(http.StatusOK, sessionSend{cha.Username, sessionToken, expiresAtTime})
-				} else {
-					c.JSON(http.StatusOK, infova)
-				}
-
-			}
-
+	}
+	if strings.TrimSpace(cha.Email) != "" {
+		rows := db.QueryRow("SELECT count(*) FROM Users WHERE email=$1", cha.Email)
+		rows.Scan(&count)
+		if count > 0 {
+			infova.Email = "no"
 		}
+
+	}
+	if strings.TrimSpace(cha.PhoneNumber) != "" {
+		rows := db.QueryRow("SELECT count(*) FROM Users WHERE phonenumber=$1", cha.PhoneNumber)
+		rows.Scan(&count)
+		if count > 0 {
+			infova.Phone = "no"
+		}
+	}
+
+	if infova.Phone == "no" || infova.Username == "no" || infova.Email == "no" {
+		c.JSON(http.StatusOK, infova)
+	} else {
+
+		if cha.Password != "" {
+			cha.Password = HashPassword(cha.Password)
+			db.Exec("UPDATE Users SET password_hash=$1 WHERE user_id=$2", cha.Password, sess.UserID)
+		}
+
+		if cha.Email != "" {
+			db.Exec("UPDATE Users SET email=$1 WHERE user_id=$2", cha.Email, sess.UserID)
+		}
+		if cha.PhoneNumber != "" {
+			db.Exec("UPDATE Users SET phonenumber=$1 WHERE user_id=$2", cha.PhoneNumber, sess.UserID)
+		}
+		
+		newUsername := cha.LastUsername
+		if cha.Username != "" {
+			db.Exec("UPDATE Users SET username=$1 WHERE user_id=$2", cha.Username, sess.UserID)
+			newUsername = cha.Username
+		}
+
+		// Créer nouvelle session
+		sessionToken := uuid.NewString()
+		expiresAtTime := time.Now().Add(24 * time.Hour)
+		
+		// Supprimer l'ancienne session
+		delete(sessions, cha.Token)
+		deleteSessionFromDB(cha.Token)
+		
+		// Créer nouvelle session en mémoire
+		sessions[sessionToken] = session{
+			UserID:   sess.UserID,
+			Username: newUsername,
+			expiry:   expiresAtTime,
+		}
+		
+		// Créer nouvelle session en DB
+		_ = createSessionInDB(sess.UserID, newUsername, sessionToken, expiresAtTime)
+		
+		c.JSON(http.StatusOK, sessionSend{
+			UserID:   sess.UserID,
+			Username: newUsername,
+			Token:    sessionToken,
+			Expiry:   expiresAtTime,
+		})
 	}
 }
 
@@ -140,8 +152,8 @@ func DeleteAccount(c *gin.Context) {
 	}
 
 	// Vérifier que la session est valide
-	session, exists := sessions[req.Token]
-	if !exists || session.Username != req.Username {
+	session, valid := validateSession(req.Token, req.Username)
+	if !valid {
 		c.JSON(http.StatusUnauthorized, DeleteAccountResponse{
 			Success: false,
 			Message: "Unauthorized",
@@ -158,8 +170,8 @@ func DeleteAccount(c *gin.Context) {
 	avatarPath := "./avatars/" + req.Username + ".png"
 	_ = removeFile(avatarPath)
 
-	// Supprimer l'utilisateur de la base de données
-	_, err := db.Exec("DELETE FROM Users WHERE username=$1", req.Username)
+	// Supprimer l'utilisateur de la base de données (CASCADE supprimera les sessions)
+	_, err := db.Exec("DELETE FROM Users WHERE user_id=$1", session.UserID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, DeleteAccountResponse{
 			Success: false,
@@ -167,9 +179,6 @@ func DeleteAccount(c *gin.Context) {
 		})
 		return
 	}
-
-	// Supprimer la session
-	delete(sessions, req.Token)
 
 	c.JSON(http.StatusOK, DeleteAccountResponse{
 		Success: true,
