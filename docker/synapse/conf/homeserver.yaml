@@ -15,6 +15,7 @@ media_store_path: "/data/media_store"
 signing_key_path: "/tmp/homeserver.signing.key"
 
 enable_registration: false
+registration_shared_secret: "OFFICE1789_REGISTRATION_SECRET"
 
 # PostgreSQL database configuration
 database:
