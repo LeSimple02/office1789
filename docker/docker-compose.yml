@@ -48,7 +48,9 @@ services:
       - NET_ADMIN
     restart: always
     networks:
-      - office_network
+      office_network:
+        aliases:
+          - mail.office1789.local
 
   
 
@@ -91,20 +93,22 @@ services:
     container_name: roundcube
     ports:
       - "8081:80"
+    entrypoint: ["/custom-entrypoint.sh"]
+    command: ["apache2-foreground"]
     environment:
       ROUNDCUBEMAIL_DB_TYPE: pgsql
       ROUNDCUBEMAIL_DB_HOST: postgres_roundcube
       ROUNDCUBEMAIL_DB_NAME: roundcube
       ROUNDCUBEMAIL_DB_USER: roundcube
       ROUNDCUBEMAIL_DB_PASSWORD: roundcube1789
-      ROUNDCUBEMAIL_DEFAULT_HOST: ssl://mailserver
+      ROUNDCUBEMAIL_DEFAULT_HOST: ssl://mail.office1789.local
       ROUNDCUBEMAIL_DEFAULT_PORT: 993
-      ROUNDCUBEMAIL_SMTP_SERVER: tls://mailserver
+      ROUNDCUBEMAIL_SMTP_SERVER: tls://mail.office1789.local
       ROUNDCUBEMAIL_SMTP_PORT: 587
-      ROUNDCUBEMAIL_IMAP_CONN_OPTIONS: '{"ssl":{"verify_peer":false,"verify_peer_name":false,"allow_self_signed":true}}'
-      ROUNDCUBEMAIL_SMTP_CONN_OPTIONS: '{"ssl":{"verify_peer":false,"verify_peer_name":false,"allow_self_signed":true}}'
       ROUNDCUBEMAIL_SKIN: elastic
       ROUNDCUBEMAIL_PLUGINS: archive,zipdownload
+    volumes:
+      - ./roundcube-entrypoint.sh:/custom-entrypoint.sh:ro
     depends_on:
       mailserver:
         condition: service_started
