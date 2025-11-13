@@ -14,8 +14,7 @@ listeners:
 media_store_path: "/data/media_store"
 signing_key_path: "/tmp/homeserver.signing.key"
 
-enable_registration: true
-enable_registration_without_verification: true
+enable_registration: false
 
 # PostgreSQL database configuration
 database:

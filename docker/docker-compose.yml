@@ -30,6 +30,8 @@ services:
       - mailstate:/var/mail-state
       - maillogs:/var/log/mail
       - ./config:/tmp/docker-mailserver/
+      - ./config/ssl/cert.pem:/etc/ssl/dms/cert:ro
+      - ./config/ssl/key.pem:/etc/ssl/dms/key:ro
     environment:
       - ENABLE_SPAMASSASSIN=0
       - ENABLE_CLAMAV=0
@@ -38,7 +40,10 @@ services:
       - ONE_DIR=1
       - DMS_DEBUG=0
       - PERMIT_DOCKER=network
-      - SSL_TYPE=none
+      - SSL_TYPE=manual
+      - TLS_LEVEL=modern
+      - SSL_CERT_PATH=/etc/ssl/dms/cert
+      - SSL_KEY_PATH=/etc/ssl/dms/key
     cap_add:
       - NET_ADMIN
     restart: always
@@ -92,10 +97,12 @@ services:
       ROUNDCUBEMAIL_DB_NAME: roundcube
       ROUNDCUBEMAIL_DB_USER: roundcube
       ROUNDCUBEMAIL_DB_PASSWORD: roundcube1789
-      ROUNDCUBEMAIL_DEFAULT_HOST: mailserver
-      ROUNDCUBEMAIL_DEFAULT_PORT: 143
-      ROUNDCUBEMAIL_SMTP_SERVER: mailserver
+      ROUNDCUBEMAIL_DEFAULT_HOST: ssl://mailserver
+      ROUNDCUBEMAIL_DEFAULT_PORT: 993
+      ROUNDCUBEMAIL_SMTP_SERVER: tls://mailserver
       ROUNDCUBEMAIL_SMTP_PORT: 587
+      ROUNDCUBEMAIL_IMAP_CONN_OPTIONS: '{"ssl":{"verify_peer":false,"verify_peer_name":false,"allow_self_signed":true}}'
+      ROUNDCUBEMAIL_SMTP_CONN_OPTIONS: '{"ssl":{"verify_peer":false,"verify_peer_name":false,"allow_self_signed":true}}'
       ROUNDCUBEMAIL_SKIN: elastic
       ROUNDCUBEMAIL_PLUGINS: archive,zipdownload
     depends_on:
