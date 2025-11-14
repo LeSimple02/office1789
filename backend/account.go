@@ -117,11 +117,31 @@ func ChangeI(c *gin.Context) {
 	// Pas d'erreur, on procède aux modifications
 	fmt.Println("DEBUG ChangeI - Validation OK, procède aux modifications")
 
-	// Changement de mot de passe UNIQUEMENT pour Office1789 (pas Mail/Matrix)
+	// Changement de mot de passe synchronisé (Office1789 + Mail + Matrix)
 	if cha.Password != "" {
 		newHash := HashPassword(cha.Password)
 		db.Exec("UPDATE Users SET password_hash=$1 WHERE user_id=$2", newHash, sess.UserID)
 		fmt.Printf("DEBUG ChangeI - Password changed for user %s\n", cha.LastUsername)
+		
+		// Synchroniser avec Mail (asynchrone)
+		go func() {
+			err := changeMailPassword(cha.LastUsername, cha.Password)
+			if err != nil {
+				fmt.Printf("Warning: Failed to change mail password for %s: %v\n", cha.LastUsername, err)
+			} else {
+				fmt.Printf("Mail password changed for %s@office1789.local\n", cha.LastUsername)
+			}
+		}()
+		
+		// Synchroniser avec Matrix (asynchrone)
+		go func() {
+			err := changeMatrixPassword(cha.LastUsername, cha.Password)
+			if err != nil {
+				fmt.Printf("Warning: Failed to change matrix password for %s: %v\n", cha.LastUsername, err)
+			} else {
+				fmt.Printf("Matrix password changed for @%s:office1789.com\n", cha.LastUsername)
+			}
+		}()
 	}
 
 	if cha.Email != "" {
@@ -283,19 +303,41 @@ func changeMailPassword(username, newPassword string) error {
 
 // Changer le mot de passe Matrix (Synapse)
 func changeMatrixPassword(username, newPassword string) error {
-	// Utiliser reset-password de Synapse CLI
+	// Utiliser hash_password pour générer le hash bcrypt
 	cmd := exec.Command("docker", "exec", "synapse",
-		"reset-password",
-		"-c", "/data/homeserver.yaml",
-		username,
-		newPassword)
+		"hash_password", "-p", newPassword, "-c", "/data/homeserver.yaml")
 	
-	var stderr bytes.Buffer
+	var stdout, stderr bytes.Buffer
+	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
 	
 	err := cmd.Run()
 	if err != nil {
-		return fmt.Errorf("failed to change matrix password: %v - %s", err, stderr.String())
+		return fmt.Errorf("failed to hash password: %v - %s", err, stderr.String())
+	}
+	
+	// Le hash est dans stdout (format: "$2b$12$...")
+	passwordHash := strings.TrimSpace(stdout.String())
+	if !strings.HasPrefix(passwordHash, "$2b$") && !strings.HasPrefix(passwordHash, "$2a$") {
+		return fmt.Errorf("invalid hash output: %s", passwordHash)
+	}
+	
+	// Mettre à jour directement dans la DB Synapse via PostgreSQL avec STDIN
+	matrixUserID := "@" + username + ":office1789.com"
+	
+	// Utiliser echo + pipe pour éviter les problèmes d'échappement
+	sqlQuery := fmt.Sprintf("UPDATE users SET password_hash='%s' WHERE name='%s';", passwordHash, matrixUserID)
+	
+	cmd = exec.Command("docker", "exec", "-i", "postgres_synapse",
+		"psql", "-U", "synapse", "-d", "synapse")
+	
+	cmd.Stdin = strings.NewReader(sqlQuery)
+	stderr.Reset()
+	cmd.Stderr = &stderr
+	
+	err = cmd.Run()
+	if err != nil {
+		return fmt.Errorf("failed to update matrix password in DB: %v - %s", err, stderr.String())
 	}
 	
 	return nil

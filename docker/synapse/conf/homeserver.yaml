@@ -27,6 +27,10 @@ password_config:
 enable_set_displayname: true
 enable_set_avatar_url: true
 enable_3pid_changes: false
+enable_set_password: false
+
+# Bloquer la fermeture/désactivation de compte par l'utilisateur
+enable_deactivation: false
 
 # PostgreSQL database configuration
 database:
