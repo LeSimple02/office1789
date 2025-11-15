@@ -47,7 +47,7 @@ func GenerateMatrixSSOAuto(c *gin.Context) {
 
 	// Générer le token SSO Matrix
 	matrixUserID := fmt.Sprintf("@%s:office1789.com", req.Username)
-	ssoToken := generateMatrixSSOToken(matrixUserID, password)
+	ssoToken := generateMatrixSSOToken(req.Username, matrixUserID, password)
 
 	fmt.Printf("[Matrix-SSO] Token SSO généré pour %s\n", matrixUserID)
 
@@ -60,16 +60,17 @@ func GenerateMatrixSSOAuto(c *gin.Context) {
 }
 
 // generateMatrixSSOToken génère un token SSO signé pour Element/Matrix
-func generateMatrixSSOToken(matrixUserID, password string) string {
+func generateMatrixSSOToken(username, matrixUserID, password string) string {
 	// Secret partagé avec le plugin Element
 	secret := "Office1789-Matrix-SecretKey-ChangeInProduction"
 
 	// Créer les claims AVEC le mot de passe pour authentifier à Matrix
 	claims := map[string]interface{}{
-		"user_id":  matrixUserID,
-		"password": password, // Mot de passe inclus pour auth Matrix
-		"exp":      time.Now().Add(5 * time.Minute).Unix(), // Expire dans 5 minutes
-		"iat":      time.Now().Unix(),
+		"username":     username,               // Username Office1789
+		"matrixUserId": matrixUserID,           // @username:office1789.com
+		"password":     password,               // Mot de passe inclus pour auth Matrix
+		"exp":          time.Now().Add(5 * time.Minute).Unix(), // Expire dans 5 minutes
+		"iat":          time.Now().Unix(),
 	}
 
 	// Encoder les claims en JSON puis en base64
