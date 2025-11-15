@@ -45,3 +45,15 @@ turn_uris:
   - "turn:localhost:3478?transport=tcp"
 turn_shared_secret: "MY_TURN_SECRET_1789"
 turn_user_lifetime: 1h
+
+# Rate limiting configuration - Augmenté pour SSO Office1789
+rc_login:
+  address:
+    per_second: 10
+    burst_count: 20
+  account:
+    per_second: 5
+    burst_count: 10
+  failed_attempts:
+    per_second: 1
+    burst_count: 5

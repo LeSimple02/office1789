@@ -559,6 +559,8 @@ function show(){
   letter-spacing: 8px;
   font-family: 'Courier New', monospace;
   font-weight: bold;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .totp-hint {

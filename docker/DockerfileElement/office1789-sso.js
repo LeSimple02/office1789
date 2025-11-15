@@ -75,16 +75,27 @@
     async function authenticateMatrix(username, matrixUserId, password) {
         console.log('[Office1789-SSO] Tentative d\'authentification pour:', matrixUserId);
 
+        // Récupérer le device_id existant s'il y en a un
+        const existingDeviceId = localStorage.getItem('mx_device_id');
+
         try {
+            const loginPayload = {
+                type: 'm.login.password',
+                user: matrixUserId,
+                password: password,
+                initial_device_display_name: 'Office1789 SSO'
+            };
+
+            // Si un device_id existe, le réutiliser pour éviter de créer une nouvelle session
+            if (existingDeviceId) {
+                loginPayload.device_id = existingDeviceId;
+                console.log('[Office1789-SSO] Réutilisation du device_id existant:', existingDeviceId);
+            }
+
             const response = await fetch('http://localhost:8008/_matrix/client/r0/login', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    type: 'm.login.password',
-                    user: matrixUserId,
-                    password: password,
-                    initial_device_display_name: 'Office1789 SSO'
-                })
+                body: JSON.stringify(loginPayload)
             });
 
             if (response.ok) {
@@ -128,12 +139,15 @@
 
         console.log('[Office1789-SSO] Traitement du token SSO');
 
-        // Vérifier si déjà authentifié - si oui, rediriger directement sans nouvelle auth
+        // Vérifier si déjà authentifié - si oui, NE RIEN FAIRE et laisser Element charger normalement
         const existingToken = localStorage.getItem('mx_access_token');
         if (existingToken) {
-            console.log('[Office1789-SSO] Session Matrix existante détectée, redirection directe');
-            window.location.href = '/';
-            return;
+            console.log('[Office1789-SSO] Session Matrix existante détectée, Element va se charger normalement');
+            // Nettoyer le token SSO de l'URL sans recharger
+            const url = new URL(window.location);
+            url.searchParams.delete('sso_token');
+            window.history.replaceState({}, '', url);
+            return; // Laisser Element continuer son chargement normal
         }
 
         // Réafficher le body pour montrer le message de chargement
