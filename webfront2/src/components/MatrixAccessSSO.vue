@@ -65,25 +65,19 @@ const openMatrix = async () => {
     return
   }
 
-  // Vérifier si une fenêtre Element est déjà ouverte et authentifiée
-  // En ouvrant directement sans nouveau token si déjà connecté récemment
-  const lastMatrixAuth = localStorage.getItem('office1789_matrix_auth')
-  const lastAuthTime = lastMatrixAuth ? parseInt(lastMatrixAuth) : 0
-  const timeSinceAuth = Date.now() - lastAuthTime
-  const hasMatrixToken = localStorage.getItem('mx_access_token')
-  
-  // Si authentifié il y a moins de 5 minutes ET a un token Matrix valide, ouvrir directement Element
-  if (timeSinceAuth < 300000 && hasMatrixToken) { // 5 minutes
-    console.log('[Matrix SSO] Session récente détectée, ouverture directe')
-    window.open('http://localhost:8083/', '_blank', 'noopener,noreferrer')
+  // Empêcher les clics multiples pendant le chargement
+  if (isLoadingMatrix.value) {
+    console.log('[Matrix SSO] ⚠️ Requête déjà en cours, ignoré')
     return
   }
 
+  // Toujours générer un token SSO - le script Element gérera la session existante
+  // Ceci permet de sécuriser l'accès même si l'utilisateur a déjà une session
   isLoadingMatrix.value = true
   error.value = ''
 
   try {
-    console.log(`[Matrix SSO] 📡 Génération nouveau token SSO - Username: ${store.username}`)
+    console.log(`[Matrix SSO] 📡 Génération token SSO - Username: ${store.username}`)
     
     const response = await fetch(`${import.meta.env.VITE_APP_API}/api/matrix/sso`, {
       method: 'POST',
@@ -100,9 +94,6 @@ const openMatrix = async () => {
       const data = await response.json()
       console.log('[Matrix SSO] ✅ Token généré - Ouverture Element')
       
-      // Enregistrer le timestamp de l'authentification
-      localStorage.setItem('office1789_matrix_auth', Date.now().toString())
-      
       window.open(data.url, '_blank', 'noopener,noreferrer')
     } else {
       const data = await response.json()
@@ -113,7 +104,10 @@ const openMatrix = async () => {
     console.error('[Matrix SSO] ⚠️ Erreur réseau:', err)
     error.value = 'Impossible de se connecter au serveur'
   } finally {
-    isLoadingMatrix.value = false
+    // Attendre 2 secondes avant de permettre un nouveau clic
+    setTimeout(() => {
+      isLoadingMatrix.value = false
+    }, 2000)
   }
 }
 </script>

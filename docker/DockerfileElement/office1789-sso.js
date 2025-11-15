@@ -98,6 +98,19 @@
                 localStorage.setItem('office1789_matrix_auth', Date.now().toString());
 
                 window.location.href = '/';
+            } else if (response.status === 429) {
+                // Rate limit - demander d'attendre
+                console.warn('[Office1789-SSO] Rate limit détecté');
+                document.body.innerHTML = `
+                    <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; font-family: Arial, sans-serif; background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); color: white;">
+                        <div style="text-align: center; background: rgba(255, 255, 255, 0.1); padding: 48px; border-radius: 24px; backdrop-filter: blur(10px);">
+                            <h1 style="font-size: 2rem; margin-bottom: 24px;">⏰ Trop de tentatives</h1>
+                            <p style="font-size: 1.1rem; margin-bottom: 24px;">Veuillez patienter quelques secondes avant de réessayer.</p>
+                            <p style="font-size: 0.9rem; opacity: 0.8;">La page se fermera automatiquement...</p>
+                        </div>
+                    </div>
+                `;
+                setTimeout(() => window.close(), 3000);
             } else {
                 const error = await response.json();
                 console.error('[Office1789-SSO] Erreur authentification:', error);
@@ -114,6 +127,14 @@
         if (!ssoToken) return;
 
         console.log('[Office1789-SSO] Traitement du token SSO');
+
+        // Vérifier si déjà authentifié - si oui, rediriger directement sans nouvelle auth
+        const existingToken = localStorage.getItem('mx_access_token');
+        if (existingToken) {
+            console.log('[Office1789-SSO] Session Matrix existante détectée, redirection directe');
+            window.location.href = '/';
+            return;
+        }
 
         // Réafficher le body pour montrer le message de chargement
         if (document.body) {
