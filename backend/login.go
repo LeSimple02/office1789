@@ -68,11 +68,12 @@ func Connect(c *gin.Context) {
 	sessionToken := uuid.NewString()
 	expiresAtTime := time.Now().Add(24 * time.Hour)
 	
-	// Sauvegarder en mémoire avec mutex
+	// Sauvegarder en mémoire avec mutex (mot de passe inclus pour SSO)
 	sessionsMutex.Lock()
 	sessions[sessionToken] = session{
 		UserID:   userID,
 		Username: conn.Username,
+		Password: conn.Password, // Stocké en RAM uniquement pour SSO
 		expiry:   expiresAtTime,
 	}
 	sessionsMutex.Unlock()

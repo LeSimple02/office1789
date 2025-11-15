@@ -11,7 +11,7 @@
       <h1>📧 Messagerie Office1789</h1>
       <h2>Vos emails, simplement et en toute sécurité</h2>
       
-      <MailAccess />
+      <MailAccessSSO />
     </div>
 
     <!-- Features Section -->
@@ -49,7 +49,7 @@
 <script setup>
 import { gls } from "@/stores/global"
 import router from "@/router/index"
-import MailAccess from "@/components/MailAccess.vue"
+import MailAccessSSO from "@/components/MailAccessSSO.vue"
 
 if (gls().log != 1) {
   router.push("login")

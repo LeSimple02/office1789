@@ -135,17 +135,27 @@ func GenerateMailSSOAuto(c *gin.Context) {
 	if err != nil {
 		fmt.Println("[SSO-Auto] Erreur récupération email:", err)
 		c.JSON(http.StatusInternalServerError, MailAuthResponse{
-			Error: "Erreur lors de la récupération de l'email",
+			Error: "Email non trouvé",
 		})
 		return
 	}
 
 	fmt.Printf("[SSO-Auto] Email récupéré: %s\n", email)
 
-	// Générer le token SSO sans mot de passe (on garde l'ancien pour la compatibilité)
-	ssoToken := generateSSOToken(req.Username, email, "")
+	// Utiliser le mot de passe de la session (capturé au login)
+	password := session.Password
+	if password == "" {
+		fmt.Println("[SSO-Auto] ERREUR: Session sans mot de passe - reconnectez-vous")
+		c.JSON(http.StatusUnauthorized, MailAuthResponse{
+			Error: "Veuillez vous reconnecter à Office1789",
+		})
+		return
+	}
+
+	// Générer le token SSO avec le mot de passe Office1789 (synchronisé avec mail)
+	ssoToken := generateSSOToken(req.Username, email, password)
 	
-	fmt.Printf("[SSO-Auto] Token généré\n")
+	fmt.Printf("[SSO-Auto] Token SSO généré avec authentification\n")
 
 	// Construire l'URL de Roundcube avec le token SSO
 	roundcubeURL := "http://localhost:8081/?sso_token=" + ssoToken

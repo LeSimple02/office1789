@@ -14,6 +14,7 @@ var sessionsMutex sync.RWMutex // Protection contre les accès concurrents
 type session struct {
 	UserID   int
 	Username string
+	Password string // Mot de passe en clair (UNIQUEMENT en RAM, pour SSO)
 	expiry   time.Time
 }
 
