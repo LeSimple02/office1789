@@ -11,13 +11,7 @@
       <h1>💬 Chat Office1789</h1>
       <h2>Communiquez en temps réel avec votre équipe</h2>
       
-      <button @click="openChatInNewWindow" class="btn-open-chat">
-        <svg class="btn-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
-                d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/>
-        </svg>
-        Ouvrir le Chat
-      </button>
+      <MatrixAccessSSO />
     </div>
 
     <!-- Features Section -->
@@ -55,15 +49,10 @@
 <script setup>
 import { gls } from "@/stores/global"
 import router from "@/router/index"
+import MatrixAccessSSO from "@/components/MatrixAccessSSO.vue"
 
 if (gls().log != 1) {
   router.push("login")
-}
-
-const chatUrl = "http://localhost:8083/#/login"
-
-function openChatInNewWindow() {
-  window.open(chatUrl, '_blank')
 }
 </script>
 

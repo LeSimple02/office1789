@@ -161,17 +161,16 @@ services:
     networks:
       - office_network
 
-  # Element Web (Matrix client)
+  # Element Web (Matrix client) - avec Office1789 SSO
   element:
-    image: vectorim/element-web:latest
+    build:
+      context: ./DockerfileElement
+      dockerfile: Dockerfile
     container_name: element
     ports:
       - "8083:80"
     depends_on:
       - synapse
-    volumes:
-      # Mount only config.json file (directory exists at ./element/config.json/config.json)
-      - ./element/config.json/config.json:/app/config.json:ro
     networks:
       - office_network
 
