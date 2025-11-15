@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -139,8 +140,8 @@ func GenerateMailSSOAuto(c *gin.Context) {
 	fmt.Printf("[SSO-Auto] ✅ Session valide - UserID: %d\n", session.UserID)
 
 	// Récupérer l'email ET le password depuis la table Users (source unique de vérité)
-	var email, mailPassword string
-	err := db.QueryRow("SELECT email, COALESCE(mail_password, '') FROM users WHERE user_id=$1", session.UserID).Scan(&email, &mailPassword)
+	var email, encryptedPassword string
+	err := db.QueryRow("SELECT email, COALESCE(mail_password, '') FROM users WHERE user_id=$1", session.UserID).Scan(&email, &encryptedPassword)
 	if err != nil {
 		fmt.Printf("[SSO-Auto] ❌ Erreur récupération email: %v\n", err)
 		c.JSON(http.StatusInternalServerError, MailAuthResponse{
@@ -149,16 +150,36 @@ func GenerateMailSSOAuto(c *gin.Context) {
 		return
 	}
 
-	fmt.Printf("[SSO-Auto] 📧 Email récupéré: %s, password présent: %v\n", email, mailPassword != "")
+	// Si email vide, construire à partir du username
+	if strings.TrimSpace(email) == "" {
+		email = req.Username + "@office1789.com"
+		fmt.Printf("[SSO-Auto] 📧 Email auto-construit: %s\n", email)
+	} else {
+		fmt.Printf("[SSO-Auto] 📧 Email récupéré: %s, password chiffré présent: %v\n", email, encryptedPassword != "")
+	}
 
 	// Vérifier que le password mail existe
-	if mailPassword == "" {
-		fmt.Println("[SSO-Auto] ❌ ERREUR: mail_password vide en DB")
-		c.JSON(http.StatusInternalServerError, MailAuthResponse{
-			Error: "Configuration mail manquante",
+	// Gestion migration : mail_password NULL ou ancien hash bcrypt
+	if encryptedPassword == "" {
+		fmt.Printf("[SSO-Auto] ⚠️ mail_password NULL pour %s - Migration nécessaire\n", req.Username)
+		c.JSON(http.StatusPreconditionFailed, MailAuthResponse{
+			Error: "Votre compte nécessite une migration. Veuillez changer votre mot de passe dans 'Mon compte' pour activer l'accès Mail/Matrix.",
 		})
 		return
 	}
+
+	// Déchiffrer le mot de passe (AES-256-GCM)
+	fmt.Printf("[SSO-Auto] 🔓 Déchiffrement pour %s (len=%d): %s...\n", req.Username, len(encryptedPassword), encryptedPassword[:20])
+	mailPassword, err := DecryptPassword(encryptedPassword)
+	if err != nil {
+		// Si déchiffrement échoue = ancien hash bcrypt non migré
+		fmt.Printf("[SSO-Auto] ❌ Erreur déchiffrement pour %s: %v\n", req.Username, err)
+		c.JSON(http.StatusPreconditionFailed, MailAuthResponse{
+			Error: "Votre compte utilise l'ancien système. Changez votre mot de passe dans 'Mon compte' pour réactiver Mail/Matrix.",
+		})
+		return
+	}
+	fmt.Printf("[SSO-Auto] ✅ Mot de passe déchiffré avec succès pour %s\n", req.Username)
 
 	// Générer le token SSO avec le mot de passe mail (synchronisé avec Office1789)
 	ssoToken := generateSSOToken(req.Username, email, mailPassword)

@@ -131,13 +131,26 @@ func Sub(c *gin.Context) {
 		return
 	}
 
+	// Construire l'email si vide : username@office1789.com
+	if strings.TrimSpace(subi.Email) == "" {
+		subi.Email = subi.Username + "@office1789.com"
+		fmt.Printf("[Subscribe] 📧 Email auto-construit: %s\n", subi.Email)
+	}
+
 	// Garder le mot de passe en clair pour créer les comptes mail/Matrix
 	plainPassword := subi.Password
 	subi.Password = HashPassword(subi.Password)
 
+	// Chiffrer le mot de passe pour mail/Matrix (stockage sécurisé mais réversible)
+	encryptedMailPassword, err := EncryptPassword(plainPassword)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to encrypt password"})
+		return
+	}
+
 	var userID int
-	err := db.QueryRow("INSERT INTO Users (username, password_hash, email, phonenumber, nboffer, date_joined, last_login, domain) VALUES ($1, $2, $3, $4, $5, NOW(), NOW(), $6) RETURNING user_id", 
-		subi.Username, subi.Password, subi.Email, subi.PhoneNumber, subi.Nboffer, "@office1789").Scan(&userID)
+	err = db.QueryRow("INSERT INTO Users (username, password_hash, email, phonenumber, nboffer, date_joined, last_login, domain, mail_password) VALUES ($1, $2, $3, $4, $5, NOW(), NOW(), $6, $7) RETURNING user_id", 
+		subi.Username, subi.Password, subi.Email, subi.PhoneNumber, subi.Nboffer, "@office1789", encryptedMailPassword).Scan(&userID)
 
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create user"})

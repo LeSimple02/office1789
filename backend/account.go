@@ -121,7 +121,24 @@ func ChangeI(c *gin.Context) {
 	// Changement de mot de passe synchronisé (Office1789 + Mail + Matrix)
 	if cha.Password != "" {
 		newHash := HashPassword(cha.Password)
-		db.Exec("UPDATE Users SET password_hash=$1 WHERE user_id=$2", newHash, sess.UserID)
+		
+		// Chiffrer le mot de passe pour mail/Matrix
+		fmt.Printf("DEBUG ChangeI - 🔐 Chiffrement du nouveau mot de passe pour user_id=%d\n", sess.UserID)
+		encryptedPassword, err := EncryptPassword(cha.Password)
+		if err != nil {
+			fmt.Printf("DEBUG ChangeI - ❌ ERREUR CHIFFREMENT: %v\n", err)
+			c.JSON(http.StatusInternalServerError, vInfo{
+				Username: "error",
+				Email:    "error",
+				Phone:    "error",
+			})
+			return
+		}
+		fmt.Printf("DEBUG ChangeI - ✅ Mot de passe chiffré (len=%d)\n", len(encryptedPassword))
+		
+		// UPDATE avec mail_password chiffré
+		db.Exec("UPDATE Users SET password_hash=$1, mail_password=$2 WHERE user_id=$3", 
+			newHash, encryptedPassword, sess.UserID)
 		fmt.Printf("DEBUG ChangeI - Password changed for user %s\n", cha.LastUsername)
 		
 		// Synchroniser avec Mail (asynchrone)
@@ -396,7 +413,23 @@ func ChangePassword(c *gin.Context) {
 	
 	// 1. Changer le mot de passe Office1789 (DB PostgreSQL)
 	newHash := HashPassword(req.NewPassword)
-	_, err = db.Exec("UPDATE Users SET password_hash=$1 WHERE user_id=$2", newHash, session.UserID)
+	
+	// 1b. Chiffrer aussi le nouveau mot de passe pour mail/Matrix
+	fmt.Printf("[ChangePassword] 🔐 Chiffrement du nouveau mot de passe pour user_id=%d\n", session.UserID)
+	encryptedPassword, err := EncryptPassword(req.NewPassword)
+	if err != nil {
+		fmt.Printf("[ChangePassword] ❌ ERREUR CHIFFREMENT: %v\n", err)
+		c.JSON(http.StatusInternalServerError, ChangePasswordResponse{
+			Success: false,
+			Message: "Failed to encrypt password",
+		})
+		return
+	}
+	fmt.Printf("[ChangePassword] ✅ Mot de passe chiffré (len=%d): %s...\n", len(encryptedPassword), encryptedPassword[:20])
+	
+	fmt.Printf("[ChangePassword] 📝 UPDATE Users SET mail_password pour user_id=%d\n", session.UserID)
+	_, err = db.Exec("UPDATE Users SET password_hash=$1, mail_password=$2 WHERE user_id=$3", 
+		newHash, encryptedPassword, session.UserID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, ChangePasswordResponse{
 			Success: false,

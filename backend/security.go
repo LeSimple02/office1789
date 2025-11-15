@@ -1,6 +1,13 @@
 package main
 
 import (
+	"crypto/aes"
+	"crypto/cipher"
+	"crypto/rand"
+	"encoding/base64"
+	"errors"
+	"io"
+	
 	"golang.org/x/crypto/bcrypt"
 	"sync"
 	"time"
@@ -125,3 +132,59 @@ func CheckPasswordHash(password, hash string) bool {
 	return err == nil
 }
 
+// ============ CHIFFREMENT AES-256 POUR MAIL PASSWORD ============
+
+// Clé secrète AES (32 bytes = 256 bits) - À CHANGER EN PRODUCTION
+const AES_SECRET_KEY = "Office1789-AES-32BytesSecretKey!"
+
+// EncryptPassword chiffre un mot de passe avec AES-256-GCM
+func EncryptPassword(plaintext string) (string, error) {
+	block, err := aes.NewCipher([]byte(AES_SECRET_KEY))
+	if err != nil {
+		return "", err
+	}
+
+	gcm, err := cipher.NewGCM(block)
+	if err != nil {
+		return "", err
+	}
+
+	nonce := make([]byte, gcm.NonceSize())
+	if _, err := io.ReadFull(rand.Reader, nonce); err != nil {
+		return "", err
+	}
+
+	ciphertext := gcm.Seal(nonce, nonce, []byte(plaintext), nil)
+	return base64.StdEncoding.EncodeToString(ciphertext), nil
+}
+
+// DecryptPassword déchiffre un mot de passe chiffré avec AES-256-GCM
+func DecryptPassword(encrypted string) (string, error) {
+	ciphertext, err := base64.StdEncoding.DecodeString(encrypted)
+	if err != nil {
+		return "", err
+	}
+
+	block, err := aes.NewCipher([]byte(AES_SECRET_KEY))
+	if err != nil {
+		return "", err
+	}
+
+	gcm, err := cipher.NewGCM(block)
+	if err != nil {
+		return "", err
+	}
+
+	nonceSize := gcm.NonceSize()
+	if len(ciphertext) < nonceSize {
+		return "", errors.New("ciphertext too short")
+	}
+
+	nonce, ciphertext := ciphertext[:nonceSize], ciphertext[nonceSize:]
+	plaintext, err := gcm.Open(nil, nonce, ciphertext, nil)
+	if err != nil {
+		return "", err
+	}
+
+	return string(plaintext), nil
+}

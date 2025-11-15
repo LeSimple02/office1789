@@ -38,20 +38,34 @@ func GenerateMatrixSSOAuto(c *gin.Context) {
 	fmt.Printf("[Matrix-SSO] Session valide - UserID: %d\n", session.UserID)
 
 	// Récupérer le password depuis la table Users (source unique de vérité)
-	var userPassword string
-	err := db.QueryRow("SELECT COALESCE(mail_password, '') FROM users WHERE user_id=$1", session.UserID).Scan(&userPassword)
+	var encryptedPassword string
+	err := db.QueryRow("SELECT COALESCE(mail_password, '') FROM users WHERE user_id=$1", session.UserID).Scan(&encryptedPassword)
 	if err != nil {
 		fmt.Printf("[Matrix-SSO] ❌ Erreur récupération password: %v\n", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Erreur serveur"})
 		return
 	}
 
-	fmt.Printf("[Matrix-SSO] 🔑 Password récupéré depuis DB, présent: %v\n", userPassword != "")
+	fmt.Printf("[Matrix-SSO] 🔑 Password chiffré récupéré depuis DB, présent: %v\n", encryptedPassword != "")
 
 	// Vérifier que le password existe
-	if userPassword == "" {
-		fmt.Println("[Matrix-SSO] ❌ ERREUR: mail_password vide en DB")
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Configuration manquante"})
+	// Gestion migration : mail_password NULL ou ancien hash bcrypt
+	if encryptedPassword == "" {
+		fmt.Printf("[Matrix-SSO] ⚠️ mail_password NULL pour %s - Migration nécessaire\n", req.Username)
+		c.JSON(http.StatusPreconditionFailed, gin.H{
+			"error": "Votre compte nécessite une migration. Veuillez changer votre mot de passe dans 'Mon compte' pour activer l'accès Mail/Matrix.",
+		})
+		return
+	}
+
+	// Déchiffrer le mot de passe (AES-256-GCM)
+	userPassword, err := DecryptPassword(encryptedPassword)
+	if err != nil {
+		// Si déchiffrement échoue = ancien hash bcrypt non migré
+		fmt.Printf("[Matrix-SSO] ⚠️ Déchiffrement impossible pour %s - Ancien hash détecté\n", req.Username)
+		c.JSON(http.StatusPreconditionFailed, gin.H{
+			"error": "Votre compte utilise l'ancien système. Changez votre mot de passe dans 'Mon compte' pour réactiver Mail/Matrix.",
+		})
 		return
 	}
 
