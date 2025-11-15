@@ -19,17 +19,28 @@ type ChangeIn struct {
 	Username     string `json:"username"`
 	LastUsername string `json:"lastusername"`
 	Password     string `json:"password"`
-	Email        string `json:"email"`
+	Email        string `json:"email"` // Email de récupération
 	Domain       string `json:"domain"`
 	PhoneNumber  string `json:"phonenumber"`
 	Nboffer      int    `json:"nboffer"`
 	Token        string `json:"token"`
 }
 
+type UserProfile struct {
+	Username      string `json:"username"`
+	Domain        string `json:"Domain"`
+	Email         string `json:"Email"`         // Email de récupération (recovery_email)
+	RecoveryEmail string `json:"RecoveryEmail"` // Alias pour clarté
+	PhoneNumber   string `json:"PhoneNumber"`
+	Nboffer       int    `json:"Nboffer"`
+	DateJoined    string `json:"DateJoined"`
+	LastLogin     string `json:"LastLogin"`
+}
+
 func getinfop(c *gin.Context) {
 
 	var verif sessionVerify
-	var infop Subscribe
+	var infop UserProfile
 
 	c.ShouldBindJSON(&verif)
 
@@ -40,8 +51,9 @@ func getinfop(c *gin.Context) {
 		return
 	}
 
-	rows := db.QueryRow("SELECT domain, nboffer, date_joined, last_login, phonenumber, email FROM Users WHERE user_id=$1", session.UserID)
-	rows.Scan(&infop.Domain, &infop.Nboffer, &infop.DateJoined, &infop.LastLogin, &infop.PhoneNumber, &infop.Email)
+	rows := db.QueryRow("SELECT username, domain, nboffer, date_joined, last_login, phonenumber, COALESCE(recovery_email, '') FROM Users WHERE user_id=$1", session.UserID)
+	rows.Scan(&infop.Username, &infop.Domain, &infop.Nboffer, &infop.DateJoined, &infop.LastLogin, &infop.PhoneNumber, &infop.Email)
+	infop.RecoveryEmail = infop.Email // Copier Email et RecoveryEmail pour compatibilité frontend
 
 	c.JSON(http.StatusOK, infop)
 }
@@ -163,7 +175,7 @@ func ChangeI(c *gin.Context) {
 	}
 
 	if cha.Email != "" {
-		db.Exec("UPDATE Users SET email=$1 WHERE user_id=$2", cha.Email, sess.UserID)
+		db.Exec("UPDATE Users SET recovery_email=$1 WHERE user_id=$2", cha.Email, sess.UserID)
 	}
 	if cha.PhoneNumber != "" {
 		db.Exec("UPDATE Users SET phonenumber=$1 WHERE user_id=$2", cha.PhoneNumber, sess.UserID)
@@ -173,7 +185,9 @@ func ChangeI(c *gin.Context) {
 	usernameChanged := false
 	newUsername := cha.LastUsername
 	if strings.TrimSpace(cha.Username) != "" && cha.Username != cha.LastUsername {
-		db.Exec("UPDATE Users SET username=$1 WHERE user_id=$2", cha.Username, sess.UserID)
+		// Changer username ET mettre à jour email du compte mail
+		db.Exec("UPDATE Users SET username=$1, email=$2 WHERE user_id=$3", 
+			cha.Username, cha.Username+"@office1789.com", sess.UserID)
 		newUsername = cha.Username
 		usernameChanged = true
 	}

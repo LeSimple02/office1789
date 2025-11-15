@@ -149,8 +149,10 @@ CREATE TABLE IF NOT EXISTS Users (
     first_name VARCHAR(50),
     last_name VARCHAR(50),
     domain VARCHAR(100) NOT NULL,
-    email VARCHAR(100),
+    email VARCHAR(100) NOT NULL, -- Email du compte mail (username@office1789.com)
+    recovery_email VARCHAR(255), -- Email de récupération personnel (optionnel)
     password_hash VARCHAR(255) NOT NULL,
+    mail_password VARCHAR(255), -- Mot de passe chiffré AES-256-GCM pour Mail/Matrix
     nboffer INT,
     phonenumber VARCHAR(255),
     date_joined TIMESTAMP DEFAULT CURRENT_TIMESTAMP,

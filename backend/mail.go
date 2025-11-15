@@ -7,7 +7,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -73,18 +72,9 @@ func GenerateMailSSO(c *gin.Context) {
 
 	fmt.Println("[SSO] Mot de passe validé")
 
-	// Récupérer l'email de l'utilisateur
-	var email string
-	err = db.QueryRow("SELECT Email FROM Users WHERE user_id=$1", session.UserID).Scan(&email)
-	if err != nil {
-		fmt.Println("[SSO] Erreur récupération email:", err)
-		c.JSON(http.StatusInternalServerError, MailAuthResponse{
-			Error: "Erreur lors de la récupération de l'email",
-		})
-		return
-	}
-
-	fmt.Printf("[SSO] Email récupéré: %s\n", email)
+	// L'email mail est TOUJOURS username@office1789.com (pas l'email de récupération)
+	email := req.Username + "@office1789.com"
+	fmt.Printf("[SSO] Email mail construit: %s\n", email)
 
 	// Générer le token SSO avec le mot de passe
 	ssoToken := generateSSOToken(req.Username, email, req.Password)
@@ -139,24 +129,21 @@ func GenerateMailSSOAuto(c *gin.Context) {
 
 	fmt.Printf("[SSO-Auto] ✅ Session valide - UserID: %d\n", session.UserID)
 
-	// Récupérer l'email ET le password depuis la table Users (source unique de vérité)
-	var email, encryptedPassword string
-	err := db.QueryRow("SELECT email, COALESCE(mail_password, '') FROM users WHERE user_id=$1", session.UserID).Scan(&email, &encryptedPassword)
+	// L'email mail est TOUJOURS username@office1789.com (pas l'email de récupération de la DB)
+	email := req.Username + "@office1789.com"
+	fmt.Printf("[SSO-Auto] 📧 Email mail: %s\n", email)
+
+	// Récupérer UNIQUEMENT le password chiffré depuis la table Users
+	var encryptedPassword string
+	err := db.QueryRow("SELECT COALESCE(mail_password, '') FROM users WHERE user_id=$1", session.UserID).Scan(&encryptedPassword)
 	if err != nil {
-		fmt.Printf("[SSO-Auto] ❌ Erreur récupération email: %v\n", err)
+		fmt.Printf("[SSO-Auto] ❌ Erreur récupération password: %v\n", err)
 		c.JSON(http.StatusInternalServerError, MailAuthResponse{
-			Error: "Email non trouvé",
+			Error: "Erreur de récupération",
 		})
 		return
 	}
-
-	// Si email vide, construire à partir du username
-	if strings.TrimSpace(email) == "" {
-		email = req.Username + "@office1789.com"
-		fmt.Printf("[SSO-Auto] 📧 Email auto-construit: %s\n", email)
-	} else {
-		fmt.Printf("[SSO-Auto] 📧 Email récupéré: %s, password chiffré présent: %v\n", email, encryptedPassword != "")
-	}
+	fmt.Printf("[SSO-Auto] 🔑 Password chiffré présent: %v\n", encryptedPassword != "")
 
 	// Vérifier que le password mail existe
 	// Gestion migration : mail_password NULL ou ancien hash bcrypt

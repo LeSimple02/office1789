@@ -101,9 +101,9 @@ func Sub(c *gin.Context) {
 		}
 	}
 	
-	// Vérifier email
+	// Vérifier recovery_email (optionnel)
 	if strings.TrimSpace(subi.Email) != "" {
-		rows := db.QueryRow("SELECT count(*) FROM Users WHERE email=$1", subi.Email)
+		rows := db.QueryRow("SELECT count(*) FROM Users WHERE recovery_email=$1", subi.Email)
 		rows.Scan(&count)
 		if count > 0 {
 			infova.Email = "no"
@@ -131,11 +131,8 @@ func Sub(c *gin.Context) {
 		return
 	}
 
-	// Construire l'email si vide : username@office1789.com
-	if strings.TrimSpace(subi.Email) == "" {
-		subi.Email = subi.Username + "@office1789.com"
-		fmt.Printf("[Subscribe] 📧 Email auto-construit: %s\n", subi.Email)
-	}
+	// NOTE: subi.Email = email de récupération (optionnel, peut être vide ou différent)
+	// L'email du compte mail sera TOUJOURS username@office1789.com (construit côté SSO)
 
 	// Garder le mot de passe en clair pour créer les comptes mail/Matrix
 	plainPassword := subi.Password
@@ -148,9 +145,12 @@ func Sub(c *gin.Context) {
 		return
 	}
 
+	// Construire l'email du compte mail (toujours username@office1789.com)
+	mailAddress := subi.Username + "@office1789.com"
+	
 	var userID int
-	err = db.QueryRow("INSERT INTO Users (username, password_hash, email, phonenumber, nboffer, date_joined, last_login, domain, mail_password) VALUES ($1, $2, $3, $4, $5, NOW(), NOW(), $6, $7) RETURNING user_id", 
-		subi.Username, subi.Password, subi.Email, subi.PhoneNumber, subi.Nboffer, "@office1789", encryptedMailPassword).Scan(&userID)
+	err = db.QueryRow("INSERT INTO Users (username, password_hash, email, recovery_email, phonenumber, nboffer, date_joined, last_login, domain, mail_password) VALUES ($1, $2, $3, $4, $5, $6, NOW(), NOW(), $7, $8) RETURNING user_id", 
+		subi.Username, subi.Password, mailAddress, subi.Email, subi.PhoneNumber, subi.Nboffer, "@office1789", encryptedMailPassword).Scan(&userID)
 
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create user"})
