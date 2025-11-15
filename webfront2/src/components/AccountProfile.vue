@@ -157,14 +157,6 @@ const offerName = (num) => {
           </div>
         </div>
       </div>
-
-      <div class="security-section">
-        <h3 class="section-title">{{ $t('doble') || 'Two-Factor Auth' }}</h3>
-        <div class="security-item">
-          <span class="status-badge inactive">{{ $t('inactive') || 'Inactive' }}</span>
-          <button class="btn-link">{{ $t('configure') || 'Configure' }}</button>
-        </div>
-      </div>
     </section>
   </div>
 </template>
@@ -455,6 +447,101 @@ const offerName = (num) => {
 .dark .status-badge.inactive {
   background: #78350f;
   color: #fef3c7;
+}
+
+.activity-section {
+  padding: 32px;
+  background: rgba(245, 245, 247, 0.85);
+  border-radius: 24px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+}
+.dark .activity-section { 
+  background: #1C1C1E;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+}
+
+.activity-section .section-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.activity-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 20px;
+}
+
+.activity-card {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 20px;
+  background: #fff;
+  border-radius: 16px;
+  border: 1px solid rgba(0, 48, 143, 0.1);
+  transition: all 0.3s ease;
+}
+.dark .activity-card {
+  background: #2a2d3a;
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+.activity-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 16px rgba(0,0,0,0.1);
+}
+
+.activity-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: #fff;
+}
+
+.activity-icon.success {
+  background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+}
+
+.activity-icon.info {
+  background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+}
+
+.activity-content {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex: 1;
+}
+
+.activity-label {
+  font-size: 0.85rem;
+  color: #6c757d;
+  font-weight: 600;
+}
+.dark .activity-label { color: #9ca3af; }
+
+.activity-value {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #212529;
+}
+.dark .activity-value { color: #e5e7eb; }
+
+.activity-link {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #667eea;
+  text-decoration: none;
+  transition: color 0.3s ease;
+}
+.activity-link:hover {
+  color: #764ba2;
 }
 
 .btn-link {

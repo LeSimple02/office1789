@@ -33,6 +33,7 @@ type Connecti struct {
 	Username  string `json:"username"`
 	Password  string `json:"password"`
 	LastLogin string `json:"lastlogin"`
+	TOTPCode  string `json:"totp_code"` // For 2FA authentication
 }
 
 // Créer un compte mail dans le mailserver

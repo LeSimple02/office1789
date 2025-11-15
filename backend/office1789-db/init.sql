@@ -275,3 +275,16 @@ CREATE TABLE IF NOT EXISTS sessions (
 CREATE INDEX IF NOT EXISTS idx_sessions_expiry ON sessions(expiry);
 CREATE INDEX IF NOT EXISTS idx_sessions_user_id ON sessions(user_id);
 CREATE INDEX IF NOT EXISTS idx_sessions_username ON sessions(username);
+
+-- Table for storing user 2FA/TOTP settings
+CREATE TABLE IF NOT EXISTS user_totp (
+    user_id INT PRIMARY KEY,
+    secret VARCHAR(255) NOT NULL,
+    enabled BOOLEAN DEFAULT FALSE,
+    backup_codes TEXT[], -- Array of backup codes (hashed)
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    last_used TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES Users(user_id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_user_totp_enabled ON user_totp(enabled);

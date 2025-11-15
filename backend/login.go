@@ -41,6 +41,26 @@ func Connect(c *gin.Context) {
 		return
 	}
 
+	// Check if 2FA is enabled for this user
+	if Check2FARequired(userID) {
+		// 2FA is required - check if TOTP code provided
+		if conn.TOTPCode == "" {
+			// Return special response indicating 2FA is required
+			c.JSON(http.StatusOK, gin.H{
+				"require_2fa": true,
+				"user_id":     userID,
+				"username":    conn.Username,
+			})
+			return
+		}
+
+		// Validate TOTP code
+		if !ValidateTOTPLogin(userID, conn.TOTPCode) {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "Code 2FA invalide"})
+			return
+		}
+	}
+
 	// Nettoyer les anciennes sessions expirées
 	cleanExpiredSessions()
 	

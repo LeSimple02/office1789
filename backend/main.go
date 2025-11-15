@@ -69,5 +69,12 @@ func main() {
 	r.POST("/api/calendar/events/create", CreateCalendarEvent)
 	r.POST("/api/calendar/events/delete", DeleteCalendarEvent)
 
+	// 2FA/TOTP routes
+	r.POST("/api/2fa/status", Get2FAStatus)
+	r.POST("/api/2fa/enable", Enable2FA)
+	r.POST("/api/2fa/verify", Verify2FA)
+	r.POST("/api/2fa/disable", Disable2FA)
+	r.POST("/api/2fa/backup-codes", RegenerateBackupCodes)
+
 	r.Run(":8080")
 }

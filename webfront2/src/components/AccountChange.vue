@@ -34,6 +34,39 @@ let showDeleteModal = ref(false)
 let deleteConfirm = ref('')
 let deleting = ref(false)
 
+// 2FA/TOTP variables
+let twoFactorEnabled = ref(false)
+let loading2FA = ref(true)
+let showEnableModal = ref(false)
+let showBackupCodesModal = ref(false)
+let showDisableModal = ref(false)
+let qrCodeImage = ref('')
+let totpSecret = ref('')
+let backupCodes = ref([])
+let verifyCode = ref('')
+let disablePassword = ref('')
+let enabling2FA = ref(false)
+let verifying2FA = ref(false)
+let disabling2FA = ref(false)
+let regeneratingCodes = ref(false)
+
+// Load 2FA status
+fetch(`${import.meta.env.VITE_APP_API}/api/2fa/status`, {
+  method: 'POST',
+  mode: 'cors',
+  credentials: 'include',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({ username: gls().username, token: gls().sessionT })
+})
+  .then(r => r.json())
+  .then(data => {
+    twoFactorEnabled.value = data.enabled || false
+    loading2FA.value = false
+  })
+  .catch(() => {
+    loading2FA.value = false
+  })
+
 // Récupère les infos utilisateur
 fetch(import.meta.env.VITE_APP_API_INFO_USER, {
   method: "POST",
@@ -158,6 +191,134 @@ function togglePassword1() {
 }
 function togglePassword2() {
   passwordt2.value = (passwordt2.value === "password") ? "text" : "password"
+}
+
+// 2FA Functions
+async function enable2FA() {
+  enabling2FA.value = true
+  try {
+    const response = await fetch(`${import.meta.env.VITE_APP_API}/api/2fa/enable`, {
+      method: 'POST',
+      mode: 'cors',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username: gls().username, token: gls().sessionT })
+    })
+    const data = await response.json()
+    if (response.ok) {
+      qrCodeImage.value = data.qr_code
+      totpSecret.value = data.secret
+      backupCodes.value = data.backup_codes
+      showEnableModal.value = true
+    }
+  } catch (error) {
+    console.error('Erreur activation 2FA:', error)
+  } finally {
+    enabling2FA.value = false
+  }
+}
+
+async function verify2FA() {
+  if (!verifyCode.value || verifyCode.value.length !== 6) {
+    return
+  }
+  
+  verifying2FA.value = true
+  try {
+    const response = await fetch(`${import.meta.env.VITE_APP_API}/api/2fa/verify`, {
+      method: 'POST',
+      mode: 'cors',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ 
+        username: gls().username, 
+        token: gls().sessionT,
+        code: verifyCode.value 
+      })
+    })
+    
+    if (response.ok) {
+      twoFactorEnabled.value = true
+      showEnableModal.value = false
+      showBackupCodesModal.value = true
+      verifyCode.value = ''
+    } else {
+      alert('Code invalide. Vérifiez votre authenticator.')
+    }
+  } catch (error) {
+    console.error('Erreur vérification 2FA:', error)
+  } finally {
+    verifying2FA.value = false
+  }
+}
+
+async function disable2FA() {
+  if (!disablePassword.value) {
+    return
+  }
+  
+  disabling2FA.value = true
+  try {
+    const response = await fetch(`${import.meta.env.VITE_APP_API}/api/2fa/disable`, {
+      method: 'POST',
+      mode: 'cors',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ 
+        username: gls().username, 
+        token: gls().sessionT,
+        password: disablePassword.value 
+      })
+    })
+    
+    if (response.ok) {
+      twoFactorEnabled.value = false
+      showDisableModal.value = false
+      disablePassword.value = ''
+    } else {
+      alert('Mot de passe incorrect')
+    }
+  } catch (error) {
+    console.error('Erreur désactivation 2FA:', error)
+  } finally {
+    disabling2FA.value = false
+  }
+}
+
+async function regenerateBackupCodes() {
+  regeneratingCodes.value = true
+  try {
+    const response = await fetch(`${import.meta.env.VITE_APP_API}/api/2fa/backup-codes`, {
+      method: 'POST',
+      mode: 'cors',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username: gls().username, token: gls().sessionT })
+    })
+    const data = await response.json()
+    if (response.ok) {
+      backupCodes.value = data.backup_codes
+      showBackupCodesModal.value = true
+    }
+  } catch (error) {
+    console.error('Erreur génération codes de secours:', error)
+  } finally {
+    regeneratingCodes.value = false
+  }
+}
+
+function copyBackupCodes() {
+  const text = backupCodes.value.join('\n')
+  navigator.clipboard.writeText(text).then(() => {
+    alert('Codes de secours copiés!')
+  })
+}
+
+function closeEnableModal() {
+  showEnableModal.value = false
+  verifyCode.value = ''
+  qrCodeImage.value = ''
+  totpSecret.value = ''
 }
 </script>
 
@@ -321,6 +482,71 @@ function togglePassword2() {
         </RouterLink>
       </div>
 
+      <!-- Authentication Section -->
+      <div class="auth-zone">
+        <h3 class="auth-title">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+            <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+          </svg>
+          Authentification
+        </h3>
+        <p class="auth-subtitle">Sécurisez votre compte avec l'authentification à deux facteurs</p>
+
+        <div v-if="loading2FA" style="text-align: center; padding: 20px;">
+          <div class="spinner"></div>
+        </div>
+
+        <div v-else class="two-factor-content">
+          <div v-if="twoFactorEnabled" class="status-enabled">
+            <div class="status-badge success">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="20 6 9 17 4 12"></polyline>
+              </svg>
+              2FA Activé
+            </div>
+            <p class="status-text">Votre compte est protégé par l'authentification à deux facteurs.</p>
+            <div class="actions">
+              <button type="button" class="btn secondary" @click="regenerateBackupCodes" :disabled="regeneratingCodes">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <polyline points="23 4 23 10 17 10"></polyline>
+                  <polyline points="1 20 1 14 7 14"></polyline>
+                  <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+                </svg>
+                Régénérer codes de secours
+              </button>
+              <button type="button" class="btn danger" @click="showDisableModal = true">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <circle cx="12" cy="12" r="10"></circle>
+                  <line x1="15" y1="9" x2="9" y2="15"></line>
+                  <line x1="9" y1="9" x2="15" y2="15"></line>
+                </svg>
+                Désactiver 2FA
+              </button>
+            </div>
+          </div>
+
+          <div v-else class="status-disabled">
+            <div class="status-badge warning">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+                <line x1="12" y1="9" x2="12" y2="13"></line>
+                <line x1="12" y1="17" x2="12.01" y2="17"></line>
+              </svg>
+              2FA Désactivé
+            </div>
+            <p class="status-text">Protégez votre compte avec l'authentification à deux facteurs.</p>
+            <button type="button" class="btn primary" @click="enable2FA" :disabled="enabling2FA">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+              </svg>
+              {{ enabling2FA ? 'Activation...' : 'Activer 2FA' }}
+            </button>
+          </div>
+        </div>
+      </div>
+
       <!-- Danger Zone -->
       <div class="danger-zone">
         <h3 class="danger-title">
@@ -345,6 +571,165 @@ function togglePassword2() {
         </div>
       </div>
     </section>
+
+    <!-- Enable 2FA Modal -->
+    <Teleport to="body">
+      <div v-if="showEnableModal" class="modal-overlay" @click="closeEnableModal">
+        <div class="modal large" @click.stop>
+          <div class="modal-header">
+            <h2 class="modal-title">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+              </svg>
+              Activer l'authentification à deux facteurs
+            </h2>
+            <button class="modal-close" @click="closeEnableModal">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="18" y1="6" x2="6" y2="18"></line>
+                <line x1="6" y1="6" x2="18" y2="18"></line>
+              </svg>
+            </button>
+          </div>
+          <div class="modal-body">
+            <div class="setup-steps">
+              <div class="step">
+                <h3>Étape 1 : Scannez le QR Code</h3>
+                <p>Utilisez une application d'authentification comme Google Authenticator, Authy, ou Microsoft Authenticator.</p>
+                <div class="qr-container">
+                  <img :src="'data:image/png;base64,' + qrCodeImage" alt="QR Code" class="qr-code" />
+                </div>
+                <p class="secret-label">Ou entrez manuellement ce secret :</p>
+                <code class="secret-code">{{ totpSecret }}</code>
+              </div>
+              
+              <div class="step">
+                <h3>Étape 2 : Entrez le code de vérification</h3>
+                <p>Entrez le code à 6 chiffres affiché dans votre application.</p>
+                <input 
+                  v-model="verifyCode" 
+                  type="text" 
+                  maxlength="6" 
+                  placeholder="000000" 
+                  class="input code-input"
+                  @input="verifyCode = verifyCode.replace(/[^0-9]/g, '')"
+                />
+              </div>
+            </div>
+          </div>
+          <div class="modal-actions">
+            <button type="button" class="btn ghost" @click="closeEnableModal" :disabled="verifying2FA">
+              Annuler
+            </button>
+            <button 
+              type="button" 
+              class="btn primary" 
+              @click="verify2FA" 
+              :disabled="verifyCode.length !== 6 || verifying2FA"
+            >
+              <div v-if="verifying2FA" class="btn-spinner"></div>
+              {{ verifying2FA ? 'Vérification...' : 'Vérifier et activer' }}
+            </button>
+          </div>
+        </div>
+      </div>
+    </Teleport>
+
+    <!-- Backup Codes Modal -->
+    <Teleport to="body">
+      <div v-if="showBackupCodesModal" class="modal-overlay" @click="showBackupCodesModal = false">
+        <div class="modal" @click.stop>
+          <div class="modal-header">
+            <h2 class="modal-title">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="20 6 9 17 4 12"></polyline>
+              </svg>
+              Codes de secours
+            </h2>
+            <button class="modal-close" @click="showBackupCodesModal = false">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="18" y1="6" x2="6" y2="18"></line>
+                <line x1="6" y1="6" x2="18" y2="18"></line>
+              </svg>
+            </button>
+          </div>
+          <div class="modal-body">
+            <div class="warning-box">
+              <strong>⚠️ Important :</strong>
+              <p>Conservez ces codes dans un endroit sûr. Chaque code ne peut être utilisé qu'une seule fois.</p>
+            </div>
+            <div class="backup-codes-grid">
+              <code v-for="(code, index) in backupCodes" :key="index" class="backup-code">
+                {{ code }}
+              </code>
+            </div>
+          </div>
+          <div class="modal-actions">
+            <button type="button" class="btn secondary" @click="copyBackupCodes">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+              </svg>
+              Copier les codes
+            </button>
+            <button type="button" class="btn primary" @click="showBackupCodesModal = false">
+              J'ai sauvegardé les codes
+            </button>
+          </div>
+        </div>
+      </div>
+    </Teleport>
+
+    <!-- Disable 2FA Modal -->
+    <Teleport to="body">
+      <div v-if="showDisableModal" class="modal-overlay" @click="showDisableModal = false">
+        <div class="modal" @click.stop>
+          <div class="modal-header">
+            <h2 class="modal-title danger">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+                <line x1="12" y1="9" x2="12" y2="13"></line>
+                <line x1="12" y1="17" x2="12.01" y2="17"></line>
+              </svg>
+              Désactiver la 2FA
+            </h2>
+            <button class="modal-close" @click="showDisableModal = false">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="18" y1="6" x2="6" y2="18"></line>
+                <line x1="6" y1="6" x2="18" y2="18"></line>
+              </svg>
+            </button>
+          </div>
+          <div class="modal-body">
+            <div class="warning-box">
+              <strong>⚠️ Attention :</strong>
+              <p>Désactiver la 2FA rendra votre compte moins sécurisé.</p>
+            </div>
+            <label class="label">Entrez votre mot de passe pour confirmer :</label>
+            <input 
+              v-model="disablePassword" 
+              type="password" 
+              placeholder="Mot de passe" 
+              class="input"
+            />
+          </div>
+          <div class="modal-actions">
+            <button type="button" class="btn ghost" @click="showDisableModal = false" :disabled="disabling2FA">
+              Annuler
+            </button>
+            <button 
+              type="button" 
+              class="btn danger" 
+              @click="disable2FA" 
+              :disabled="!disablePassword || disabling2FA"
+            >
+              <div v-if="disabling2FA" class="btn-spinner"></div>
+              {{ disabling2FA ? 'Désactivation...' : 'Désactiver 2FA' }}
+            </button>
+          </div>
+        </div>
+      </div>
+    </Teleport>
 
     <!-- Delete Confirmation Modal -->
     <Teleport to="body">
@@ -706,6 +1091,15 @@ function togglePassword2() {
   transform: translateY(-3px);
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
 }
+.btn.secondary {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: #fff;
+  box-shadow: 0 4px 12px rgba(102,126,234,0.3);
+}
+.btn.secondary:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(102,126,234,0.4);
+}
 .btn.ghost {
   background: transparent;
   color: #6c757d;
@@ -753,6 +1147,37 @@ function togglePassword2() {
   border-color: rgba(245,87,108,0.3);
 }
 
+/* Authentication Zone */
+.auth-zone {
+  margin-top: 32px;
+  padding: 24px;
+  background: linear-gradient(135deg, rgba(59,130,246,0.05) 0%, rgba(99,102,241,0.05) 100%);
+  border: 2px solid rgba(59,130,246,0.2);
+  border-radius: 16px;
+}
+.dark .auth-zone {
+  background: rgba(59,130,246,0.08);
+  border-color: rgba(59,130,246,0.3);
+}
+
+.auth-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 18px;
+  font-weight: 700;
+  color: #3b82f6;
+  margin: 0 0 8px;
+}
+.dark .auth-title { color: #60a5fa; }
+
+.auth-subtitle {
+  font-size: 14px;
+  color: #6c757d;
+  margin: 0 0 20px;
+}
+.dark .auth-subtitle { color: #9ca3af; }
+
 .danger-title {
   display: flex;
   align-items: center;
@@ -796,6 +1221,8 @@ function togglePassword2() {
   border-radius: 20px;
   max-width: 500px;
   width: 100%;
+  max-height: 90vh;
+  overflow-y: auto;
   box-shadow: 0 20px 60px rgba(0,0,0,0.3);
   animation: modalSlide 0.3s ease;
 }
@@ -874,4 +1301,230 @@ function togglePassword2() {
   }
   .btn { justify-content: center; }
 }
+
+.spinner {
+  width: 40px;
+  height: 40px;
+  border: 4px solid #f3f3f3;
+  border-top: 4px solid #007bff;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin: 0 auto;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.btn-spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid white;
+  border-top: 2px solid transparent;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  margin-right: 8px;
+}
+
+/* 2FA Styles */
+.two-factor-content {
+  padding: 20px 0;
+}
+
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  border-radius: 12px;
+  font-weight: 600;
+  font-size: 14px;
+  margin-bottom: 12px;
+}
+
+.status-badge.success {
+  background: #d4edda;
+  color: #155724;
+  border: 1px solid #c3e6cb;
+}
+
+.status-badge.warning {
+  background: #fff3cd;
+  color: #856404;
+  border: 1px solid #ffeaa7;
+}
+
+.dark .status-badge.success {
+  background: #1e3a2e;
+  color: #4ade80;
+  border-color: #2a5a3e;
+}
+
+.dark .status-badge.warning {
+  background: #3a3020;
+  color: #fbbf24;
+  border-color: #4a4030;
+}
+
+.status-text {
+  color: #6c757d;
+  margin: 16px 0;
+  font-size: 15px;
+}
+
+.dark .status-text {
+  color: #9ca3af;
+}
+
+.setup-steps {
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+}
+
+.step h3 {
+  font-size: 16px;
+  font-weight: 600;
+  margin-bottom: 8px;
+  color: #212529;
+}
+
+.dark .step h3 {
+  color: #f8f9fa;
+}
+
+.step p {
+  color: #6c757d;
+  font-size: 14px;
+  margin-bottom: 16px;
+}
+
+.dark .step p {
+  color: #9ca3af;
+}
+
+.qr-container {
+  display: flex;
+  justify-content: center;
+  padding: 20px;
+  background: white;
+  border-radius: 12px;
+  border: 2px solid #e9ecef;
+  margin: 16px 0;
+}
+
+.dark .qr-container {
+  background: #1a1d2e;
+  border-color: #3a3d4a;
+}
+
+.qr-code {
+  max-width: 256px;
+  width: 100%;
+  height: auto;
+}
+
+.secret-label {
+  font-size: 13px;
+  color: #6c757d;
+  margin: 16px 0 8px;
+}
+
+.dark .secret-label {
+  color: #9ca3af;
+}
+
+.secret-code {
+  display: block;
+  background: #f8f9fa;
+  border: 1px solid #dee2e6;
+  border-radius: 8px;
+  padding: 12px;
+  font-family: 'Courier New', monospace;
+  font-size: 14px;
+  color: #495057;
+  text-align: center;
+  word-break: break-all;
+}
+
+.dark .secret-code {
+  background: #1a1d2e;
+  border-color: #3a3d4a;
+  color: #e5e7eb;
+}
+
+.code-input {
+  text-align: center;
+  font-size: 24px;
+  letter-spacing: 8px;
+  font-family: 'Courier New', monospace;
+  font-weight: bold;
+}
+
+.warning-box {
+  background: #fff3cd;
+  border: 1px solid #ffc107;
+  border-radius: 8px;
+  padding: 16px;
+  margin-bottom: 20px;
+}
+
+.warning-box strong {
+  color: #856404;
+  display: block;
+  margin-bottom: 8px;
+}
+
+.warning-box p {
+  color: #856404;
+  margin: 0;
+  font-size: 14px;
+}
+
+.dark .warning-box {
+  background: #3a3020;
+  border-color: #4a4030;
+}
+
+.dark .warning-box strong,
+.dark .warning-box p {
+  color: #fbbf24;
+}
+
+.backup-codes-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.backup-code {
+  background: #f8f9fa;
+  border: 1px solid #dee2e6;
+  border-radius: 8px;
+  padding: 12px;
+  text-align: center;
+  font-family: 'Courier New', monospace;
+  font-size: 16px;
+  font-weight: bold;
+  color: #495057;
+}
+
+.dark .backup-code {
+  background: #1a1d2e;
+  border-color: #3a3d4a;
+  color: #e5e7eb;
+}
+
+.modal.large {
+  max-width: 600px;
+}
+
+@media (max-width: 768px) {
+  .backup-codes-grid {
+    grid-template-columns: 1fr;
+  }
+}
 </style>
+

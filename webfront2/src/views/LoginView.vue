@@ -8,13 +8,46 @@ let passw = ref("password")
 let userl = ref('')
 let passl = ref('')
 let wrong = ref(0)
+let require2FA = ref(false)
+let totpCode = ref('')
 
 const isDark = useDark()
 
 function connect(){
-	fetch(import.meta.env.VITE_API_LOGIN, {method: "POST", mode : "cors", headers: { "Content-Type": "application/json"}, body: JSON.stringify({username: userl.value, password : passl.value})}).then(a=>a.json()).then(a=>
-	{
-		if(a["Username"]!="no"){
+	const payload = {
+		username: userl.value, 
+		password: passl.value
+	}
+	
+	// Add TOTP code if in 2FA mode
+	if (require2FA.value && totpCode.value) {
+		payload.totp_code = totpCode.value
+	}
+
+	fetch(import.meta.env.VITE_API_LOGIN, {
+		method: "POST", 
+		mode: "cors", 
+		headers: { "Content-Type": "application/json"}, 
+		body: JSON.stringify(payload)
+	})
+	.then(a => a.json())
+	.then(a => {
+		// Check if 2FA is required
+		if (a.require_2fa) {
+			require2FA.value = true
+			wrong.value = 0
+			return
+		}
+		
+		// Check for invalid 2FA code
+		if (a.error) {
+			wrong.value = 2 // Special error for invalid 2FA code
+			totpCode.value = ''
+			return
+		}
+		
+		// Successful login
+		if (a["Username"] != "no") {
 			localStorage.setItem("log", 1)
 			gls().log = 1
 			gls().sessionT = a["Token"]
@@ -23,9 +56,9 @@ function connect(){
 			document.cookie = `name=${a["Username"]}; expires=${a["Expiry"]}; Secure`
 			document.cookie = `sessionToken = ${a["Token"]}; expires=${a["Expiry"]}; Secure`
 			router.push("/mail")
-		}
-		else{
+		} else {
 			wrong.value = 1
+			require2FA.value = false
 		}
 	})
 }
@@ -99,9 +132,31 @@ function show(){
           </div>
         </div>
 
+        <!-- 2FA Code Input (shown only when required) -->
         <transition name="slide-fade">
-          <div v-if="wrong" class="error-message">
+          <div v-if="require2FA" class="input-group totp-group">
+            <label for="totp">Code d'authentification à 2 facteurs</label>
+            <input 
+              v-model="totpCode" 
+              type="text" 
+              id="totp"
+              maxlength="8"
+              placeholder="000000" 
+              autocomplete="one-time-code"
+              class="totp-input"
+              required
+              @input="totpCode = totpCode.replace(/[^0-9A-Z]/gi, '')"
+            />
+            <p class="totp-hint">Entrez le code de 6 chiffres de votre application d'authentification ou un code de secours</p>
+          </div>
+        </transition>
+
+        <transition name="slide-fade">
+          <div v-if="wrong === 1" class="error-message">
             ❌ {{$t('wrongL')}}
+          </div>
+          <div v-else-if="wrong === 2" class="error-message">
+            ❌ Code 2FA invalide
           </div>
         </transition>
       </div>
@@ -482,6 +537,59 @@ function show(){
 
 .dark .info-card p {
   color: #ddd;
+}
+
+/* 2FA Input Styles */
+.totp-group {
+  background: rgba(59, 130, 246, 0.05);
+  border: 1px solid #3b82f6;
+  border-radius: 12px;
+  padding: 16px;
+  margin-top: 8px;
+}
+
+.dark .totp-group {
+  background: rgba(59, 130, 246, 0.1);
+  border-color: #60a5fa;
+}
+
+.totp-input {
+  text-align: center;
+  font-size: 24px;
+  letter-spacing: 8px;
+  font-family: 'Courier New', monospace;
+  font-weight: bold;
+}
+
+.totp-hint {
+  font-size: 12px;
+  color: #6c757d;
+  margin: 8px 0 0;
+  text-align: center;
+  line-height: 1.4;
+}
+
+.dark .totp-hint {
+  color: #9ca3af;
+}
+
+/* Slide Fade Animation */
+.slide-fade-enter-active {
+  transition: all 0.3s ease-out;
+}
+
+.slide-fade-leave-active {
+  transition: all 0.2s ease-in;
+}
+
+.slide-fade-enter-from {
+  transform: translateY(-10px);
+  opacity: 0;
+}
+
+.slide-fade-leave-to {
+  transform: translateY(-10px);
+  opacity: 0;
 }
 
 /* Responsive */
