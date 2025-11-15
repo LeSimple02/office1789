@@ -17,20 +17,15 @@ signing_key_path: "/tmp/homeserver.signing.key"
 enable_registration: false
 registration_shared_secret: "OFFICE1789_REGISTRATION_SECRET"
 
-# Bloquer le changement de mot de passe depuis l'API client (pas l'API admin)
+# Configuration du système de mot de passe
 password_config:
   enabled: true
   localdb_enabled: true
   pepper: ""
 
-# Désactiver la possibilité pour les utilisateurs de changer leur propre mot de passe
 enable_set_displayname: true
 enable_set_avatar_url: true
 enable_3pid_changes: false
-enable_set_password: false
-
-# Bloquer la fermeture/désactivation de compte par l'utilisateur
-enable_deactivation: false
 
 # PostgreSQL database configuration
 database:

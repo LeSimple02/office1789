@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"database/sql"
 	"fmt"
 	"net/http"
 	"os"
@@ -237,6 +238,16 @@ func DeleteAccount(c *gin.Context) {
 	avatarPath := "./avatars/" + req.Username + ".png"
 	_ = removeFile(avatarPath)
 
+	// Supprimer le compte Matrix/Synapse associé
+	_ = deleteMatrixAccount(req.Username)
+
+	// Supprimer le compte Roundcube associé (via email)
+	var email string
+	db.QueryRow("SELECT email FROM Users WHERE user_id=$1", session.UserID).Scan(&email)
+	if email != "" {
+		_ = deleteRoundcubeAccount(email)
+	}
+
 	// Supprimer l'utilisateur de la base de données (CASCADE supprimera les sessions)
 	_, err := db.Exec("DELETE FROM Users WHERE user_id=$1", session.UserID)
 	if err != nil {
@@ -418,4 +429,167 @@ func ChangePassword(c *gin.Context) {
 		Success: true,
 		Message: "Password changed successfully across all services",
 	})
+}
+
+// deleteMatrixAccount supprime un compte Matrix/Synapse
+func deleteMatrixAccount(username string) error {
+	matrixUserID := fmt.Sprintf("@%s:office1789.com", username)
+	
+	// Utiliser l'API Admin de Synapse pour désactiver le compte
+	url := "http://synapse:8008/_synapse/admin/v1/deactivate/" + matrixUserID
+	
+	req, err := http.NewRequest("POST", url, bytes.NewBuffer([]byte(`{"erase": true}`)))
+	if err != nil {
+		return err
+	}
+	
+	req.Header.Set("Content-Type", "application/json")
+	// Note: Nécessite un access token admin - à configurer
+	
+	client := &http.Client{Timeout: 10 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	
+	if resp.StatusCode != 200 {
+		return fmt.Errorf("failed to delete matrix account, status: %d", resp.StatusCode)
+	}
+	
+	return nil
+}
+
+// deleteRoundcubeAccount supprime un compte Roundcube
+func deleteRoundcubeAccount(email string) error {
+	// Connexion à la base Roundcube
+	connStr := "host=postgres_roundcube port=5432 user=roundcube password=roundcube1789 dbname=roundcube sslmode=disable"
+	roundcubeDB, err := sql.Open("postgres", connStr)
+	if err != nil {
+		return err
+	}
+	defer roundcubeDB.Close()
+	
+	// Supprimer l'utilisateur Roundcube
+	_, err = roundcubeDB.Exec("DELETE FROM users WHERE username=$1", email)
+	return err
+}
+
+// RegenerateMatrixAccount régénère un compte Matrix utilisateur
+func RegenerateMatrixAccount(c *gin.Context) {
+	type RegenerateRequest struct {
+		Username string `json:"username"`
+		Token    string `json:"token"`
+		Password string `json:"password"` // Mot de passe en clair nécessaire
+	}
+
+	var req RegenerateRequest
+	if err := c.BindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"message": "Requête invalide"})
+		return
+	}
+
+	// Valider la session
+	session, valid := validateSession(req.Token, req.Username)
+	if !valid {
+		c.JSON(http.StatusUnauthorized, gin.H{"message": "Session invalide"})
+		return
+	}
+
+	// Vérifier le mot de passe fourni
+	var storedHash string
+	err := db.QueryRow("SELECT password_hash FROM Users WHERE user_id=$1", session.UserID).Scan(&storedHash)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"message": "Erreur lors de la récupération des informations utilisateur"})
+		return
+	}
+
+	// Comparer le mot de passe fourni avec le hash stocké
+	if !CheckPasswordHash(req.Password, storedHash) {
+		c.JSON(http.StatusUnauthorized, gin.H{"message": "Mot de passe incorrect"})
+		return
+	}
+
+	// Générer le hash du mot de passe avec hash_password de Synapse
+	cmd := exec.Command("docker", "exec", "synapse",
+		"hash_password", "-p", req.Password, "-c", "/data/homeserver.yaml")
+	
+	var stdout, stderr bytes.Buffer
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+	
+	err = cmd.Run()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"message": "Erreur lors du hashage du mot de passe",
+			"details": stderr.String(),
+		})
+		return
+	}
+	
+	passwordHash := strings.TrimSpace(stdout.String())
+	if !strings.HasPrefix(passwordHash, "$2b$") && !strings.HasPrefix(passwordHash, "$2a$") {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"message": "Hash de mot de passe invalide",
+			"details": passwordHash,
+		})
+		return
+	}
+
+	// Créer l'utilisateur Matrix dans la base de données
+	matrixUserID := "@" + req.Username + ":office1789.com"
+	
+	// Vérifier d'abord si l'utilisateur existe déjà
+	checkQuery := fmt.Sprintf("SELECT COUNT(*) FROM users WHERE name='%s';", matrixUserID)
+	cmd = exec.Command("docker", "exec", "-i", "postgres_synapse",
+		"psql", "-U", "synapse", "-d", "synapse", "-t")
+	cmd.Stdin = strings.NewReader(checkQuery)
+	var countOut bytes.Buffer
+	cmd.Stdout = &countOut
+	stderr.Reset()
+	cmd.Stderr = &stderr
+	
+	err = cmd.Run()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"message": "Erreur lors de la vérification du compte Matrix",
+			"details": stderr.String(),
+		})
+		return
+	}
+
+	count := strings.TrimSpace(countOut.String())
+	
+	var sqlQuery string
+	if count == "0" {
+		// Créer un nouveau compte
+		sqlQuery = fmt.Sprintf(`
+			INSERT INTO users (name, password_hash, creation_ts, admin, user_type, deactivated)
+			VALUES ('%s', '%s', %d, 0, NULL, 0);
+		`, matrixUserID, passwordHash, time.Now().Unix()*1000)
+	} else {
+		// Mettre à jour le compte existant (réactiver si désactivé)
+		sqlQuery = fmt.Sprintf(`
+			UPDATE users 
+			SET password_hash='%s', deactivated=0 
+			WHERE name='%s';
+		`, passwordHash, matrixUserID)
+	}
+	
+	cmd = exec.Command("docker", "exec", "-i", "postgres_synapse",
+		"psql", "-U", "synapse", "-d", "synapse")
+	cmd.Stdin = strings.NewReader(sqlQuery)
+	stderr.Reset()
+	cmd.Stderr = &stderr
+	
+	err = cmd.Run()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"message": "Erreur lors de la création/réactivation du compte Matrix",
+			"details": stderr.String(),
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Compte Matrix régénéré avec succès"})
 }

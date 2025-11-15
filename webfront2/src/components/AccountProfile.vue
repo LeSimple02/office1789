@@ -9,6 +9,10 @@ let nboffer = ref(0)
 let phone  = ref(0)
 let email = ref(0)
 let loading = ref(true)
+let regeneratingMatrix = ref(false)
+let matrixMessage = ref('')
+let showMatrixModal = ref(false)
+let matrixPassword = ref('')
 
 fetch(import.meta.env.VITE_APP_API_INFO_USER, {
   method: "POST",
@@ -36,6 +40,55 @@ const offerName = (num) => {
   const offers = { 0: 'Free', 1: 'Standard', 2: 'Premium' }
   return offers[num] || 'Unknown'
 }
+
+const regenerateMatrix = async () => {
+  showMatrixModal.value = true
+}
+
+const confirmRegenerateMatrix = async () => {
+  if (!matrixPassword.value) {
+    matrixMessage.value = 'Veuillez entrer votre mot de passe'
+    return
+  }
+
+  regeneratingMatrix.value = true
+  matrixMessage.value = ''
+
+  try {
+    const response = await fetch(`${import.meta.env.VITE_APP_API}/api/matrix/regenerate`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        username: gls().username,
+        token: gls().sessionT,
+        password: matrixPassword.value
+      })
+    })
+
+    const data = await response.json()
+    
+    if (response.ok) {
+      matrixMessage.value = 'Compte Matrix régénéré avec succès !'
+      setTimeout(() => { 
+        matrixMessage.value = ''
+        showMatrixModal.value = false
+        matrixPassword.value = ''
+      }, 3000)
+    } else {
+      matrixMessage.value = data.message || 'Erreur lors de la régénération'
+    }
+  } catch (error) {
+    matrixMessage.value = 'Erreur de connexion au serveur'
+  } finally {
+    regeneratingMatrix.value = false
+  }
+}
+
+const cancelRegenerateMatrix = () => {
+  showMatrixModal.value = false
+  matrixPassword.value = ''
+  matrixMessage.value = ''
+}
 </script>
 
 <template>
@@ -55,7 +108,65 @@ const offerName = (num) => {
         </svg>
         {{ $t('edit') }}
       </RouterLink>
+      <button @click="regenerateMatrix" :disabled="regeneratingMatrix" class="matrix-btn">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/>
+        </svg>
+        {{ regeneratingMatrix ? 'Régénération...' : 'Régénérer Matrix' }}
+      </button>
+      <div v-if="matrixMessage && !showMatrixModal" class="matrix-message" :class="{ success: matrixMessage.includes('succès') }">
+        {{ matrixMessage }}
+      </div>
     </header>
+
+    <!-- Modal de régénération Matrix -->
+    <Teleport to="body">
+      <div v-if="showMatrixModal" class="modal-overlay" @click="cancelRegenerateMatrix">
+        <div class="modal-content" @click.stop>
+          <div class="modal-header">
+            <h2>Régénérer le compte Matrix</h2>
+            <button @click="cancelRegenerateMatrix" class="close-btn">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="18" y1="6" x2="6" y2="18"></line>
+                <line x1="6" y1="6" x2="18" y2="18"></line>
+              </svg>
+            </button>
+          </div>
+
+          <div class="modal-body">
+            <p class="modal-description">
+              Pour régénérer votre compte Matrix, veuillez confirmer votre identité en entrant votre mot de passe.
+            </p>
+
+            <div class="form-group">
+              <label for="matrix-password">Mot de passe</label>
+              <input 
+                id="matrix-password"
+                type="password" 
+                v-model="matrixPassword"
+                @keyup.enter="confirmRegenerateMatrix"
+                placeholder="Entrez votre mot de passe"
+                :disabled="regeneratingMatrix"
+              />
+            </div>
+
+            <div v-if="matrixMessage" class="modal-message" :class="{ success: matrixMessage.includes('succès'), error: !matrixMessage.includes('succès') }">
+              {{ matrixMessage }}
+            </div>
+          </div>
+
+          <div class="modal-footer">
+            <button @click="cancelRegenerateMatrix" class="btn-cancel" :disabled="regeneratingMatrix">
+              Annuler
+            </button>
+            <button @click="confirmRegenerateMatrix" class="btn-confirm" :disabled="regeneratingMatrix || !matrixPassword">
+              <span v-if="regeneratingMatrix">Régénération...</span>
+              <span v-else>Confirmer</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </Teleport>
 
     <div v-if="loading" class="loading">
       <div class="spinner"></div>
@@ -243,6 +354,50 @@ const offerName = (num) => {
 .edit-btn:hover {
   transform: translateY(-3px);
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+}
+
+.matrix-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 14px 32px;
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  border-radius: 24px;
+  color: #fff;
+  text-decoration: none;
+  font-weight: 600;
+  font-size: 1.1rem;
+  transition: all 0.3s ease;
+  border: none;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+  cursor: pointer;
+}
+.matrix-btn:hover:not(:disabled) {
+  transform: translateY(-3px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+}
+.matrix-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.matrix-message {
+  padding: 12px 24px;
+  border-radius: 12px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  background: #fee;
+  color: #c33;
+  animation: slideDown 0.3s ease;
+}
+.matrix-message.success {
+  background: #efe;
+  color: #3c3;
+}
+
+@keyframes slideDown {
+  from { opacity: 0; transform: translateY(-10px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 .loading {
@@ -565,5 +720,237 @@ const offerName = (num) => {
   .username { font-size: 22px; }
   .avatar { width: 100px; height: 100px; }
   .info-grid { grid-template-columns: 1fr; padding: 24px; }
+}
+
+/* Modal styles */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  animation: fadeIn 0.2s ease;
+}
+
+.modal-content {
+  background: #fff;
+  border-radius: 20px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  width: 90%;
+  max-width: 480px;
+  max-height: 90vh;
+  overflow-y: auto;
+  animation: slideUp 0.3s ease;
+}
+.dark .modal-content {
+  background: #1C1C1E;
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 24px 28px;
+  border-bottom: 1px solid #e5e7eb;
+}
+.dark .modal-header {
+  border-bottom-color: #374151;
+}
+
+.modal-header h2 {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #1f2937;
+  margin: 0;
+}
+.dark .modal-header h2 {
+  color: #f9fafb;
+}
+
+.close-btn {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  transition: background 0.2s ease;
+  color: #6b7280;
+}
+.close-btn:hover {
+  background: #f3f4f6;
+}
+.dark .close-btn:hover {
+  background: #374151;
+}
+
+.modal-body {
+  padding: 24px 28px;
+}
+
+.modal-description {
+  font-size: 0.95rem;
+  color: #6b7280;
+  margin-bottom: 24px;
+  line-height: 1.6;
+}
+.dark .modal-description {
+  color: #9ca3af;
+}
+
+.form-group {
+  margin-bottom: 20px;
+}
+
+.form-group label {
+  display: block;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #374151;
+  margin-bottom: 8px;
+}
+.dark .form-group label {
+  color: #d1d5db;
+}
+
+.form-group input {
+  width: 100%;
+  padding: 12px 16px;
+  font-size: 1rem;
+  border: 2px solid #e5e7eb;
+  border-radius: 12px;
+  background: #f9fafb;
+  color: #1f2937;
+  transition: all 0.2s ease;
+  box-sizing: border-box;
+}
+.dark .form-group input {
+  background: #111827;
+  border-color: #374151;
+  color: #f9fafb;
+}
+
+.form-group input:focus {
+  outline: none;
+  border-color: #667eea;
+  background: #fff;
+}
+.dark .form-group input:focus {
+  background: #1f2937;
+}
+
+.form-group input:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.modal-message {
+  padding: 12px 16px;
+  border-radius: 10px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  margin-top: 16px;
+  animation: slideDown 0.3s ease;
+}
+
+.modal-message.success {
+  background: #d1fae5;
+  color: #065f46;
+  border: 1px solid #6ee7b7;
+}
+.dark .modal-message.success {
+  background: #064e3b;
+  color: #6ee7b7;
+}
+
+.modal-message.error {
+  background: #fee2e2;
+  color: #991b1b;
+  border: 1px solid #fca5a5;
+}
+.dark .modal-message.error {
+  background: #7f1d1d;
+  color: #fca5a5;
+}
+
+.modal-footer {
+  display: flex;
+  gap: 12px;
+  padding: 20px 28px;
+  border-top: 1px solid #e5e7eb;
+}
+.dark .modal-footer {
+  border-top-color: #374151;
+}
+
+.btn-cancel {
+  flex: 1;
+  padding: 12px 24px;
+  font-size: 1rem;
+  font-weight: 600;
+  border: 2px solid #e5e7eb;
+  background: transparent;
+  color: #6b7280;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+.btn-cancel:hover:not(:disabled) {
+  background: #f3f4f6;
+  border-color: #d1d5db;
+}
+.dark .btn-cancel {
+  border-color: #374151;
+  color: #d1d5db;
+}
+.dark .btn-cancel:hover:not(:disabled) {
+  background: #374151;
+}
+
+.btn-cancel:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-confirm {
+  flex: 1;
+  padding: 12px 24px;
+  font-size: 1rem;
+  font-weight: 600;
+  border: none;
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  color: #fff;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+.btn-confirm:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+}
+
+.btn-confirm:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
 }
 </style>

@@ -76,5 +76,8 @@ func main() {
 	r.POST("/api/2fa/disable", Disable2FA)
 	r.POST("/api/2fa/backup-codes", RegenerateBackupCodes)
 
+	// Matrix routes
+	r.POST("/api/matrix/regenerate", RegenerateMatrixAccount)
+
 	r.Run(":8080")
 }
