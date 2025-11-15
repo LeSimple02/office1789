@@ -58,9 +58,6 @@ const checkConnection = async () => {
   }
 }
 
-// Debounce: empêcher les clics multiples rapides
-let lastMatrixClick = 0
-
 // Ouvrir Element avec SSO automatique (sans demander le mot de passe)
 const openMatrix = async () => {
   if (!isConnected.value) {
@@ -68,22 +65,25 @@ const openMatrix = async () => {
     return
   }
 
-  // Debounce: ignorer les clics trop rapides (< 5 secondes)
-  const now = Date.now()
-  const timeSinceLastClick = now - lastMatrixClick
-  if (lastMatrixClick > 0 && timeSinceLastClick < 5000) {
-    const remainingTime = Math.ceil((5000 - timeSinceLastClick) / 1000)
-    error.value = `⏳ Veuillez attendre ${remainingTime}s avant de réessayer`
-    console.log(`[Matrix SSO] ⏸️ Clic ignoré (debounce ${remainingTime}s restant)`)
+  // Vérifier si une fenêtre Element est déjà ouverte et authentifiée
+  // En ouvrant directement sans nouveau token si déjà connecté récemment
+  const lastMatrixAuth = localStorage.getItem('office1789_matrix_auth')
+  const lastAuthTime = lastMatrixAuth ? parseInt(lastMatrixAuth) : 0
+  const timeSinceAuth = Date.now() - lastAuthTime
+  const hasMatrixToken = localStorage.getItem('mx_access_token')
+  
+  // Si authentifié il y a moins de 5 minutes ET a un token Matrix valide, ouvrir directement Element
+  if (timeSinceAuth < 300000 && hasMatrixToken) { // 5 minutes
+    console.log('[Matrix SSO] Session récente détectée, ouverture directe')
+    window.open('http://localhost:8083/', '_blank', 'noopener,noreferrer')
     return
   }
-  lastMatrixClick = now
 
   isLoadingMatrix.value = true
   error.value = ''
 
   try {
-    console.log(`[Matrix SSO] 📡 Appel API - Username: ${store.username}`)
+    console.log(`[Matrix SSO] 📡 Génération nouveau token SSO - Username: ${store.username}`)
     
     const response = await fetch(`${import.meta.env.VITE_APP_API}/api/matrix/sso`, {
       method: 'POST',
@@ -98,7 +98,11 @@ const openMatrix = async () => {
 
     if (response.ok) {
       const data = await response.json()
-      console.log('[Matrix SSO] ✅ Succès - Ouverture Element')
+      console.log('[Matrix SSO] ✅ Token généré - Ouverture Element')
+      
+      // Enregistrer le timestamp de l'authentification
+      localStorage.setItem('office1789_matrix_auth', Date.now().toString())
+      
       window.open(data.url, '_blank', 'noopener,noreferrer')
     } else {
       const data = await response.json()
