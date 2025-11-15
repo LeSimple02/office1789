@@ -48,11 +48,12 @@ def update_hosts_file(domains):
     print("\n💡 Vous pouvez le faire manuellement ou exécuter ce script en tant qu'administrateur.")
 
 def start_docker_containers():
-    """Démarre tous les conteneurs Docker"""
+    """Démarre tous les conteneurs Docker (les crée avec docker-compose si nécessaire)"""
     print("\n🐳 Démarrage des conteneurs Docker...")
     
     try:
         client = docker.from_env()
+        docker_dir = os.path.join(os.path.dirname(__file__), 'docker')
         
         # Liste des conteneurs à démarrer dans l'ordre
         containers = [
@@ -67,6 +68,43 @@ def start_docker_containers():
             "onlyoffice"
         ]
         
+        # Vérifier si les conteneurs existent et compter ceux qui sont manquants
+        missing_containers = []
+        for container_name in containers:
+            try:
+                client.containers.get(container_name)
+            except docker.errors.NotFound:
+                missing_containers.append(container_name)
+        
+        # Si des conteneurs manquent, lancer docker-compose up -d avec rebuild
+        if missing_containers:
+            print(f"   🔨 {len(missing_containers)} conteneur(s) manquant(s): {', '.join(missing_containers[:3])}...")
+            print("   📦 Création des conteneurs avec docker-compose up -d --force-recreate...")
+            try:
+                # Forcer la recréation pour éviter les images obsolètes (OIDC, etc.)
+                result = subprocess.run(
+                    ['docker-compose', 'up', '-d', '--force-recreate', '--remove-orphans'],
+                    cwd=docker_dir,
+                    capture_output=True,
+                    text=True,
+                    timeout=300  # 5 minutes max
+                )
+                if result.returncode == 0:
+                    print("   ✅ Conteneurs créés avec succès!")
+                    time.sleep(5)  # Attendre que les conteneurs démarrent
+                else:
+                    print(f"   ⚠️  docker-compose a retourné des warnings")
+                    if result.stderr:
+                        print(f"   {result.stderr[:200]}")
+            except subprocess.TimeoutExpired:
+                print("   ⚠️  docker-compose prend trop de temps, vérification des conteneurs...")
+            except FileNotFoundError:
+                print("   ❌ docker-compose introuvable. Installez Docker Compose.")
+                return False
+            except Exception as e:
+                print(f"   ⚠️  Erreur docker-compose: {e}")
+        
+        # Démarrer/vérifier chaque conteneur individuellement
         for container_name in containers:
             try:
                 container = client.containers.get(container_name)
@@ -77,11 +115,11 @@ def start_docker_containers():
                 else:
                     print(f"   ✅ {container_name} est déjà en cours d'exécution")
             except docker.errors.NotFound:
-                print(f"   ⚠️  Conteneur {container_name} introuvable (peut-être pas encore créé)")
+                print(f"   ⚠️  Conteneur {container_name} toujours introuvable")
             except Exception as e:
                 print(f"   ❌ Erreur lors du démarrage de {container_name}: {e}")
         
-        print("\n✅ Conteneurs Docker démarrés avec succès!")
+        print("\n✅ Conteneurs Docker vérifiés!")
         
     except docker.errors.DockerException as e:
         print(f"❌ Erreur Docker: {e}")
