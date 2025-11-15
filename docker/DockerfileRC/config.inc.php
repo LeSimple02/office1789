@@ -18,7 +18,9 @@
     $config['db_dsnr'] = '';
     
     // Configuration IMAP - Port 993 avec SSL/TLS (IMAPS)
+    $config['default_host'] = 'ssl://mailserver:993';
     $config['imap_host'] = 'ssl://mailserver:993';
+    $config['username_domain'] = 'office1789.com';
     $config['imap_conn_options'] = array(
         'ssl' => array(
             'verify_peer'       => false,

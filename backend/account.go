@@ -130,7 +130,7 @@ func ChangeI(c *gin.Context) {
 			if err != nil {
 				fmt.Printf("Warning: Failed to change mail password for %s: %v\n", cha.LastUsername, err)
 			} else {
-				fmt.Printf("Mail password changed for %s@office1789.local\n", cha.LastUsername)
+				fmt.Printf("Mail password changed for %s@office1789.com\n", cha.LastUsername)
 			}
 		}()
 		
@@ -293,7 +293,7 @@ type ChangePasswordResponse struct {
 
 // Changer le mot de passe Mail (Docker Mailserver)
 func changeMailPassword(username, newPassword string) error {
-	email := username + "@office1789.local"
+	email := username + "@office1789.com"
 	
 	// Supprimer l'ancien compte
 	cmdDel := exec.Command("docker", "exec", "mailserver", "setup", "email", "del", email)
@@ -411,7 +411,7 @@ func ChangePassword(c *gin.Context) {
 		if err != nil {
 			fmt.Printf("Warning: Failed to change mail password for %s: %v\n", req.Username, err)
 		} else {
-			fmt.Printf("Mail password changed for %s@office1789.local\n", req.Username)
+			fmt.Printf("Mail password changed for %s@office1789.com\n", req.Username)
 		}
 	}()
 	

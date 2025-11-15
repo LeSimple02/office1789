@@ -24,13 +24,20 @@ RUN chmod +x /usr/local/bin/init-config.sh
 # Copier le plugin SSO Office1789
 COPY plugins/office1789_sso /var/www/html/plugins/office1789_sso
 
+# Copier le handler SSO et le hook login qui seront inclus dans index.php par init-config.sh
+COPY sso-handler.php /var/www/html/sso-handler.php
+COPY sso-login-hook.php /var/www/html/sso-login-hook.php
+
 # Copier le CSS personnalisé Office1789
 COPY office1789-custom.css /var/www/html/skins/elastic/styles/office1789-custom.css
 
-# Créer un wrapper pour l'entrypoint qui exécute notre script en background
+# Créer un wrapper pour l'entrypoint qui exécute notre script APRÈS l'entrypoint officiel
 RUN echo '#!/bin/bash' > /usr/local/bin/custom-entrypoint.sh && \
-    echo '/usr/local/bin/init-config.sh &' >> /usr/local/bin/custom-entrypoint.sh && \
-    echo 'exec /docker-entrypoint.sh "$@"' >> /usr/local/bin/custom-entrypoint.sh && \
+    echo 'exec /docker-entrypoint.sh "$@" &' >> /usr/local/bin/custom-entrypoint.sh && \
+    echo 'ENTRYPOINT_PID=$!' >> /usr/local/bin/custom-entrypoint.sh && \
+    echo 'sleep 15' >> /usr/local/bin/custom-entrypoint.sh && \
+    echo '/usr/local/bin/init-config.sh' >> /usr/local/bin/custom-entrypoint.sh && \
+    echo 'wait $ENTRYPOINT_PID' >> /usr/local/bin/custom-entrypoint.sh && \
     chmod +x /usr/local/bin/custom-entrypoint.sh
 
 EXPOSE 80

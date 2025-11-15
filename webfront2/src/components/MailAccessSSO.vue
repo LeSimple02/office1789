@@ -68,29 +68,56 @@ const openMail = async () => {
   isLoadingMail.value = true
   error.value = ''
 
-  try {
-    const response = await fetch(`${import.meta.env.VITE_APP_API}/api/mail/sso`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        username: store.username,
-        token: store.sessionT
+  // Fonction interne pour appeler l'API avec retry automatique
+  const callMailAPI = async (retryCount = 0) => {
+    try {
+      const response = await fetch(`${import.meta.env.VITE_APP_API}/api/mail/sso`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include', // Inclure les cookies de session
+        body: JSON.stringify({
+          username: store.username,
+          token: store.sessionT
+        })
       })
-    })
 
-    if (response.ok) {
-      const data = await response.json()
-      // Ouvrir Roundcube avec SSO automatique
-      window.open(data.url, '_blank', 'noopener,noreferrer')
-    } else {
-      const data = await response.json()
-      error.value = data.error || 'Erreur lors de l\'accès à la boîte mail'
+      if (response.ok) {
+        const data = await response.json()
+        // Ouvrir Roundcube avec SSO automatique
+        window.open(data.url, '_blank', 'noopener,noreferrer')
+        return true
+      } else {
+        const data = await response.json()
+        
+        // Si "Requête invalide" et c'est le premier essai, retry une fois après 500ms
+        if ((data.error === 'Requête invalide' || data.error === 'Session invalide') && retryCount === 0) {
+          console.log('[Mail SSO] Première tentative échouée, retry dans 500ms...')
+          await new Promise(resolve => setTimeout(resolve, 500))
+          return await callMailAPI(1) // Retry une seule fois
+        }
+        
+        error.value = data.error || 'Erreur lors de l\'accès à la boîte mail'
+        return false
+      }
+    } catch (err) {
+      console.error('Erreur:', err)
+      
+      // Retry si erreur réseau et premier essai
+      if (retryCount === 0) {
+        console.log('[Mail SSO] Erreur réseau, retry dans 500ms...')
+        await new Promise(resolve => setTimeout(resolve, 500))
+        return await callMailAPI(1)
+      }
+      
+      error.value = 'Impossible de se connecter au serveur'
+      return false
     }
-  } catch (err) {
-    console.error('Erreur:', err)
-    error.value = 'Impossible de se connecter au serveur'
+  }
+
+  try {
+    await callMailAPI()
   } finally {
     isLoadingMail.value = false
   }

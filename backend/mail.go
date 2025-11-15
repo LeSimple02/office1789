@@ -1,11 +1,13 @@
 package main
 
 import (
+	"bytes"
 	"crypto/hmac"
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"net/http"
 	"time"
 
@@ -107,6 +109,13 @@ func GenerateMailSSOAuto(c *gin.Context) {
 		Token    string `json:"token"`
 	}
 	
+	// Lire le corps brut pour debug
+	bodyBytes, _ := c.GetRawData()
+	fmt.Printf("[SSO-Auto] Corps brut reçu: %s\n", string(bodyBytes))
+	
+	// Remettre les données dans le contexte pour BindJSON
+	c.Request.Body = ioutil.NopCloser(bytes.NewBuffer(bodyBytes))
+	
 	if err := c.BindJSON(&req); err != nil {
 		fmt.Println("[SSO-Auto] Erreur bind JSON:", err)
 		c.JSON(http.StatusBadRequest, MailAuthResponse{
@@ -115,7 +124,7 @@ func GenerateMailSSOAuto(c *gin.Context) {
 		return
 	}
 
-	fmt.Printf("[SSO-Auto] Requête reçue - Username: %s\n", req.Username)
+	fmt.Printf("[SSO-Auto] Requête reçue - Username: %s, Token length: %d\n", req.Username, len(req.Token))
 
 	// Valider la session Office1789
 	session, valid := validateSession(req.Token, req.Username)

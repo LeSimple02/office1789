@@ -27,46 +27,9 @@ class office1789_sso extends rcube_plugin
         if ($args['template'] === 'login' && empty($sso_token) && !$rcmail->user->ID) {
             error_log('[SSO] Tentative d\'accès direct à la page de login - BLOQUÉ');
             
-            // Remplacer le contenu de la page de login par un message
-            $args['content'] = '
-            <!DOCTYPE html>
-            <html>
-            <head>
-                <title>Authentification Office1789</title>
-                <style>
-                    body {
-                        font-family: Arial, sans-serif;
-                        display: flex;
-                        justify-content: center;
-                        align-items: center;
-                        height: 100vh;
-                        margin: 0;
-                        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-                    }
-                    .message {
-                        background: white;
-                        padding: 40px;
-                        border-radius: 10px;
-                        box-shadow: 0 10px 40px rgba(0,0,0,0.2);
-                        text-align: center;
-                        max-width: 500px;
-                    }
-                    h1 { color: #333; margin-bottom: 20px; }
-                    p { color: #666; line-height: 1.6; }
-                    a { color: #667eea; text-decoration: none; font-weight: bold; }
-                    a:hover { text-decoration: underline; }
-                </style>
-            </head>
-            <body>
-                <div class="message">
-                    <h1>🔒 Authentification Centralisée</h1>
-                    <p>L\'accès direct à Roundcube est désactivé.</p>
-                    <p>Veuillez vous connecter via la plateforme <strong>Office1789</strong> pour accéder à votre boîte mail.</p>
-                    <p><a href="http://localhost:5173">→ Se connecter à Office1789</a></p>
-                </div>
-            </body>
-            </html>
-            ';
+            // Redirection immédiate vers Office1789
+            header('Location: http://localhost:5173');
+            exit();
         }
         
         return $args;
@@ -104,7 +67,7 @@ class office1789_sso extends rcube_plugin
                     $_SESSION['temp_sso_login'] = array(
                         'user' => $claims['email'],
                         'pass' => $claims['password'], // Utiliser le mot de passe du token SSO
-                        'host' => 'mailserver:143'
+                        'host' => 'ssl://mailserver:993'
                     );
                     
                     // Préparer la connexion

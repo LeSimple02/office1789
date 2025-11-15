@@ -11,7 +11,7 @@ $config['default_port'] = 143;
 $config['imap_host'] = array('mailserver:143');  // Utiliser un array pour forcer la valeur
 $config['smtp_server'] = 'tls://mailserver';
 $config['smtp_port'] = 587;
-$config['username_domain'] = 'office1789.local';
+$config['username_domain'] = 'office1789.com';
 
 // Debug (pour développement)
 $config['imap_debug'] = true;

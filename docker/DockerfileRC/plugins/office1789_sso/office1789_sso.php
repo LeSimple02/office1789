@@ -73,18 +73,32 @@ class office1789_sso extends rcube_plugin
                         'host' => 'ssl://mailserver:993'
                     );
                     
-                    // Préparer les variables POST pour Roundcube
-                    $_POST['_task'] = 'login';
-                    $_POST['_action'] = 'login';
-                    $_POST['_user'] = $claims['email'];
-                    $_POST['_pass'] = $password;
-                    $_POST['_host'] = 'ssl://mailserver:993';
+                    error_log('[SSO] Session SSO créée, affichage formulaire auto-submit');
                     
-                    // Forcer task=login et action=login
-                    $args['task'] = 'login';
-                    $args['action'] = 'login';
-                    
-                    error_log('[SSO] Login préparé pour ' . $claims['email']);
+                    // Afficher un formulaire qui se soumet automatiquement
+                    echo '<!DOCTYPE html>
+<html>
+<head>
+    <title>Connexion SSO Office1789...</title>
+</head>
+<body>
+    <form id="sso_form" method="POST" action="/">
+        <input type="hidden" name="_task" value="login" />
+        <input type="hidden" name="_action" value="login" />
+        <input type="hidden" name="_user" value="' . htmlspecialchars($claims['email']) . '" />
+        <input type="hidden" name="_pass" value="' . htmlspecialchars($password) . '" />
+        <input type="hidden" name="_host" value="ssl://mailserver:993" />
+        <p style="text-align:center; font-family:Arial; margin-top:100px;">
+            🔐 Connexion automatique en cours...<br><br>
+            <span style="color:#666;">Si la page ne se charge pas, <a href="#" onclick="document.getElementById(\'sso_form\').submit(); return false;">cliquez ici</a></span>
+        </p>
+    </form>
+    <script>
+        document.getElementById("sso_form").submit();
+    </script>
+</body>
+</html>';
+                    exit;
                 } else {
                     error_log('[SSO] Token expiré (exp: ' . ($claims['exp'] ?? 'N/A') . ', now: ' . time() . ')');
                     header('HTTP/1.1 403 Forbidden');

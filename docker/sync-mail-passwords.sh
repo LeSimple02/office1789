@@ -2,7 +2,7 @@
 # Script pour synchroniser les mots de passe Office1789 avec le serveur mail
 
 # Connexion à la base Office1789
-DB_USERS=$(docker exec postgres_db psql -U robespierre -d office1789 -t -c "SELECT username, Email FROM Users WHERE Email LIKE '%@office1789.local';")
+DB_USERS=$(docker exec postgres_db psql -U robespierre -d office1789 -t -c "SELECT username, Email FROM Users WHERE Email LIKE '%@office1789.com';")
 
 echo "=== Synchronisation des comptes mail avec Office1789 ==="
 echo "$DB_USERS" | while IFS='|' read -r username email; do

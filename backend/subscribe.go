@@ -38,7 +38,7 @@ type Connecti struct {
 
 // Créer un compte mail dans le mailserver
 func createMailAccount(username, password string) error {
-	email := username + "@office1789.local"
+	email := username + "@office1789.com"
 	
 	// Commande Docker pour créer le compte mail
 	cmd := exec.Command("docker", "exec", "mailserver", "setup", "email", "add", email, password)
@@ -150,7 +150,7 @@ func Sub(c *gin.Context) {
 		if err != nil {
 			fmt.Printf("Warning: Failed to create mail account for %s: %v\n", subi.Username, err)
 		} else {
-			fmt.Printf("Mail account created for %s@office1789.local\n", subi.Username)
+			fmt.Printf("Mail account created for %s@office1789.com\n", subi.Username)
 		}
 	}()
 
