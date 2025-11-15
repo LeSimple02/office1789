@@ -37,17 +37,27 @@ func GenerateMatrixSSOAuto(c *gin.Context) {
 
 	fmt.Printf("[Matrix-SSO] Session valide - UserID: %d\n", session.UserID)
 
-	// Utiliser le mot de passe de la session (capturé au login)
-	password := session.Password
-	if password == "" {
-		fmt.Println("[Matrix-SSO] ERREUR: Session sans mot de passe - reconnectez-vous")
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Veuillez vous reconnecter à Office1789"})
+	// Récupérer le password depuis la table Users (source unique de vérité)
+	var userPassword string
+	err := db.QueryRow("SELECT COALESCE(mail_password, '') FROM users WHERE user_id=$1", session.UserID).Scan(&userPassword)
+	if err != nil {
+		fmt.Printf("[Matrix-SSO] ❌ Erreur récupération password: %v\n", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Erreur serveur"})
+		return
+	}
+
+	fmt.Printf("[Matrix-SSO] 🔑 Password récupéré depuis DB, présent: %v\n", userPassword != "")
+
+	// Vérifier que le password existe
+	if userPassword == "" {
+		fmt.Println("[Matrix-SSO] ❌ ERREUR: mail_password vide en DB")
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Configuration manquante"})
 		return
 	}
 
 	// Générer le token SSO Matrix
 	matrixUserID := fmt.Sprintf("@%s:office1789.com", req.Username)
-	ssoToken := generateMatrixSSOToken(req.Username, matrixUserID, password)
+	ssoToken := generateMatrixSSOToken(req.Username, matrixUserID, userPassword)
 
 	fmt.Printf("[Matrix-SSO] Token SSO généré pour %s\n", matrixUserID)
 
@@ -71,6 +81,7 @@ func generateMatrixSSOToken(username, matrixUserID, password string) string {
 		"password":     password,               // Mot de passe inclus pour auth Matrix
 		"exp":          time.Now().Add(5 * time.Minute).Unix(), // Expire dans 5 minutes
 		"iat":          time.Now().Unix(),
+		"nonce":        time.Now().UnixNano(), // Nonce unique pour éviter replay attack
 	}
 
 	// Encoder les claims en JSON puis en base64

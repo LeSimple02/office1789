@@ -58,6 +58,9 @@ const checkConnection = async () => {
   }
 }
 
+// Debounce: empêcher les clics multiples rapides
+let lastMailClick = 0
+
 // Ouvrir Roundcube avec SSO automatique (sans demander le mot de passe)
 const openMail = async () => {
   if (!isConnected.value) {
@@ -65,59 +68,38 @@ const openMail = async () => {
     return
   }
 
+  // Pas de debounce - le problème vient de Roundcube, pas de clics multiples
+
   isLoadingMail.value = true
   error.value = ''
 
-  // Fonction interne pour appeler l'API avec retry automatique
-  const callMailAPI = async (retryCount = 0) => {
-    try {
-      const response = await fetch(`${import.meta.env.VITE_APP_API}/api/mail/sso`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        credentials: 'include', // Inclure les cookies de session
-        body: JSON.stringify({
-          username: store.username,
-          token: store.sessionT
-        })
-      })
-
-      if (response.ok) {
-        const data = await response.json()
-        // Ouvrir Roundcube avec SSO automatique
-        window.open(data.url, '_blank', 'noopener,noreferrer')
-        return true
-      } else {
-        const data = await response.json()
-        
-        // Si "Requête invalide" et c'est le premier essai, retry une fois après 500ms
-        if ((data.error === 'Requête invalide' || data.error === 'Session invalide') && retryCount === 0) {
-          console.log('[Mail SSO] Première tentative échouée, retry dans 500ms...')
-          await new Promise(resolve => setTimeout(resolve, 500))
-          return await callMailAPI(1) // Retry une seule fois
-        }
-        
-        error.value = data.error || 'Erreur lors de l\'accès à la boîte mail'
-        return false
-      }
-    } catch (err) {
-      console.error('Erreur:', err)
-      
-      // Retry si erreur réseau et premier essai
-      if (retryCount === 0) {
-        console.log('[Mail SSO] Erreur réseau, retry dans 500ms...')
-        await new Promise(resolve => setTimeout(resolve, 500))
-        return await callMailAPI(1)
-      }
-      
-      error.value = 'Impossible de se connecter au serveur'
-      return false
-    }
-  }
-
   try {
-    await callMailAPI()
+    console.log(`[Mail SSO] 📡 Appel API - Username: ${store.username}`)
+    
+    const response = await fetch(`${import.meta.env.VITE_APP_API}/api/mail/sso`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      credentials: 'include',
+      body: JSON.stringify({
+        username: store.username,
+        token: store.sessionT
+      })
+    })
+
+    if (response.ok) {
+      const data = await response.json()
+      console.log('[Mail SSO] ✅ Succès - Ouverture de Roundcube')
+      window.open(data.url, '_blank', 'noopener,noreferrer')
+    } else {
+      const data = await response.json()
+      console.log(`[Mail SSO] ❌ Erreur (${response.status}): ${data.error}`)
+      error.value = data.error || 'Erreur lors de l\'accès à la boîte mail'
+    }
+  } catch (err) {
+    console.error('[Mail SSO] ⚠️ Erreur réseau:', err)
+    error.value = 'Impossible de se connecter au serveur'
   } finally {
     isLoadingMail.value = false
   }

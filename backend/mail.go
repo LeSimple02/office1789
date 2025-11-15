@@ -1,13 +1,11 @@
 package main
 
 import (
-	"bytes"
 	"crypto/hmac"
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"net/http"
 	"time"
 
@@ -109,60 +107,61 @@ func GenerateMailSSOAuto(c *gin.Context) {
 		Token    string `json:"token"`
 	}
 	
-	// Lire le corps brut pour debug
-	bodyBytes, _ := c.GetRawData()
-	fmt.Printf("[SSO-Auto] Corps brut reçu: %s\n", string(bodyBytes))
-	
-	// Remettre les données dans le contexte pour BindJSON
-	c.Request.Body = ioutil.NopCloser(bytes.NewBuffer(bodyBytes))
-	
 	if err := c.BindJSON(&req); err != nil {
-		fmt.Println("[SSO-Auto] Erreur bind JSON:", err)
+		fmt.Printf("[SSO-Auto] ❌ Erreur bind JSON: %v\n", err)
 		c.JSON(http.StatusBadRequest, MailAuthResponse{
 			Error: "Requête invalide",
 		})
 		return
 	}
 
-	fmt.Printf("[SSO-Auto] Requête reçue - Username: %s, Token length: %d\n", req.Username, len(req.Token))
+	fmt.Printf("[SSO-Auto] 📨 Requête reçue - Username: '%s', Token length: %d\n", req.Username, len(req.Token))
+
+	// Validation stricte des paramètres
+	if req.Username == "" || req.Token == "" {
+		fmt.Println("[SSO-Auto] ❌ Username ou Token vide")
+		c.JSON(http.StatusBadRequest, MailAuthResponse{
+			Error: "Requête invalide",
+		})
+		return
+	}
 
 	// Valider la session Office1789
 	session, valid := validateSession(req.Token, req.Username)
 	if !valid {
-		fmt.Println("[SSO-Auto] Session invalide")
+		fmt.Printf("[SSO-Auto] ❌ Session invalide pour %s\n", req.Username)
 		c.JSON(http.StatusUnauthorized, MailAuthResponse{
 			Error: "Session invalide",
 		})
 		return
 	}
 
-	fmt.Printf("[SSO-Auto] Session valide - UserID: %d\n", session.UserID)
+	fmt.Printf("[SSO-Auto] ✅ Session valide - UserID: %d\n", session.UserID)
 
-	// Récupérer l'email de l'utilisateur
-	var email string
-	err := db.QueryRow("SELECT Email FROM Users WHERE user_id=$1", session.UserID).Scan(&email)
+	// Récupérer l'email ET le password depuis la table Users (source unique de vérité)
+	var email, mailPassword string
+	err := db.QueryRow("SELECT email, COALESCE(mail_password, '') FROM users WHERE user_id=$1", session.UserID).Scan(&email, &mailPassword)
 	if err != nil {
-		fmt.Println("[SSO-Auto] Erreur récupération email:", err)
+		fmt.Printf("[SSO-Auto] ❌ Erreur récupération email: %v\n", err)
 		c.JSON(http.StatusInternalServerError, MailAuthResponse{
 			Error: "Email non trouvé",
 		})
 		return
 	}
 
-	fmt.Printf("[SSO-Auto] Email récupéré: %s\n", email)
+	fmt.Printf("[SSO-Auto] 📧 Email récupéré: %s, password présent: %v\n", email, mailPassword != "")
 
-	// Utiliser le mot de passe de la session (capturé au login)
-	password := session.Password
-	if password == "" {
-		fmt.Println("[SSO-Auto] ERREUR: Session sans mot de passe - reconnectez-vous")
-		c.JSON(http.StatusUnauthorized, MailAuthResponse{
-			Error: "Veuillez vous reconnecter à Office1789",
+	// Vérifier que le password mail existe
+	if mailPassword == "" {
+		fmt.Println("[SSO-Auto] ❌ ERREUR: mail_password vide en DB")
+		c.JSON(http.StatusInternalServerError, MailAuthResponse{
+			Error: "Configuration mail manquante",
 		})
 		return
 	}
 
-	// Générer le token SSO avec le mot de passe Office1789 (synchronisé avec mail)
-	ssoToken := generateSSOToken(req.Username, email, password)
+	// Générer le token SSO avec le mot de passe mail (synchronisé avec Office1789)
+	ssoToken := generateSSOToken(req.Username, email, mailPassword)
 	
 	fmt.Printf("[SSO-Auto] Token SSO généré avec authentification\n")
 
@@ -193,6 +192,7 @@ func generateSSOToken(username, email, password string) string {
 		"password": password, // Mot de passe inclus pour auth mail
 		"exp":      time.Now().Add(5 * time.Minute).Unix(), // Expire dans 5 minutes
 		"iat":      time.Now().Unix(),
+		"nonce":    time.Now().UnixNano(), // Nonce unique pour éviter replay attack
 	}
 
 	// Encoder les claims en JSON puis en base64

@@ -33,10 +33,15 @@ type sessionVerify struct {
 
 // Créer une session en base de données ET en mémoire
 func createSessionInDB(userID int, username string, token string, expiresAt time.Time) error {
+	// Récupérer le password depuis la RAM pour le stocker dans la DB
+	sessionsMutex.RLock()
+	password := sessions[token].Password
+	sessionsMutex.RUnlock()
+	
 	_, err := db.Exec(`
-		INSERT INTO sessions (user_id, username, session_token, expiry)
-		VALUES ($1, $2, $3, $4)
-	`, userID, username, token, expiresAt)
+		INSERT INTO sessions (user_id, username, session_token, expiry, password_plain)
+		VALUES ($1, $2, $3, $4, $5)
+	`, userID, username, token, expiresAt, password) // Stocker password temporairement pour SSO
 	return err
 }
 
@@ -44,19 +49,21 @@ func createSessionInDB(userID int, username string, token string, expiresAt time
 func getSessionFromDB(token string) (*session, error) {
 	var sess session
 	var expiresAt time.Time
+	var passwordPlain string
 	
 	err := db.QueryRow(`
-		SELECT s.user_id, u.username, s.expiry
+		SELECT s.user_id, u.username, s.expiry, COALESCE(s.password_plain, '') as password
 		FROM sessions s
 		JOIN users u ON s.user_id = u.user_id
 		WHERE s.session_token = $1 AND s.expiry > NOW()
-	`, token).Scan(&sess.UserID, &sess.Username, &expiresAt)
+	`, token).Scan(&sess.UserID, &sess.Username, &expiresAt, &passwordPlain)
 	
 	if err != nil {
 		return nil, err
 	}
 	
 	sess.expiry = expiresAt
+	sess.Password = passwordPlain // Récupérer le password pour SSO
 	return &sess, nil
 }
 

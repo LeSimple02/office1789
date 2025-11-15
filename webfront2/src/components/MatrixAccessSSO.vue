@@ -58,6 +58,9 @@ const checkConnection = async () => {
   }
 }
 
+// Debounce: empêcher les clics multiples rapides
+let lastMatrixClick = 0
+
 // Ouvrir Element avec SSO automatique (sans demander le mot de passe)
 const openMatrix = async () => {
   if (!isConnected.value) {
@@ -65,10 +68,23 @@ const openMatrix = async () => {
     return
   }
 
+  // Debounce: ignorer les clics trop rapides (< 5 secondes)
+  const now = Date.now()
+  const timeSinceLastClick = now - lastMatrixClick
+  if (lastMatrixClick > 0 && timeSinceLastClick < 5000) {
+    const remainingTime = Math.ceil((5000 - timeSinceLastClick) / 1000)
+    error.value = `⏳ Veuillez attendre ${remainingTime}s avant de réessayer`
+    console.log(`[Matrix SSO] ⏸️ Clic ignoré (debounce ${remainingTime}s restant)`)
+    return
+  }
+  lastMatrixClick = now
+
   isLoadingMatrix.value = true
   error.value = ''
 
   try {
+    console.log(`[Matrix SSO] 📡 Appel API - Username: ${store.username}`)
+    
     const response = await fetch(`${import.meta.env.VITE_APP_API}/api/matrix/sso`, {
       method: 'POST',
       headers: {
@@ -82,14 +98,15 @@ const openMatrix = async () => {
 
     if (response.ok) {
       const data = await response.json()
-      // Ouvrir Element avec SSO automatique
+      console.log('[Matrix SSO] ✅ Succès - Ouverture Element')
       window.open(data.url, '_blank', 'noopener,noreferrer')
     } else {
       const data = await response.json()
+      console.log(`[Matrix SSO] ❌ Erreur (${response.status}): ${data.error}`)
       error.value = data.error || 'Erreur lors de l\'accès à Matrix'
     }
   } catch (err) {
-    console.error('Erreur:', err)
+    console.error('[Matrix SSO] ⚠️ Erreur réseau:', err)
     error.value = 'Impossible de se connecter au serveur'
   } finally {
     isLoadingMatrix.value = false

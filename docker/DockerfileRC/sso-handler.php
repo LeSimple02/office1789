@@ -88,35 +88,46 @@ if (empty($sso_token)) {
 
 // Si token présent = AUTO-LOGIN
 if (!empty($sso_token)) {
-    error_log('[SSO] Token détecté: ' . substr($sso_token, 0, 20) . '...');
+    error_log('[SSO] Token détecté: ' . substr($sso_token, 0, 20) . '... (length: ' . strlen($sso_token) . ')');
     
     $claims = validate_sso_token($sso_token, $sso_secret);
     
-    if ($claims && isset($claims['email']) && isset($claims['password'])) {
-        // Vérifier expiration
-        if (isset($claims['exp']) && $claims['exp'] > time()) {
-            error_log('[SSO] Token valide pour ' . $claims['email']);
-            
-            // À ce stade, $RCMAIL (instance rcmail) est disponible car ce fichier
-            // est inclus APRÈS iniset.php
-            // Générer un token CSRF valide via l'API Roundcube
-            
-            $csrf_token = '';
-            if (class_exists('rcmail') && method_exists('rcmail', 'get_instance')) {
-                $rcmail = rcmail::get_instance();
-                if ($rcmail && method_exists($rcmail, 'get_request_token')) {
-                    $csrf_token = $rcmail->get_request_token();
-                    error_log('[SSO] Token CSRF généré: ' . substr($csrf_token, 0, 10) . '...');
+    if ($claims) {
+        error_log('[SSO] Token valide - Claims: ' . json_encode(array_keys($claims)));
+        
+        if (isset($claims['email']) && isset($claims['password'])) {
+            // Vérifier expiration
+            if (isset($claims['exp']) && $claims['exp'] > time()) {
+                error_log('[SSO] Token non expiré pour ' . $claims['email'] . ' (nonce: ' . ($claims['nonce'] ?? 'N/A') . ')');
+                
+                // IMPORTANT: Forcer un logout propre en supprimant tous les cookies de session Roundcube
+                // Cela évite les conflits avec d'anciennes sessions existantes
+                if (isset($_COOKIE['roundcube_sessid'])) {
+                    setcookie('roundcube_sessid', '', time() - 3600, '/');
+                    unset($_COOKIE['roundcube_sessid']);
+                    error_log('[SSO] Cookie session Roundcube supprimé pour nouveau login propre');
                 }
-            }
-            
-            // Si pas de token CSRF, utiliser rcube_utils
-            if (empty($csrf_token) && class_exists('rcube_utils')) {
-                $csrf_token = rcube_utils::request_token();
-                error_log('[SSO] Token CSRF via rcube_utils: ' . substr($csrf_token, 0, 10) . '...');
-            }
-            
-            error_log('[SSO] Affichage formulaire auto-submit pour ' . $claims['email']);
+                
+                // À ce stade, $RCMAIL (instance rcmail) est disponible car ce fichier
+                // est inclus APRÈS iniset.php
+                // Générer un token CSRF valide via l'API Roundcube
+                
+                $csrf_token = '';
+                if (class_exists('rcmail') && method_exists('rcmail', 'get_instance')) {
+                    $rcmail = rcmail::get_instance();
+                    if ($rcmail && method_exists($rcmail, 'get_request_token')) {
+                        $csrf_token = $rcmail->get_request_token();
+                        error_log('[SSO] Token CSRF généré: ' . substr($csrf_token, 0, 10) . '...');
+                    }
+                }
+                
+                // Si pas de token CSRF, utiliser rcube_utils
+                if (empty($csrf_token) && class_exists('rcube_utils')) {
+                    $csrf_token = rcube_utils::request_token();
+                    error_log('[SSO] Token CSRF via rcube_utils: ' . substr($csrf_token, 0, 10) . '...');
+                }
+                
+                error_log('[SSO] Affichage formulaire auto-submit pour ' . $claims['email']);
             
             echo '<!DOCTYPE html>
 <html>
@@ -184,10 +195,11 @@ if (!empty($sso_token)) {
             echo 'Token SSO expiré. Reconnectez-vous via Office1789.';
             exit;
         }
-    } else {
-        error_log('[SSO] Token invalide');
-        header('HTTP/1.1 403 Forbidden');
-        echo 'Token SSO invalide. Reconnectez-vous via Office1789.';
-        exit;
+        } else {
+            error_log('[SSO] Token invalide');
+            header('HTTP/1.1 403 Forbidden');
+            echo 'Token SSO invalide. Reconnectez-vous via Office1789.';
+            exit;
+        }
     }
 }
