@@ -11,13 +11,7 @@
       <h1>📧 Messagerie Office1789</h1>
       <h2>Vos emails, simplement et en toute sécurité</h2>
       
-      <button @click="openMailInNewWindow" class="btn-open-mail">
-        <svg class="btn-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
-                d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/>
-        </svg>
-        Ouvrir la Messagerie
-      </button>
+      <MailAccess />
     </div>
 
     <!-- Features Section -->
@@ -55,15 +49,10 @@
 <script setup>
 import { gls } from "@/stores/global"
 import router from "@/router/index"
+import MailAccess from "@/components/MailAccess.vue"
 
 if (gls().log != 1) {
   router.push("login")
-}
-
-const mailUrl = "http://localhost:8081"
-
-function openMailInNewWindow() {
-  window.open(mailUrl, '_blank')
 }
 </script>
 

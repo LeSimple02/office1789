@@ -15,6 +15,61 @@ class office1789_sso extends rcube_plugin
         $this->add_hook('startup', array($this, 'startup'));
         $this->add_hook('authenticate', array($this, 'authenticate'));
         $this->add_hook('login_after', array($this, 'login_after'));
+        $this->add_hook('render_page', array($this, 'render_page'));
+    }
+
+    function render_page($args)
+    {
+        // Bloquer la page de login si aucun token SSO n'est présent
+        $rcmail = rcmail::get_instance();
+        $sso_token = rcube_utils::get_input_value('sso_token', rcube_utils::INPUT_GPC);
+        
+        if ($args['template'] === 'login' && empty($sso_token) && !$rcmail->user->ID) {
+            error_log('[SSO] Tentative d\'accès direct à la page de login - BLOQUÉ');
+            
+            // Remplacer le contenu de la page de login par un message
+            $args['content'] = '
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <title>Authentification Office1789</title>
+                <style>
+                    body {
+                        font-family: Arial, sans-serif;
+                        display: flex;
+                        justify-content: center;
+                        align-items: center;
+                        height: 100vh;
+                        margin: 0;
+                        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                    }
+                    .message {
+                        background: white;
+                        padding: 40px;
+                        border-radius: 10px;
+                        box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+                        text-align: center;
+                        max-width: 500px;
+                    }
+                    h1 { color: #333; margin-bottom: 20px; }
+                    p { color: #666; line-height: 1.6; }
+                    a { color: #667eea; text-decoration: none; font-weight: bold; }
+                    a:hover { text-decoration: underline; }
+                </style>
+            </head>
+            <body>
+                <div class="message">
+                    <h1>🔒 Authentification Centralisée</h1>
+                    <p>L\'accès direct à Roundcube est désactivé.</p>
+                    <p>Veuillez vous connecter via la plateforme <strong>Office1789</strong> pour accéder à votre boîte mail.</p>
+                    <p><a href="http://localhost:5173">→ Se connecter à Office1789</a></p>
+                </div>
+            </body>
+            </html>
+            ';
+        }
+        
+        return $args;
     }
 
     function startup($args)
@@ -38,22 +93,23 @@ class office1789_sso extends rcube_plugin
             // Valider et décoder le token
             $claims = $this->validate_token($sso_token);
             
-            if ($claims && isset($claims['username']) && isset($claims['email'])) {
+            if ($claims && isset($claims['username']) && isset($claims['email']) && isset($claims['password'])) {
                 error_log('[SSO] Claims décodés - username: ' . $claims['username'] . ', email: ' . $claims['email']);
                 
                 // Vérifier l'expiration
                 if (isset($claims['exp']) && $claims['exp'] > time()) {
                     error_log('[SSO] Token valide, expiration: ' . date('Y-m-d H:i:s', $claims['exp']));
                     
-                    // Stocker dans session temporaire
+                    // Stocker dans session temporaire avec le MOT DE PASSE du token
                     $_SESSION['temp_sso_login'] = array(
                         'user' => $claims['email'],
+                        'pass' => $claims['password'], // Utiliser le mot de passe du token SSO
                         'host' => 'mailserver:143'
                     );
                     
                     // Préparer la connexion
                     $_POST['_user'] = $claims['email'];
-                    $_POST['_pass'] = 'password123'; // Mot de passe IMAP réel
+                    $_POST['_pass'] = $claims['password']; // Mot de passe du token SSO
                     $_POST['_task'] = 'mail';
                     $_POST['_action'] = 'login';
                     
@@ -82,7 +138,7 @@ class office1789_sso extends rcube_plugin
             error_log('[SSO] Authentification SSO pour: ' . $sso_data['user']);
             
             $args['user'] = $sso_data['user'];
-            $args['pass'] = 'password123'; // Mot de passe IMAP réel
+            $args['pass'] = $sso_data['pass']; // Utiliser le mot de passe du token SSO
             $args['host'] = $sso_data['host'];
             $args['valid'] = true;
             $args['cookiecheck'] = false;

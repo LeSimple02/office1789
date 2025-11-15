@@ -25,6 +25,29 @@ class office1789_sso extends rcube_plugin
         // Récupérer le token SSO depuis l'URL
         $sso_token = rcube_utils::get_input_value('sso_token', rcube_utils::INPUT_GPC);
         
+        // SÉCURITÉ : Bloquer TOUT accès sans token SSO valide (sauf si déjà authentifié)
+        if (empty($sso_token) && !isset($_SESSION['user_id'])) {
+            error_log('[SSO] SÉCURITÉ - Accès refusé sans token SSO valide');
+            
+            // Afficher une page d'erreur propre
+            header('HTTP/1.1 403 Forbidden');
+            echo '<!DOCTYPE html><html><head><title>Accès refusé</title><style>
+                body { font-family: Arial, sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
+                .error-box { background: white; padding: 40px; border-radius: 10px; box-shadow: 0 10px 40px rgba(0,0,0,0.3); text-align: center; max-width: 500px; }
+                h1 { color: #e74c3c; margin: 0 0 20px 0; }
+                p { color: #555; line-height: 1.6; }
+                a { display: inline-block; margin-top: 20px; padding: 12px 30px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; text-decoration: none; border-radius: 5px; }
+                </style></head><body>
+                <div class="error-box">
+                    <h1>🔒 Accès Refusé</h1>
+                    <p>L\'accès direct à Roundcube est désactivé pour des raisons de sécurité.</p>
+                    <p>Veuillez vous connecter via <strong>Office1789</strong> pour accéder à votre messagerie.</p>
+                    <a href="http://localhost:5173">Retour à Office1789</a>
+                </div>
+                </body></html>';
+            exit;
+        }
+        
         // Si token présent ET pas encore authentifié
         if (!empty($sso_token) && !isset($_SESSION['user_id'])) {
             error_log('[SSO] Token détecté: ' . substr($sso_token, 0, 20) . '...');
@@ -34,24 +57,28 @@ class office1789_sso extends rcube_plugin
             
             if ($claims && isset($claims['username']) && isset($claims['email'])) {
                 error_log('[SSO] Claims décodés pour ' . $claims['email']);
+                error_log('[SSO] Claims complets: ' . json_encode($claims));
                 
                 // Vérifier l'expiration
                 if (isset($claims['exp']) && $claims['exp'] > time()) {
-                    error_log('[SSO] Token valide, expiration OK');
+                    error_log('[SSO] Token valide, expiration OK (exp: ' . $claims['exp'] . ', now: ' . time() . ')');
                     
                     // Stocker dans session TEMPORAIRE pour authenticate
+                    // Utiliser l'email complet et le mot de passe fourni dans le token
+                    $password = isset($claims['password']) ? $claims['password'] : '';
+                    
                     $_SESSION['temp_sso_login'] = array(
                         'user' => $claims['email'],
-                        'pass' => 'password123',
-                        'host' => 'mailserver'
+                        'pass' => $password,
+                        'host' => 'ssl://mailserver:993'
                     );
                     
                     // Préparer les variables POST pour Roundcube
                     $_POST['_task'] = 'login';
                     $_POST['_action'] = 'login';
                     $_POST['_user'] = $claims['email'];
-                    $_POST['_pass'] = 'password123';
-                    $_POST['_host'] = 'mailserver';
+                    $_POST['_pass'] = $password;
+                    $_POST['_host'] = 'ssl://mailserver:993';
                     
                     // Forcer task=login et action=login
                     $args['task'] = 'login';
@@ -59,10 +86,16 @@ class office1789_sso extends rcube_plugin
                     
                     error_log('[SSO] Login préparé pour ' . $claims['email']);
                 } else {
-                    error_log('[SSO] Token expiré (exp: ' . $claims['exp'] . ', now: ' . time() . ')');
+                    error_log('[SSO] Token expiré (exp: ' . ($claims['exp'] ?? 'N/A') . ', now: ' . time() . ')');
+                    header('HTTP/1.1 403 Forbidden');
+                    echo 'Token SSO expiré. Veuillez vous reconnecter via Office1789.';
+                    exit;
                 }
             } else {
                 error_log('[SSO] Token invalide - validation échouée');
+                header('HTTP/1.1 403 Forbidden');
+                echo 'Token SSO invalide. Veuillez vous reconnecter via Office1789.';
+                exit;
             }
         } else if (!empty($sso_token) && isset($_SESSION['user_id'])) {
             error_log('[SSO] Token présent mais utilisateur déjà authentifié (user_id: ' . $_SESSION['user_id'] . ')');

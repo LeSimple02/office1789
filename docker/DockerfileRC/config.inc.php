@@ -13,11 +13,31 @@
     
     // Plugins Office1789 - DÉFINIS DIRECTEMENT ICI
     // Note: Ne PAS utiliser include() car le scope ne fonctionne pas avec Roundcube
-    // Configuration Docker (copié depuis config.docker.inc.php pour éviter les problèmes de scope)
-    $config['db_dsnw'] = 'sqlite:////var/roundcube/db/sqlite.db?mode=0646';
+    // Configuration Docker - Base de données PostgreSQL
+    $config['db_dsnw'] = 'pgsql://roundcube:roundcube1789@postgres_roundcube/roundcube';
     $config['db_dsnr'] = '';
-    $config['imap_host'] = 'localhost:143';
-    $config['smtp_host'] = 'localhost:587';
+    
+    // Configuration IMAP - Port 993 avec SSL/TLS (IMAPS)
+    $config['imap_host'] = 'ssl://mailserver:993';
+    $config['imap_conn_options'] = array(
+        'ssl' => array(
+            'verify_peer'       => false,
+            'verify_peer_name'  => false,
+            'allow_self_signed' => true,
+        ),
+    );
+    $config['imap_timeout'] = 30;
+    
+    // Configuration SMTP - Port 587 avec STARTTLS
+    $config['smtp_host'] = 'tls://mailserver:587';
+    $config['smtp_conn_options'] = array(
+        'ssl' => array(
+            'verify_peer'       => false,
+            'verify_peer_name'  => false,
+            'allow_self_signed' => true,
+        ),
+    );
+    
     $config['temp_dir'] = '/tmp/roundcube-temp';
     $config['skin'] = 'elastic';
     

@@ -68,12 +68,14 @@ func Connect(c *gin.Context) {
 	sessionToken := uuid.NewString()
 	expiresAtTime := time.Now().Add(24 * time.Hour)
 	
-	// Sauvegarder en mémoire
+	// Sauvegarder en mémoire avec mutex
+	sessionsMutex.Lock()
 	sessions[sessionToken] = session{
 		UserID:   userID,
 		Username: conn.Username,
 		expiry:   expiresAtTime,
 	}
+	sessionsMutex.Unlock()
 	
 	// Sauvegarder en base de données
 	err = createSessionInDB(userID, conn.Username, sessionToken, expiresAtTime)

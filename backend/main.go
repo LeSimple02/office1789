@@ -79,5 +79,12 @@ func main() {
 	// Matrix routes
 	r.POST("/api/matrix/regenerate", RegenerateMatrixAccount)
 
+	// Mail/Roundcube routes
+	r.POST("/api/mail/auth", GenerateMailSSO)
+	r.POST("/api/mail/sso", GenerateMailSSOAuto)
+	
+	// Session routes
+	r.POST("/api/session/check", CheckSession)
+
 	r.Run(":8080")
 }

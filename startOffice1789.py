@@ -128,38 +128,65 @@ def start_docker_containers():
     
     return True
 
+def kill_process_on_port(port):
+    """Tue le processus utilisant un port spécifique (Windows)"""
+    try:
+        if sys.platform == 'win32':
+            # Trouver le PID utilisant le port
+            result = subprocess.run(
+                f'netstat -ano | findstr :{port}',
+                shell=True,
+                capture_output=True,
+                text=True
+            )
+            if result.stdout:
+                lines = result.stdout.strip().split('\n')
+                for line in lines:
+                    if 'LISTENING' in line:
+                        parts = line.split()
+                        pid = parts[-1]
+                        print(f"   🔧 Arrêt du processus {pid} utilisant le port {port}...")
+                        subprocess.run(f'taskkill /F /PID {pid}', shell=True, capture_output=True)
+                        time.sleep(1)
+                        return True
+        return False
+    except Exception as e:
+        print(f"   ⚠️ Erreur lors de l'arrêt du processus: {e}")
+        return False
+
 def start_backend(config):
-    """Démarre le backend Go"""
+    """Démarre le backend Go avec logs visibles"""
     print("\n🚀 Démarrage du backend Go...")
     backend_dir = os.path.join(os.path.dirname(__file__), 'backend')
     
+    # Vérifier si le port 8080 est déjà utilisé
+    port = config['ports']['backend']
+    print(f"   🔍 Vérification du port {port}...")
+    kill_process_on_port(port)
+    
     try:
-        # Lancer air directement (comme dans l'ancien script)
+        # Windows peut nécessiter shell=True pour air
         if sys.platform == 'win32':
-            # Windows : lancer dans une nouvelle fenêtre de console
-            process = subprocess.Popen('air', cwd=backend_dir, shell=True,
-                                     creationflags=subprocess.CREATE_NEW_CONSOLE)
+            process = subprocess.Popen('air', cwd=backend_dir, shell=True)
         else:
-            # Linux/Mac
             process = subprocess.Popen(['air'], cwd=backend_dir)
-        
-        print(f"✅ Backend démarré sur http://localhost:{config['ports']['backend']}")
-        print("   (Une nouvelle fenêtre de terminal s'est ouverte pour le backend)")
+        print(f"✅ Backend démarré sur http://localhost:{port}")
         return process
-    except Exception as e:
-        print(f"⚠️  Erreur avec 'air': {e}")
-        print("⚠️  Tentative avec 'go run'...")
+    except FileNotFoundError:
+        print("⚠️  'air' introuvable, tentative avec 'go run'...")
         try:
             if sys.platform == 'win32':
-                process = subprocess.Popen('go run .', cwd=backend_dir, shell=True,
-                                         creationflags=subprocess.CREATE_NEW_CONSOLE)
+                process = subprocess.Popen('go run .', cwd=backend_dir, shell=True)
             else:
                 process = subprocess.Popen(['go', 'run', '.'], cwd=backend_dir)
-            print(f"✅ Backend démarré sur http://localhost:{config['ports']['backend']}")
+            print(f"✅ Backend démarré sur http://localhost:{port}")
             return process
         except Exception as e:
             print(f"❌ Erreur lors du démarrage du backend: {e}")
             return None
+    except Exception as e:
+        print(f"❌ Erreur lors du démarrage du backend: {e}")
+        return None
 
 def start_frontend(config):
     """Démarre le frontend Vue.js"""
@@ -167,8 +194,12 @@ def start_frontend(config):
     frontend_dir = os.path.join(os.path.dirname(__file__), 'webfront2')
     
     try:
-        process = subprocess.Popen(['npm', 'run', 'dev'], cwd=frontend_dir, shell=True)
-        print(f"✅ Frontend démarré sur http://localhost:{config['ports']['frontend']}")
+        # Windows nécessite shell=True pour npm
+        if sys.platform == 'win32':
+            process = subprocess.Popen('npm run dev', cwd=frontend_dir, shell=True)
+        else:
+            process = subprocess.Popen(['npm', 'run', 'dev'], cwd=frontend_dir)
+        print(f"✅ Frontend démarré sur http://localhost:{config['ports']['frontend']}\n")
         return process
     except Exception as e:
         print(f"❌ Erreur lors du démarrage du frontend: {e}")
@@ -241,13 +272,13 @@ if __name__ == "__main__":
     backend_process = None
     if config['autostart']['backend']:
         backend_process = start_backend(config)
-        time.sleep(3)  # Attendre que le backend démarre
+        time.sleep(2)  # Attendre que le backend démarre
     
     # Démarrer le frontend si configuré
     frontend_process = None
     if config['autostart']['frontend']:
         frontend_process = start_frontend(config)
-        time.sleep(5)  # Attendre que le frontend démarre
+        time.sleep(3)  # Attendre que le frontend démarre
     
     # Afficher les URLs
     display_urls(config)
@@ -258,13 +289,23 @@ if __name__ == "__main__":
         time.sleep(2)
         webbrowser.open(f"http://localhost:{config['ports']['frontend']}")
     
-    print("\n✅ Office1789 est prêt à l'emploi!")
-    print("   Appuyez sur Ctrl+C pour arrêter tous les services.\n")
+    print("\n" + "="*60)
+    print("✅ Office1789 est prêt à l'emploi!")
+    print("   Les logs du backend et du frontend s'affichent ci-dessous.")
+    print("   Appuyez sur Ctrl+C pour arrêter tous les services.")
+    print("="*60 + "\n")
     
-    # Attendre que le frontend se termine (ou Ctrl+C)
+    # Attendre que les processus se terminent (ou Ctrl+C)
     try:
-        if frontend_process:
-            frontend_process.wait()
+        while True:
+            time.sleep(1)
+            # Vérifier si les processus sont toujours vivants
+            if backend_process and backend_process.poll() is not None:
+                print("\n❌ Le backend s'est arrêté de manière inattendue!")
+                break
+            if frontend_process and frontend_process.poll() is not None:
+                print("\n❌ Le frontend s'est arrêté de manière inattendue!")
+                break
     except KeyboardInterrupt:
         print("\n\n🛑 Arrêt d'Office1789...")
         if frontend_process:

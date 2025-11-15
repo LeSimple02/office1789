@@ -2,11 +2,13 @@ package main
 
 import (
 	"golang.org/x/crypto/bcrypt"
+	"sync"
 	"time"
 )
 
 // Map en mémoire pour compatibilité (sera progressivement remplacé par DB)
 var sessions = map[string]session{}
+var sessionsMutex sync.RWMutex // Protection contre les accès concurrents
 
 // Session structure basée sur user_id
 type session struct {
@@ -75,26 +77,32 @@ func validateSession(token string, username string) (*session, bool) {
 		return nil, false
 	}
 	
-	// Vérifier d'abord en mémoire (ancien système)
-	if sess, ok := sessions[token]; ok && sess.Username == username {
+	// Vérifier d'abord en mémoire (ancien système) avec mutex
+	sessionsMutex.RLock()
+	sess, ok := sessions[token]
+	sessionsMutex.RUnlock()
+	
+	if ok && sess.Username == username {
 		return &sess, true
 	}
 	
 	// Sinon vérifier en DB (nouveau système)
-	sess, err := getSessionFromDB(token)
-	if err != nil || sess == nil {
+	sessFromDB, err := getSessionFromDB(token)
+	if err != nil || sessFromDB == nil {
 		return nil, false
 	}
 	
 	// Vérifier que le username correspond
-	if sess.Username != username {
+	if sessFromDB.Username != username {
 		return nil, false
 	}
 	
-	// Mettre en cache en mémoire pour performance
-	sessions[token] = *sess
+	// Mettre en cache en mémoire pour performance avec mutex
+	sessionsMutex.Lock()
+	sessions[token] = *sessFromDB
+	sessionsMutex.Unlock()
 	
-	return sess, true
+	return sessFromDB, true
 }
 
 func HashPassword(password string) string {
