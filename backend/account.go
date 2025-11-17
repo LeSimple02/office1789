@@ -234,6 +234,101 @@ type DeleteAccountRequest struct {
 	Token    string `json:"token"`
 }
 
+type ChangeSubscriptionRequest struct {
+	Username string `json:"username"`
+	Token    string `json:"token"`
+	NewOffer int    `json:"nboffer"` // 0=Free, 1=Standard, 2=Professional, 3=Enterprise
+}
+
+type SubscriptionResponse struct {
+	Success bool   `json:"success"`
+	Message string `json:"message"`
+	Offer   int    `json:"offer"`
+}
+
+// ChangeSubscription gère les changements d'abonnement
+func ChangeSubscription(c *gin.Context) {
+	var req ChangeSubscriptionRequest
+
+	if err := c.BindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, SubscriptionResponse{
+			Success: false,
+			Message: "Invalid request format",
+		})
+		return
+	}
+
+	// Valider la session
+	sess, valid := validateSession(req.Token, req.Username)
+	if !valid {
+		c.JSON(http.StatusUnauthorized, SubscriptionResponse{
+			Success: false,
+			Message: "Invalid session",
+		})
+		return
+	}
+
+	// Valider que l'offre est valide (0-3)
+	if req.NewOffer < 0 || req.NewOffer > 3 {
+		c.JSON(http.StatusBadRequest, SubscriptionResponse{
+			Success: false,
+			Message: "Invalid offer. Must be between 0 (Free) and 3 (Enterprise)",
+		})
+		return
+	}
+
+	// Récupérer l'offre actuelle de l'utilisateur
+	var currentOffer int
+	err := db.QueryRow("SELECT nboffer FROM Users WHERE user_id=$1", sess.UserID).Scan(&currentOffer)
+	if err != nil {
+		fmt.Printf("Error fetching current offer for user %s: %v\n", req.Username, err)
+		c.JSON(http.StatusInternalServerError, SubscriptionResponse{
+			Success: false,
+			Message: "Database error",
+		})
+		return
+	}
+
+	// Vérifier si l'utilisateur essaie de changer pour la même offre
+	if currentOffer == req.NewOffer {
+		c.JSON(http.StatusOK, SubscriptionResponse{
+			Success: true,
+			Message: "You are already on this plan",
+			Offer:   currentOffer,
+		})
+		return
+	}
+
+	// Mettre à jour l'offre dans la base de données
+	_, err = db.Exec("UPDATE Users SET nboffer=$1 WHERE user_id=$2", req.NewOffer, sess.UserID)
+	if err != nil {
+		fmt.Printf("Error updating subscription for user %s: %v\n", req.Username, err)
+		c.JSON(http.StatusInternalServerError, SubscriptionResponse{
+			Success: false,
+			Message: "Failed to update subscription",
+		})
+		return
+	}
+
+	// Déterminer le message en fonction du changement (upgrade ou downgrade)
+	offerNames := []string{"Free", "Standard", "Professional", "Enterprise"}
+	var message string
+	if req.NewOffer > currentOffer {
+		message = fmt.Sprintf("Successfully upgraded from %s to %s", offerNames[currentOffer], offerNames[req.NewOffer])
+	} else {
+		message = fmt.Sprintf("Successfully changed from %s to %s", offerNames[currentOffer], offerNames[req.NewOffer])
+	}
+
+	fmt.Printf("Subscription changed for user %s (ID: %d): %s -> %s\n",
+		req.Username, sess.UserID, offerNames[currentOffer], offerNames[req.NewOffer])
+
+	c.JSON(http.StatusOK, SubscriptionResponse{
+		Success: true,
+		Message: message,
+		Offer:   req.NewOffer,
+	})
+}
+
 type DeleteAccountResponse struct {
 	Success bool   `json:"success"`
 	Message string `json:"message"`

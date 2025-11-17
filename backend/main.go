@@ -87,5 +87,8 @@ func main() {
 	// Session routes
 	r.POST("/api/session/check", CheckSession)
 
+	// Subscription management route
+	r.POST("/api/subscription/change", ChangeSubscription)
+
 	r.Run(":8080")
 }

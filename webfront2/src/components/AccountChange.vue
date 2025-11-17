@@ -50,6 +50,19 @@ let verifying2FA = ref(false)
 let disabling2FA = ref(false)
 let regeneratingCodes = ref(false)
 
+// Subscription/Payment variables
+let showSubscriptionModal = ref(false)
+let selectedPlan = ref(0)
+let processingPayment = ref(false)
+let paymentMessage = ref('')
+
+const plans = [
+  { id: 0, name: 'Free', price: 0, storage: '2GB', features: ['Basic Email', 'Chat', 'Calendar', '2GB Storage'] },
+  { id: 1, name: 'Standard', price: 5, storage: '20GB', features: ['Professional Email', 'Priority Support', '20GB Storage', '50MB Attachments'] },
+  { id: 2, name: 'Professional', price: 12, storage: '100GB', features: ['Custom Domain', 'Team Collaboration', '100GB Storage', '3 Team Members', '200MB Attachments'] },
+  { id: 3, name: 'Enterprise', price: 49, storage: '500GB', features: ['Advanced Security', 'Unlimited Domains', '500GB Storage', '20 Team Members', '1GB Attachments', '24/7 Support'] }
+]
+
 // Load 2FA status
 fetch(`${import.meta.env.VITE_APP_API}/api/2fa/status`, {
   method: 'POST',
@@ -320,6 +333,93 @@ function closeEnableModal() {
   qrCodeImage.value = ''
   totpSecret.value = ''
 }
+
+// Subscription Management Functions
+function openSubscriptionModal(planId) {
+  selectedPlan.value = planId
+  showSubscriptionModal.value = true
+  paymentMessage.value = ''
+}
+
+function closeSubscriptionModal() {
+  showSubscriptionModal.value = false
+  selectedPlan.value = 0
+  paymentMessage.value = ''
+}
+
+async function processSubscription() {
+  const plan = plans.find(p => p.id === selectedPlan.value)
+  
+  if (!plan) {
+    paymentMessage.value = 'Plan invalide'
+    return
+  }
+
+  // Si c'est le plan gratuit, pas besoin de paiement
+  if (plan.id === 0) {
+    await updateSubscription(0)
+    return
+  }
+
+  processingPayment.value = true
+  paymentMessage.value = ''
+
+  try {
+    // TODO: Intégration avec Stripe/PayPal
+    // Pour l'instant, simulons un paiement
+    await new Promise(resolve => setTimeout(resolve, 2000))
+    
+    // Mettre à jour l'abonnement
+    await updateSubscription(selectedPlan.value)
+    
+    paymentMessage.value = `Abonnement ${plan.name} activé avec succès!`
+    
+    setTimeout(() => {
+      closeSubscriptionModal()
+      window.location.reload()
+    }, 2000)
+    
+  } catch (error) {
+    paymentMessage.value = 'Erreur lors du traitement du paiement'
+  } finally {
+    processingPayment.value = false
+  }
+}
+
+async function updateSubscription(planId) {
+  try {
+    const response = await fetch('http://localhost:8080/api/subscription/change', {
+      method: "POST",
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({
+        "username": gls().username,
+        "nboffer": planId,
+        "token": gls().sessionT
+      })
+    })
+    
+    const data = await response.json()
+    
+    if (!response.ok || !data.success) {
+      throw new Error(data.message || 'Failed to update subscription')
+    }
+    
+    // Mettre à jour l'offre localement
+    nboffer.value = planId
+    paymentMessage.value = data.message || 'Abonnement mis à jour avec succès !'
+    
+  } catch (error) {
+    console.error('Error updating subscription:', error)
+    paymentMessage.value = error.message || 'Erreur lors de la mise à jour de l\'abonnement'
+    throw error
+  }
+}
+
+function getPlanName(id) {
+  const names = ['Free', 'Standard', 'Professional', 'Enterprise']
+  return names[id] || 'Unknown'
+}
 </script>
 
 <template>
@@ -438,30 +538,6 @@ function closeEnableModal() {
           </label>
           <input readonly :value="domain || '-'" class="input readonly" />
         </div>
-
-        <!-- Offer -->
-        <div class="form-group">
-          <label class="label">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <circle cx="12" cy="12" r="10"></circle>
-              <polygon points="10,8 16,12 10,16"></polygon>
-            </svg>
-            {{ $t('offery') }}
-          </label>
-          <select v-model="newoffer" class="input">
-            <option value="0">Free</option>
-            <option value="1">Standard</option>
-            <option value="2">Premium</option>
-          </select>
-          <RouterLink class="info-link" to="/about">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <circle cx="12" cy="12" r="10"></circle>
-              <line x1="12" y1="16" x2="12" y2="12"></line>
-              <line x1="12" y1="8" x2="12.01" y2="8"></line>
-            </svg>
-            {{ $t('About') || 'Learn more' }}
-          </RouterLink>
-        </div>
       </form>
 
       <!-- Actions -->
@@ -480,6 +556,67 @@ function closeEnableModal() {
           </svg>
           {{ $t('cancel') || 'Cancel' }}
         </RouterLink>
+      </div>
+
+      <!-- Subscription Section -->
+      <div class="subscription-zone">
+        <h3 class="subscription-title">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"></circle>
+            <polygon points="10,8 16,12 10,16"></polygon>
+          </svg>
+          Gestion de l'abonnement
+        </h3>
+        <p class="subscription-subtitle">Gérez votre abonnement et choisissez l'offre qui vous convient</p>
+
+        <div class="current-plan">
+          <div class="plan-badge" :class="'plan-' + nboffer">
+            {{ getPlanName(nboffer) }}
+          </div>
+          <p class="plan-details">
+            Votre offre actuelle : <strong>{{ getPlanName(nboffer) }}</strong>
+            <span v-if="plans[nboffer]"> - {{ plans[nboffer].storage }} de stockage</span>
+          </p>
+        </div>
+
+        <div class="plans-grid">
+          <div v-for="plan in plans" :key="plan.id" class="plan-card" :class="{ 'current': plan.id === nboffer, 'recommended': plan.id === 2 }">
+            <div v-if="plan.id === 2" class="plan-badge-recommended">Recommandé</div>
+            <h4 class="plan-name">{{ plan.name }}</h4>
+            <div class="plan-price">
+              <span v-if="plan.price === 0" class="price-amount">Gratuit</span>
+              <template v-else>
+                <span class="price-amount">{{ plan.price }}€</span>
+                <span class="price-period">/mois</span>
+              </template>
+            </div>
+            <p class="plan-storage">{{ plan.storage }} de stockage</p>
+            <ul class="plan-features">
+              <li v-for="feature in plan.features" :key="feature">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <polyline points="20 6 9 17 4 12"></polyline>
+                </svg>
+                {{ feature }}
+              </li>
+            </ul>
+            <button 
+              v-if="plan.id !== nboffer"
+              type="button" 
+              class="btn-plan" 
+              :class="plan.id === 0 ? 'btn-plan-free' : 'btn-plan-upgrade'"
+              @click="openSubscriptionModal(plan.id)"
+            >
+              {{ plan.id > nboffer ? 'Passer à ' + plan.name : 'Changer pour ' + plan.name }}
+            </button>
+            <div v-else class="current-plan-indicator">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                <circle cx="12" cy="12" r="10"></circle>
+                <polyline points="9 12 11 14 15 10" stroke="white" stroke-width="2" fill="none"></polyline>
+              </svg>
+              Plan actuel
+            </div>
+          </div>
+        </div>
       </div>
 
       <!-- Authentication Section -->
@@ -725,6 +862,95 @@ function closeEnableModal() {
             >
               <div v-if="disabling2FA" class="btn-spinner"></div>
               {{ disabling2FA ? 'Désactivation...' : 'Désactiver 2FA' }}
+            </button>
+          </div>
+        </div>
+      </div>
+    </Teleport>
+
+    <!-- Subscription/Payment Modal -->
+    <Teleport to="body">
+      <div v-if="showSubscriptionModal" class="modal-overlay" @click="closeSubscriptionModal">
+        <div class="modal subscription-modal" @click.stop>
+          <div class="modal-header">
+            <h2 class="modal-title">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10"></circle>
+                <polygon points="10,8 16,12 10,16"></polygon>
+              </svg>
+              Changer d'abonnement
+            </h2>
+            <button class="modal-close" @click="closeSubscriptionModal">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="18" y1="6" x2="6" y2="18"></line>
+                <line x1="6" y1="6" x2="18" y2="18"></line>
+              </svg>
+            </button>
+          </div>
+          
+          <div class="modal-body" v-if="plans[selectedPlan]">
+            <div class="selected-plan-summary">
+              <h3>{{ plans[selectedPlan].name }}</h3>
+              <div class="plan-price-large">
+                <span v-if="plans[selectedPlan].price === 0">Gratuit</span>
+                <template v-else>
+                  <span class="amount">{{ plans[selectedPlan].price }}€</span>
+                  <span class="period">/mois</span>
+                </template>
+              </div>
+              <p class="storage-info">{{ plans[selectedPlan].storage }} de stockage</p>
+            </div>
+
+            <div class="plan-features-summary">
+              <h4>Ce qui est inclus :</h4>
+              <ul>
+                <li v-for="feature in plans[selectedPlan].features" :key="feature">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="20 6 9 17 4 12"></polyline>
+                  </svg>
+                  {{ feature }}
+                </li>
+              </ul>
+            </div>
+
+            <div v-if="plans[selectedPlan].price > 0" class="payment-section">
+              <h4>Méthode de paiement</h4>
+              <p class="payment-info">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <circle cx="12" cy="12" r="10"></circle>
+                  <line x1="12" y1="8" x2="12" y2="12"></line>
+                  <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                </svg>
+                Le paiement sera traité de manière sécurisée. Vous pouvez annuler à tout moment.
+              </p>
+              
+              <!-- TODO: Intégrer Stripe ou PayPal ici -->
+              <div class="payment-placeholder">
+                <p>🔒 Paiement sécurisé par carte bancaire</p>
+                <p class="small-text">Stripe ou PayPal seront intégrés prochainement</p>
+              </div>
+            </div>
+
+            <div v-if="paymentMessage" class="payment-message" :class="{ success: paymentMessage.includes('succès') }">
+              {{ paymentMessage }}
+            </div>
+          </div>
+
+          <div class="modal-actions">
+            <button type="button" class="btn ghost" @click="closeSubscriptionModal" :disabled="processingPayment">
+              Annuler
+            </button>
+            <button 
+              type="button" 
+              class="btn primary" 
+              @click="processSubscription" 
+              :disabled="processingPayment"
+            >
+              <div v-if="processingPayment" class="btn-spinner"></div>
+              <span v-if="!processingPayment">
+                {{ plans[selectedPlan]?.price === 0 ? 'Passer au plan gratuit' : 'Confirmer l\'abonnement' }}
+              </span>
+              <span v-else>Traitement...</span>
             </button>
           </div>
         </div>
@@ -1289,6 +1515,572 @@ function closeEnableModal() {
   padding: 20px 24px;
   border-top: 1px solid #e9ecef;
 }
+.dark .modal-actions { border-top-color: #3a3d4a; }
+
+/* Subscription System Styles */
+.subscription-zone {
+  background: #ffffff;
+  border: 1px solid #e9ecef;
+  border-radius: 16px;
+  padding: 32px;
+  margin-bottom: 24px;
+}
+
+.dark .subscription-zone {
+  background: #2a2d3a;
+  border-color: #3a3d4a;
+}
+
+.subscription-title {
+  font-size: 20px;
+  font-weight: 700;
+  color: #1a1d2e;
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.dark .subscription-title {
+  color: #f0f0f0;
+}
+
+.subscription-subtitle {
+  font-size: 14px;
+  color: #6c757d;
+  margin-bottom: 24px;
+}
+
+.dark .subscription-subtitle {
+  color: #9ca3af;
+}
+
+.current-plan {
+  background: #f8f9fa;
+  border-radius: 12px;
+  padding: 16px 20px;
+  margin-bottom: 24px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.dark .current-plan {
+  background: #1e212e;
+}
+
+.current-plan strong {
+  color: #1a1d2e;
+  font-weight: 600;
+}
+
+.dark .current-plan strong {
+  color: #f0f0f0;
+}
+
+.plan-badge {
+  display: inline-block;
+  padding: 6px 14px;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.plan-badge-free {
+  background: #e9ecef;
+  color: #495057;
+}
+
+.dark .plan-badge-free {
+  background: #3a3d4a;
+  color: #9ca3af;
+}
+
+.plan-badge-standard {
+  background: #cfe2ff;
+  color: #084298;
+}
+
+.dark .plan-badge-standard {
+  background: #1e3a5f;
+  color: #6ea8fe;
+}
+
+.plan-badge-professional {
+  background: #d1e7dd;
+  color: #0f5132;
+}
+
+.dark .plan-badge-professional {
+  background: #1a3d2e;
+  color: #75b798;
+}
+
+.plan-badge-enterprise {
+  background: #f8d7da;
+  color: #842029;
+}
+
+.dark .plan-badge-enterprise {
+  background: #3a1e23;
+  color: #ea868f;
+}
+
+.plans-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 20px;
+}
+
+.plan-card {
+  background: #ffffff;
+  border: 2px solid #e9ecef;
+  border-radius: 16px;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  transition: all 0.3s ease;
+  position: relative;
+}
+
+.dark .plan-card {
+  background: #1e212e;
+  border-color: #3a3d4a;
+}
+
+.plan-card:hover {
+  border-color: #007bff;
+  box-shadow: 0 8px 24px rgba(0, 123, 255, 0.15);
+  transform: translateY(-4px);
+}
+
+.plan-card.current {
+  border-color: #28a745;
+  background: linear-gradient(135deg, #ffffff 0%, #f8fff9 100%);
+}
+
+.dark .plan-card.current {
+  border-color: #4ade80;
+  background: linear-gradient(135deg, #1e212e 0%, #1e2e26 100%);
+}
+
+.plan-card.recommended {
+  border-color: #007bff;
+  box-shadow: 0 8px 24px rgba(0, 123, 255, 0.2);
+}
+
+.dark .plan-card.recommended {
+  border-color: #6ea8fe;
+}
+
+.plan-badge-recommended {
+  position: absolute;
+  top: -12px;
+  right: 20px;
+  background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
+  color: white;
+  padding: 6px 16px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  box-shadow: 0 4px 12px rgba(0, 123, 255, 0.3);
+}
+
+.plan-name {
+  font-size: 22px;
+  font-weight: 700;
+  color: #1a1d2e;
+  margin-bottom: 12px;
+}
+
+.dark .plan-name {
+  color: #f0f0f0;
+}
+
+.plan-price {
+  font-size: 36px;
+  font-weight: 800;
+  color: #007bff;
+  margin-bottom: 4px;
+}
+
+.dark .plan-price {
+  color: #6ea8fe;
+}
+
+.plan-price-free {
+  color: #6c757d;
+}
+
+.dark .plan-price-free {
+  color: #9ca3af;
+}
+
+.plan-period {
+  font-size: 14px;
+  color: #6c757d;
+  font-weight: 500;
+}
+
+.dark .plan-period {
+  color: #9ca3af;
+}
+
+.plan-storage {
+  font-size: 15px;
+  color: #495057;
+  margin: 12px 0;
+  font-weight: 600;
+}
+
+.dark .plan-storage {
+  color: #cbd5e1;
+}
+
+.plan-features {
+  list-style: none;
+  padding: 0;
+  margin: 20px 0;
+  flex-grow: 1;
+}
+
+.plan-features li {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 0;
+  font-size: 14px;
+  color: #495057;
+  border-bottom: 1px solid #f8f9fa;
+}
+
+.dark .plan-features li {
+  color: #cbd5e1;
+  border-bottom-color: #3a3d4a;
+}
+
+.plan-features li:last-child {
+  border-bottom: none;
+}
+
+.plan-features svg {
+  flex-shrink: 0;
+  margin-top: 2px;
+  color: #28a745;
+}
+
+.dark .plan-features svg {
+  color: #4ade80;
+}
+
+.btn-plan {
+  width: 100%;
+  padding: 14px 24px;
+  border: none;
+  border-radius: 12px;
+  font-weight: 600;
+  font-size: 15px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  margin-top: auto;
+}
+
+.btn-plan-free {
+  background: #e9ecef;
+  color: #495057;
+}
+
+.btn-plan-free:hover {
+  background: #dee2e6;
+  transform: translateY(-2px);
+}
+
+.dark .btn-plan-free {
+  background: #3a3d4a;
+  color: #cbd5e1;
+}
+
+.dark .btn-plan-free:hover {
+  background: #4a4d5a;
+}
+
+.btn-plan-upgrade {
+  background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
+  color: white;
+  box-shadow: 0 4px 12px rgba(0, 123, 255, 0.3);
+}
+
+.btn-plan-upgrade:hover {
+  box-shadow: 0 6px 20px rgba(0, 123, 255, 0.4);
+  transform: translateY(-2px);
+}
+
+.dark .btn-plan-upgrade {
+  background: linear-gradient(135deg, #6ea8fe 0%, #4a8fe7 100%);
+}
+
+.current-plan-indicator {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 14px 24px;
+  background: #d4edda;
+  color: #155724;
+  border-radius: 12px;
+  font-weight: 600;
+  font-size: 15px;
+}
+
+.dark .current-plan-indicator {
+  background: #1e3a2e;
+  color: #4ade80;
+}
+
+.current-plan-indicator svg {
+  flex-shrink: 0;
+}
+
+/* Subscription Modal Styles */
+.subscription-modal {
+  max-width: 520px;
+}
+
+.selected-plan-summary {
+  text-align: center;
+  padding: 24px;
+  background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+  border-radius: 12px;
+  margin-bottom: 24px;
+}
+
+.dark .selected-plan-summary {
+  background: linear-gradient(135deg, #2a2d3a 0%, #1e212e 100%);
+}
+
+.selected-plan-summary h3 {
+  font-size: 24px;
+  font-weight: 700;
+  color: #1a1d2e;
+  margin-bottom: 12px;
+}
+
+.dark .selected-plan-summary h3 {
+  color: #f0f0f0;
+}
+
+.plan-price-large {
+  font-size: 48px;
+  font-weight: 800;
+  color: #007bff;
+  margin-bottom: 8px;
+}
+
+.dark .plan-price-large {
+  color: #6ea8fe;
+}
+
+.plan-price-large .amount {
+  display: inline-block;
+}
+
+.plan-price-large .period {
+  font-size: 18px;
+  font-weight: 600;
+  color: #6c757d;
+}
+
+.dark .plan-price-large .period {
+  color: #9ca3af;
+}
+
+.storage-info {
+  font-size: 16px;
+  color: #495057;
+  font-weight: 600;
+}
+
+.dark .storage-info {
+  color: #cbd5e1;
+}
+
+.plan-features-summary {
+  margin-bottom: 24px;
+}
+
+.plan-features-summary h4 {
+  font-size: 16px;
+  font-weight: 700;
+  color: #1a1d2e;
+  margin-bottom: 12px;
+}
+
+.dark .plan-features-summary h4 {
+  color: #f0f0f0;
+}
+
+.plan-features-summary ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.plan-features-summary li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 0;
+  color: #495057;
+  font-size: 14px;
+}
+
+.dark .plan-features-summary li {
+  color: #cbd5e1;
+}
+
+.plan-features-summary svg {
+  flex-shrink: 0;
+  color: #28a745;
+}
+
+.dark .plan-features-summary svg {
+  color: #4ade80;
+}
+
+.payment-section {
+  background: #f8f9fa;
+  border-radius: 12px;
+  padding: 20px;
+  margin-bottom: 20px;
+}
+
+.dark .payment-section {
+  background: #1e212e;
+}
+
+.payment-section h4 {
+  font-size: 16px;
+  font-weight: 700;
+  color: #1a1d2e;
+  margin-bottom: 12px;
+}
+
+.dark .payment-section h4 {
+  color: #f0f0f0;
+}
+
+.payment-info {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  font-size: 14px;
+  color: #6c757d;
+  margin-bottom: 16px;
+}
+
+.dark .payment-info {
+  color: #9ca3af;
+}
+
+.payment-info svg {
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.payment-placeholder {
+  background: white;
+  border: 2px dashed #dee2e6;
+  border-radius: 8px;
+  padding: 24px;
+  text-align: center;
+}
+
+.dark .payment-placeholder {
+  background: #2a2d3a;
+  border-color: #3a3d4a;
+}
+
+.payment-placeholder p {
+  margin: 8px 0;
+  font-size: 15px;
+  color: #495057;
+}
+
+.dark .payment-placeholder p {
+  color: #cbd5e1;
+}
+
+.payment-placeholder .small-text {
+  font-size: 13px;
+  color: #6c757d;
+}
+
+.dark .payment-placeholder .small-text {
+  color: #9ca3af;
+}
+
+.payment-message {
+  padding: 16px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  text-align: center;
+  background: #fff3cd;
+  color: #856404;
+  border: 1px solid #ffeaa7;
+}
+
+.payment-message.success {
+  background: #d4edda;
+  color: #155724;
+  border-color: #c3e6cb;
+}
+
+.dark .payment-message {
+  background: #3a3020;
+  color: #fbbf24;
+  border-color: #4a4030;
+}
+
+.dark .payment-message.success {
+  background: #1e3a2e;
+  color: #4ade80;
+  border-color: #2a5a3e;
+}
+
+/* Responsive - Subscription */
+@media (max-width: 768px) {
+  .subscription-zone {
+    padding: 20px;
+  }
+  
+  .plans-grid {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+  
+  .plan-card {
+    padding: 20px;
+  }
+  
+  .plan-price {
+    font-size: 32px;
+  }
+  
+  .plan-price-large {
+    font-size: 40px;
+  }
+  
+  .subscription-modal {
+    max-width: 95%;
+    margin: 10px;
+  }
+}
+
 .dark .modal-actions { border-top-color: #3a3d4a; }
 
 /* Responsive */
