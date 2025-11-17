@@ -87,6 +87,11 @@ const router = createRouter({
       {
 	path: 'edit',
 	component: ()=>import('../views/AccountView.vue'),
+      },
+      {
+	path: 'subscription-success',
+	name: 'subscription-success',
+	component: ()=>import('../components/SubscriptionSuccess.vue'),
       }]
     },
     {

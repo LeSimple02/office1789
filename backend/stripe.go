@@ -1,0 +1,212 @@
+package main
+
+import (
+	"encoding/json"
+	"fmt"
+	"net/http"
+	"os"
+
+	"github.com/gin-gonic/gin"
+	"github.com/stripe/stripe-go/v81"
+	checkoutsession "github.com/stripe/stripe-go/v81/checkout/session"
+	"github.com/stripe/stripe-go/v81/webhook"
+)
+
+// CreateCheckoutSessionRequest structure pour la requête
+type CreateCheckoutSessionRequest struct {
+	Username string `json:"username"`
+	Token    string `json:"token"`
+	PlanID   int    `json:"plan_id"` // 1=Standard, 2=Professional, 3=Enterprise
+}
+
+// getStripePriceID récupère le Price ID Stripe pour un plan donné
+func getStripePriceID(planID int) string {
+	priceIDs := map[int]string{
+		1: os.Getenv("STRIPE_PRICE_STANDARD"),      // 5€/mois
+		2: os.Getenv("STRIPE_PRICE_PROFESSIONAL"),  // 12€/mois
+		3: os.Getenv("STRIPE_PRICE_ENTERPRISE"),    // 49€/mois
+	}
+	priceID := priceIDs[planID]
+	fmt.Printf("🔍 DEBUG: Price ID récupéré pour plan %d: '%s'\n", planID, priceID)
+	return priceID
+}
+
+// CreateCheckoutSession crée une session de paiement Stripe
+func CreateCheckoutSession(c *gin.Context) {
+	var req CreateCheckoutSessionRequest
+
+	if err := c.BindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"message": "Invalid request format",
+		})
+		return
+	}
+
+	// Valider la session utilisateur
+	sess, valid := validateSession(req.Token, req.Username)
+	if !valid {
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"success": false,
+			"message": "Invalid session",
+		})
+		return
+	}
+
+	// Vérifier que le plan est valide (pas de paiement pour Free)
+	if req.PlanID < 1 || req.PlanID > 3 {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"message": "Invalid plan. Only paid plans (1-3) require payment.",
+		})
+		return
+	}
+
+	// Récupérer le Price ID Stripe
+	priceID := getStripePriceID(req.PlanID)
+	fmt.Printf("🔍 DEBUG: Test mode check - priceID='%s'\n", priceID)
+	if priceID == "" || priceID == "price_test_standard" || priceID == "price_test_professional" || priceID == "price_test_enterprise" {
+		// Mode test : utiliser l'endpoint de changement direct sans Stripe
+		fmt.Printf("⚠️  Stripe not configured, using direct subscription change for user %s, plan %d\n", req.Username, req.PlanID)
+		
+		// Mettre à jour directement l'abonnement
+		_, err := db.Exec("UPDATE Users SET nboffer=$1 WHERE user_id=$2", req.PlanID, sess.UserID)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"success": false,
+				"message": "Failed to update subscription",
+			})
+			return
+		}
+		
+		// Rediriger vers la page de succès
+		c.JSON(http.StatusOK, gin.H{
+			"success": true,
+			"url":     fmt.Sprintf("%s/account/subscription-success", os.Getenv("FRONTEND_URL")),
+			"message": "Subscription updated (test mode - Stripe not configured)",
+		})
+		return
+	}
+
+	// Créer la session Stripe Checkout
+	params := &stripe.CheckoutSessionParams{
+		PaymentMethodTypes: stripe.StringSlice([]string{
+			"card",
+		}),
+		LineItems: []*stripe.CheckoutSessionLineItemParams{
+			{
+				Price:    stripe.String(priceID),
+				Quantity: stripe.Int64(1),
+			},
+		},
+		Mode: stripe.String(string(stripe.CheckoutSessionModeSubscription)),
+		SuccessURL: stripe.String(fmt.Sprintf("%s/account/subscription-success?session_id={CHECKOUT_SESSION_ID}", 
+			os.Getenv("FRONTEND_URL"))),
+		CancelURL: stripe.String(fmt.Sprintf("%s/account/change", 
+			os.Getenv("FRONTEND_URL"))),
+		ClientReferenceID: stripe.String(fmt.Sprintf("%d:%s:%d", sess.UserID, req.Username, req.PlanID)),
+		CustomerEmail: stripe.String(fmt.Sprintf("%s@office1789.com", req.Username)),
+	}
+
+	s, err := checkoutsession.New(params)
+	if err != nil {
+		fmt.Printf("Error creating Stripe session: %v\n", err)
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"message": "Failed to create payment session",
+		})
+		return
+	}
+
+	fmt.Printf("Stripe checkout session created for user %s (ID: %d), Plan: %d, Session: %s\n",
+		req.Username, sess.UserID, req.PlanID, s.ID)
+
+	c.JSON(http.StatusOK, gin.H{
+		"success":    true,
+		"session_id": s.ID,
+		"url":        s.URL,
+	})
+}
+
+// StripeWebhook gère les événements webhook de Stripe
+func StripeWebhook(c *gin.Context) {
+	const MaxBodyBytes = int64(65536)
+	c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, MaxBodyBytes)
+	
+	payload, err := c.GetRawData()
+	if err != nil {
+		fmt.Printf("Error reading webhook body: %v\n", err)
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid payload"})
+		return
+	}
+
+	// Vérifier la signature du webhook
+	endpointSecret := os.Getenv("STRIPE_WEBHOOK_SECRET")
+	signatureHeader := c.GetHeader("Stripe-Signature")
+	
+	event, err := webhook.ConstructEvent(payload, signatureHeader, endpointSecret)
+	if err != nil {
+		fmt.Printf("Webhook signature verification failed: %v\n", err)
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid signature"})
+		return
+	}
+
+	// Traiter les différents types d'événements
+	switch event.Type {
+	case "checkout.session.completed":
+		// Paiement réussi
+		var checkoutSession stripe.CheckoutSession
+		err := json.Unmarshal(event.Data.Raw, &checkoutSession)
+		if err != nil {
+			fmt.Printf("Error parsing webhook JSON: %v\n", err)
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid event data"})
+			return
+		}
+
+		// Extraire les informations depuis ClientReferenceID
+		// Format: "userID:username:planID"
+		var userID int
+		var username string
+		var planID int
+		fmt.Sscanf(checkoutSession.ClientReferenceID, "%d:%[^:]:%d", &userID, &username, &planID)
+
+		// Mettre à jour l'abonnement de l'utilisateur
+		_, err = db.Exec("UPDATE Users SET nboffer=$1 WHERE user_id=$2", planID, userID)
+		if err != nil {
+			fmt.Printf("Error updating subscription for user %d: %v\n", userID, err)
+		} else {
+			fmt.Printf("✅ Subscription activated: User %s (ID: %d) upgraded to plan %d via Stripe session %s\n",
+				username, userID, planID, checkoutSession.ID)
+		}
+
+	case "customer.subscription.updated":
+		// Abonnement mis à jour (renouvellement, changement de plan, etc.)
+		fmt.Printf("Subscription updated event received\n")
+
+	case "customer.subscription.deleted":
+		// Abonnement annulé
+		fmt.Printf("Subscription cancelled event received\n")
+		// TODO: Rétrograder l'utilisateur vers le plan Free (0)
+
+	case "invoice.payment_failed":
+		// Échec de paiement
+		fmt.Printf("Payment failed event received\n")
+		// TODO: Envoyer notification à l'utilisateur
+
+	default:
+		fmt.Printf("Unhandled event type: %s\n", event.Type)
+	}
+
+	c.JSON(http.StatusOK, gin.H{"received": true})
+}
+
+// InitStripe initialise la clé API Stripe
+func InitStripe() {
+	stripeKey := os.Getenv("STRIPE_SECRET_KEY")
+	if stripeKey == "" {
+		fmt.Println("⚠️  WARNING: STRIPE_SECRET_KEY not set in environment")
+	} else {
+		stripe.Key = stripeKey
+		fmt.Println("✅ Stripe initialized successfully")
+	}
+}

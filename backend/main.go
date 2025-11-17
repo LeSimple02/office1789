@@ -12,6 +12,7 @@ func welcome(c *gin.Context) {
 
 func main() {
 	Connectdb()
+	InitStripe() // Initialiser Stripe avec la clé API
 	r := gin.Default()
 
 	// CORS configuration with credentials support
@@ -89,6 +90,10 @@ func main() {
 
 	// Subscription management route
 	r.POST("/api/subscription/change", ChangeSubscription)
+
+	// Stripe payment routes
+	r.POST("/api/stripe/checkout", CreateCheckoutSession)
+	r.POST("/api/stripe/webhook", StripeWebhook)
 
 	r.Run(":8080")
 }

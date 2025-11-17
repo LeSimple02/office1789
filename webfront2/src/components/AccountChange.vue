@@ -71,12 +71,21 @@ fetch(`${import.meta.env.VITE_APP_API}/api/2fa/status`, {
   headers: { 'Content-Type': 'application/json' },
   body: JSON.stringify({ username: gls().username, token: gls().sessionT })
 })
-  .then(r => r.json())
+  .then(async r => {
+    const text = await r.text()
+    try {
+      return JSON.parse(text)
+    } catch (e) {
+      console.error('2FA status JSON parse error:', e, 'Response:', text)
+      return { enabled: false }
+    }
+  })
   .then(data => {
     twoFactorEnabled.value = data.enabled || false
     loading2FA.value = false
   })
-  .catch(() => {
+  .catch((err) => {
+    console.error('2FA status fetch error:', err)
     loading2FA.value = false
   })
 
@@ -86,7 +95,15 @@ fetch(import.meta.env.VITE_APP_API_INFO_USER, {
   mode: "cors",
   body: JSON.stringify({ "username": gls().username, "token": gls().sessionT })
 })
-  .then(r => r.json())
+  .then(async r => {
+    const text = await r.text()
+    try {
+      return JSON.parse(text)
+    } catch (e) {
+      console.error('User info JSON parse error:', e, 'Response:', text)
+      throw new Error('Invalid JSON response')
+    }
+  })
   .then(a => {
     dj.value = a['DateJoined']
     domain.value = a['Domain']
@@ -96,7 +113,8 @@ fetch(import.meta.env.VITE_APP_API_INFO_USER, {
     lj.value = a["LastLogin"]
     loading.value = false
   })
-  .catch(() => {
+  .catch((err) => {
+    console.error('User info fetch error:', err)
     loading.value = false
   })
 
@@ -357,31 +375,68 @@ async function processSubscription() {
 
   // Si c'est le plan gratuit, pas besoin de paiement
   if (plan.id === 0) {
-    await updateSubscription(0)
+    processingPayment.value = true
+    paymentMessage.value = ''
+    
+    try {
+      await updateSubscription(0)
+      paymentMessage.value = 'Changement vers le plan gratuit effectué avec succès!'
+      
+      setTimeout(() => {
+        closeSubscriptionModal()
+        window.location.reload()
+      }, 1500)
+    } catch (error) {
+      paymentMessage.value = error.message || 'Erreur lors du changement de plan'
+    } finally {
+      processingPayment.value = false
+    }
     return
   }
 
+  // Pour les plans payants, rediriger vers Stripe
   processingPayment.value = true
   paymentMessage.value = ''
 
   try {
-    // TODO: Intégration avec Stripe/PayPal
-    // Pour l'instant, simulons un paiement
-    await new Promise(resolve => setTimeout(resolve, 2000))
-    
-    // Mettre à jour l'abonnement
-    await updateSubscription(selectedPlan.value)
-    
-    paymentMessage.value = `Abonnement ${plan.name} activé avec succès!`
-    
-    setTimeout(() => {
-      closeSubscriptionModal()
-      window.location.reload()
-    }, 2000)
+    // Créer une session de paiement Stripe
+    const response = await fetch('http://localhost:8080/api/stripe/checkout', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({
+        username: gls().username,
+        token: gls().sessionT,
+        plan_id: selectedPlan.value
+      })
+    })
+
+    // Lire la réponse brute pour debug
+    const responseText = await response.text()
+    console.log('Stripe checkout raw response:', responseText)
+    console.log('Stripe checkout status:', response.status)
+    console.log('Stripe checkout content-type:', response.headers.get('content-type'))
+
+    // Parser le JSON
+    let data
+    try {
+      data = JSON.parse(responseText)
+    } catch (parseError) {
+      console.error('Stripe checkout JSON parse error:', parseError)
+      console.error('Trying to parse:', responseText)
+      throw new Error('Invalid JSON response from Stripe endpoint')
+    }
+
+    if (!response.ok || !data.success) {
+      throw new Error(data.message || 'Failed to create checkout session')
+    }
+
+    // Rediriger vers Stripe Checkout
+    window.location.href = data.url
     
   } catch (error) {
-    paymentMessage.value = 'Erreur lors du traitement du paiement'
-  } finally {
+    console.error('Error creating checkout session:', error)
+    paymentMessage.value = error.message || 'Erreur lors de la création de la session de paiement'
     processingPayment.value = false
   }
 }
@@ -399,7 +454,28 @@ async function updateSubscription(planId) {
       })
     })
     
-    const data = await response.json()
+    // Lire la réponse brute pour debug
+    const responseText = await response.text()
+    console.log('Raw response:', responseText)
+    console.log('Response status:', response.status)
+    console.log('Content-Type:', response.headers.get('content-type'))
+    
+    // Vérifier si la réponse est bien du JSON
+    const contentType = response.headers.get('content-type')
+    if (!contentType || !contentType.includes('application/json')) {
+      console.error('Response is not JSON:', responseText)
+      throw new Error('Invalid server response format')
+    }
+    
+    // Parser le JSON
+    let data
+    try {
+      data = JSON.parse(responseText)
+    } catch (parseError) {
+      console.error('JSON parse error:', parseError)
+      console.error('Trying to parse:', responseText)
+      throw new Error('Invalid JSON response from server')
+    }
     
     if (!response.ok || !data.success) {
       throw new Error(data.message || 'Failed to update subscription')
@@ -408,6 +484,8 @@ async function updateSubscription(planId) {
     // Mettre à jour l'offre localement
     nboffer.value = planId
     paymentMessage.value = data.message || 'Abonnement mis à jour avec succès !'
+    
+    return data
     
   } catch (error) {
     console.error('Error updating subscription:', error)
@@ -924,10 +1002,15 @@ function getPlanName(id) {
                 Le paiement sera traité de manière sécurisée. Vous pouvez annuler à tout moment.
               </p>
               
-              <!-- TODO: Intégrer Stripe ou PayPal ici -->
               <div class="payment-placeholder">
-                <p>🔒 Paiement sécurisé par carte bancaire</p>
-                <p class="small-text">Stripe ou PayPal seront intégrés prochainement</p>
+                <div class="stripe-logo">
+                  <svg width="60" height="25" viewBox="0 0 60 25" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <rect width="60" height="25" rx="4" fill="#635BFF"/>
+                    <path d="M13.3 11.5c0-.5-.3-.7-.9-.7-1 0-2.3.3-3.4.9V7.8c1.1-.4 2.3-.7 3.5-.7 2.9 0 4.8 1.5 4.8 4.1v6.6h-3.8l-.2-1c-.7.8-1.7 1.3-3 1.3-2.1 0-3.6-1.4-3.6-3.4 0-2.2 1.6-3.4 4.7-3.6l1.9-.1zm0 2.4l-.9.1c-1.2.1-1.8.5-1.8 1.2 0 .6.5 1 1.2 1 .9 0 1.5-.6 1.5-1.4v-.9zm11.9-6.1c-1.1 0-2 .4-2.6 1.1l-.2-.9h-3.7v12.8h4.1v-4.4c.6.6 1.4 1 2.4 1 2.4 0 4.3-1.9 4.3-4.8 0-2.9-1.9-4.8-4.3-4.8zm-1.1 7c-.9 0-1.5-.6-1.5-1.5V12c0-.8.6-1.5 1.5-1.5.9 0 1.5.7 1.5 1.7 0 1-.6 1.7-1.5 1.7zm7.5-6.7h4.1v9.7h-4.1V8.1zm0-3.5h4.1v2.8h-4.1V4.6zm12.7 3.2c-2.8 0-4.8 2-4.8 4.9s2 4.9 4.9 4.9c1.4 0 2.6-.4 3.5-1.1l-1.2-2.4c-.6.4-1.3.7-2.1.7-1 0-1.7-.4-2-1.3h5.9v-.8c0-2.9-1.7-5-4.2-5zm-1.6 4.1c.2-.8.8-1.3 1.6-1.3s1.3.5 1.4 1.3h-3z" fill="white"/>
+                  </svg>
+                </div>
+                <p>🔒 Paiement sécurisé par Stripe</p>
+                <p class="small-text">Carte bancaire, Apple Pay, Google Pay</p>
               </div>
             </div>
 
@@ -2002,6 +2085,13 @@ function getPlanName(id) {
 .dark .payment-placeholder {
   background: #2a2d3a;
   border-color: #3a3d4a;
+}
+
+.stripe-logo {
+  margin-bottom: 16px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
 }
 
 .payment-placeholder p {
