@@ -43,6 +43,12 @@
     $config['temp_dir'] = '/tmp/roundcube-temp';
     $config['skin'] = 'elastic';
     
+    // Autoriser l'affichage dans une iframe (pour l'intégration Office1789)
+    $config['x_frame_options'] = false;
+    
+    // Désactiver Content-Security-Policy frame-ancestors pour permettre l'iframe
+    $config['csp_frame_ancestors'] = false;
+    
     // BLOQUER le changement de mot de passe dans Roundcube
     // Les utilisateurs doivent utiliser Office1789 pour synchroniser tous les services
     $config['dont_override'] = ['password'];

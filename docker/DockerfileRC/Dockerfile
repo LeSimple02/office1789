@@ -12,9 +12,9 @@ ENV ROUNDCUBE_DB_TYPE=pgsql \
     ROUNDCUBE_SMTP_PORT=587 \
     ROUNDCUBE_PLUGINS=archive,zipdownload
 
-# Modifier les en-têtes Apache pour autoriser l'iframe
+# Modifier les en-têtes Apache pour autoriser l'iframe depuis Office1789
 RUN echo 'Header always unset X-Frame-Options' >> /etc/apache2/conf-enabled/security.conf && \
-    echo 'Header set Content-Security-Policy "frame-ancestors http://localhost:5173 http://localhost:8080;"' >> /etc/apache2/conf-enabled/security.conf && \
+    echo "Header always set Content-Security-Policy \"frame-ancestors 'self' http://localhost:5173 http://localhost:8080;\"" >> /etc/apache2/conf-enabled/security.conf && \
     a2enmod headers
 
 # Copier le script d'initialisation
