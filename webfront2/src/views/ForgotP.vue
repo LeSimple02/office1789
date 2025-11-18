@@ -20,12 +20,13 @@
           required 
         />
         
-        <button @click="send" class="btn-submit">
-          <svg class="btn-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <button @click="send" class="btn-submit" :disabled="loading">
+          <svg v-if="!loading" class="btn-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
                   d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
           </svg>
-          Envoyer l'email
+          <span v-if="!loading">Envoyer l'email</span>
+          <span v-else>⏳ Envoi en cours...</span>
         </button>
 
         <p v-if="sendm=='nothing'" class="message error">❌ Veuillez entrer votre identifiant</p>
@@ -51,12 +52,44 @@ import {ref} from "vue"
 
 let id = ref("")
 let sendm = ref(false)
+let loading = ref(false)
 
-function send(){
-  if(id.value != "")
-    sendm.value = true
-  else{
+async function send(){
+  if(id.value == "") {
     sendm.value = 'nothing'
+    return
+  }
+
+  loading.value = true
+  sendm.value = false
+
+  try {
+    const response = await fetch('http://localhost:8080/api/password/reset/request', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        identifier: id.value
+      })
+    })
+
+    const data = await response.json()
+    
+    // Toujours afficher un message de succès pour des raisons de sécurité
+    // (ne pas révéler si un compte existe ou non)
+    if (response.ok || data.success) {
+      sendm.value = true
+    } else {
+      // En cas d'erreur serveur, afficher quand même le message de succès
+      sendm.value = true
+    }
+  } catch (error) {
+    console.error('Error:', error)
+    // Même en cas d'erreur, afficher le message de succès (sécurité)
+    sendm.value = true
+  } finally {
+    loading.value = false
   }
 }
 </script>

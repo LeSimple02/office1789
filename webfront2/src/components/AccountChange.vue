@@ -145,7 +145,11 @@ function checkEmail() {
 
 // Validate phone format
 function checkPhone() {
-  phoneValid.value = isValidPhone(newphone.value)
+  if (newphone.value && newphone.value.trim() !== '') {
+    phoneValid.value = isValidPhone(newphone.value)
+  } else {
+    phoneValid.value = true // Optional field
+  }
 }
 
 function send() {
@@ -153,16 +157,16 @@ function send() {
   emailR.value = false
   phonenumberR.value = false
 
-  // Valider email si modifié
-  if (newemail.value) {
+  // Valider email si modifié et non vide
+  if (newemail.value && newemail.value.trim() !== '') {
     checkEmail()
     if (!emailValid.value) {
       return
     }
   }
 
-  // Valider téléphone si modifié
-  if (newphone.value) {
+  // Valider téléphone si modifié et non vide
+  if (newphone.value && newphone.value.trim() !== '') {
     checkPhone()
     if (!phoneValid.value) {
       return

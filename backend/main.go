@@ -64,6 +64,10 @@ func main() {
 	
 	// Password change route (synchronise Office1789 + Mail + Matrix)
 	r.POST("/api/account/change-password", ChangePassword)
+	
+	// Password reset routes
+	r.POST("/api/password/reset/request", RequestPasswordReset)
+	r.POST("/api/password/reset/confirm", ResetPassword)
 
 	// Calendar routes
 	r.POST("/api/calendar/events/get", GetCalendarEvents)

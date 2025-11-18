@@ -166,7 +166,11 @@ function checkUsername() {
 
 // Validate phone format
 function checkPhone() {
-  phoneValid.value = isValidPhone(phonenumber.value)
+  if (phonenumber.value && phonenumber.value.trim() !== '') {
+    phoneValid.value = isValidPhone(phonenumber.value)
+  } else {
+    phoneValid.value = true // Optional field
+  }
 }
 
 // Computed password strength color
@@ -184,13 +188,13 @@ function verif(){
     return
   }
   
-  // Vérifier email valide
-  if (email.value && !emailValid.value) {
+  // Vérifier email valide si rempli
+  if (email.value && email.value.trim() !== '' && !emailValid.value) {
     return
   }
   
-  // Vérifier téléphone valide
-  if (!phoneValid.value) {
+  // Vérifier téléphone valide si rempli
+  if (phonenumber.value && phonenumber.value.trim() !== '' && !phoneValid.value) {
     return
   }
   

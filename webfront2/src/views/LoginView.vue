@@ -3,7 +3,6 @@ import {gls} from "@/stores/global"
 import {ref} from "vue"
 import router from "@/router/index"
 import { useDark } from '@vueuse/core'
-import { validatePassword } from '@/utils/validation'
 
 let passw = ref("password")
 let userl = ref('')
@@ -11,16 +10,8 @@ let passl = ref('')
 let wrong = ref(0)
 let require2FA = ref(false)
 let totpCode = ref('')
-let passwordStrength = ref({ valid: true, errors: [], strength: 0 })
 
 const isDark = useDark()
-
-// Valider force du mot de passe en temps réel
-function checkPasswordStrength() {
-  if (passl.value) {
-    passwordStrength.value = validatePassword(passl.value)
-  }
-}
 
 function connect(){
 	const payload = {
@@ -128,8 +119,6 @@ function show(){
               id="password"
               placeholder="Votre mot de passe" 
               autocomplete="current-password"
-              minlength="8"
-              @input="checkPasswordStrength"
               required
             />
             <button type="button" @click="show" class="show-password" aria-label="Afficher le mot de passe">
