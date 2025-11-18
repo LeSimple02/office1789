@@ -561,6 +561,7 @@ function show(){
   font-weight: bold;
   width: 100%;
   box-sizing: border-box;
+  max-width: 100%;
 }
 
 .totp-hint {
