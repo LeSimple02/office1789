@@ -68,6 +68,10 @@ func main() {
 	// Password reset routes
 	r.POST("/api/password/reset/request", RequestPasswordReset)
 	r.POST("/api/password/reset/confirm", ResetPassword)
+	
+	// Verification routes (email/phone)
+	r.POST("/api/verification/send", SendVerificationCode)
+	r.POST("/api/verification/verify", VerifyCode)
 
 	// Calendar routes
 	r.POST("/api/calendar/events/get", GetCalendarEvents)

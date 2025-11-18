@@ -304,4 +304,19 @@ CREATE TABLE IF NOT EXISTS password_reset_tokens (
 CREATE INDEX IF NOT EXISTS idx_reset_token ON password_reset_tokens(token);
 CREATE INDEX IF NOT EXISTS idx_reset_user ON password_reset_tokens(user_id);
 
+-- Table for storing verification codes (email/phone)
+CREATE TABLE IF NOT EXISTS verification_codes (
+    id SERIAL PRIMARY KEY,
+    contact VARCHAR(255) NOT NULL, -- Email ou numéro de téléphone
+    code VARCHAR(6) NOT NULL, -- Code à 6 chiffres
+    type VARCHAR(10) NOT NULL, -- 'email' ou 'phone'
+    verified BOOLEAN DEFAULT FALSE,
+    expires_at TIMESTAMP NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Indexes for verification codes
+CREATE INDEX IF NOT EXISTS idx_verification_contact ON verification_codes(contact);
+CREATE INDEX IF NOT EXISTS idx_verification_code ON verification_codes(code);
+
 CREATE INDEX IF NOT EXISTS idx_user_totp_enabled ON user_totp(enabled);

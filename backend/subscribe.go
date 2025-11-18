@@ -103,6 +103,15 @@ func Sub(c *gin.Context) {
 	
 	// Vérifier recovery_email (optionnel)
 	if strings.TrimSpace(subi.Email) != "" {
+		// Vérifier que l'email a été vérifié dans les 30 dernières minutes
+		if !CheckVerificationStatus(subi.Email, "email") {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"error": "email_not_verified",
+				"message": "Vous devez vérifier votre email avant de créer un compte",
+			})
+			return
+		}
+		
 		rows := db.QueryRow("SELECT count(*) FROM Users WHERE recovery_email=$1", subi.Email)
 		rows.Scan(&count)
 		if count > 0 {
@@ -112,6 +121,15 @@ func Sub(c *gin.Context) {
 	
 	// Vérifier phonenumber
 	if strings.TrimSpace(subi.PhoneNumber) != "" {
+		// Vérifier que le téléphone a été vérifié dans les 30 dernières minutes
+		if !CheckVerificationStatus(subi.PhoneNumber, "phone") {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"error": "phone_not_verified",
+				"message": "Vous devez vérifier votre numéro avant de créer un compte",
+			})
+			return
+		}
+		
 		rows := db.QueryRow("SELECT count(*) FROM Users WHERE phonenumber=$1", subi.PhoneNumber)
 		rows.Scan(&count)
 		if count > 0 {

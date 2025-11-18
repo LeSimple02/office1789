@@ -175,9 +175,49 @@ func ChangeI(c *gin.Context) {
 	}
 
 	if cha.Email != "" {
+		// Vérifier que l'email a été vérifié dans les 30 dernières minutes
+		if !CheckVerificationStatus(cha.Email, "email") {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"error": "email_not_verified",
+				"message": "Vous devez vérifier votre email avant de le modifier",
+			})
+			return
+		}
+		
+		// Vérifier que l'email n'est pas déjà utilisé
+		var count int
+		db.QueryRow("SELECT COUNT(*) FROM Users WHERE recovery_email=$1 AND user_id != $2", cha.Email, sess.UserID).Scan(&count)
+		if count > 0 {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"error": "email_taken",
+				"message": "Cet email est déjà utilisé",
+			})
+			return
+		}
+		
 		db.Exec("UPDATE Users SET recovery_email=$1 WHERE user_id=$2", cha.Email, sess.UserID)
 	}
 	if cha.PhoneNumber != "" {
+		// Vérifier que le téléphone a été vérifié dans les 30 dernières minutes
+		if !CheckVerificationStatus(cha.PhoneNumber, "phone") {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"error": "phone_not_verified",
+				"message": "Vous devez vérifier votre numéro avant de le modifier",
+			})
+			return
+		}
+		
+		// Vérifier que le numéro n'est pas déjà utilisé
+		var count int
+		db.QueryRow("SELECT COUNT(*) FROM Users WHERE phonenumber=$1 AND user_id != $2", cha.PhoneNumber, sess.UserID).Scan(&count)
+		if count > 0 {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"error": "phone_taken",
+				"message": "Ce numéro est déjà utilisé",
+			})
+			return
+		}
+		
 		db.Exec("UPDATE Users SET phonenumber=$1 WHERE user_id=$2", cha.PhoneNumber, sess.UserID)
 	}
 	
