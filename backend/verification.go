@@ -1,13 +1,14 @@
 package main
 
 import (
+	"bytes"
 	"crypto/rand"
+	"crypto/sha1"
 	"encoding/json"
 	"fmt"
 	"math/big"
 	"net/http"
 	"net/smtp"
-	"net/url"
 	"os"
 	"strings"
 	"time"
@@ -300,43 +301,82 @@ func sendVerificationEmail(to, code string) error {
 	return err
 }
 
-// sendVerificationSMS envoie un SMS avec le code de vérification via Twilio
+// sendVerificationSMS envoie un SMS avec le code de vérification via OVH SMS API
 func sendVerificationSMS(to, code string) error {
-	// Récupérer les credentials Twilio depuis les variables d'environnement
-	accountSID := os.Getenv("TWILIO_ACCOUNT_SID")
-	authToken := os.Getenv("TWILIO_AUTH_TOKEN")
-	fromNumber := os.Getenv("TWILIO_PHONE_NUMBER")
+	// Récupérer les credentials OVH depuis les variables d'environnement
+	applicationKey := os.Getenv("OVH_SMS_APPLICATION_KEY")
+	applicationSecret := os.Getenv("OVH_SMS_APPLICATION_SECRET")
+	consumerKey := os.Getenv("OVH_SMS_CONSUMER_KEY")
+	serviceName := os.Getenv("OVH_SMS_SERVICE_NAME")
+	sender := os.Getenv("OVH_SMS_SENDER") // Nom de l'expéditeur (max 11 caractères)
 
 	// Si les credentials ne sont pas configurés, logger et retourner une erreur
-	if accountSID == "" || authToken == "" || fromNumber == "" {
-		fmt.Println("⚠️  Twilio credentials not configured. Set TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, and TWILIO_PHONE_NUMBER")
+	if applicationKey == "" || applicationSecret == "" || consumerKey == "" || serviceName == "" {
+		fmt.Println("⚠️  OVH SMS credentials not configured. Set OVH_SMS_APPLICATION_KEY, OVH_SMS_APPLICATION_SECRET, OVH_SMS_CONSUMER_KEY, and OVH_SMS_SERVICE_NAME")
 		fmt.Printf("📱 SMS Code for %s: %s\n", to, code)
 		// En mode développement, on accepte quand même (le code est loggé)
 		return nil
 	}
 
+	// Définir un expéditeur par défaut si non configuré
+	if sender == "" {
+		sender = "Office1789"
+	}
+
 	// Message SMS
 	message := fmt.Sprintf("Office1789 - Votre code de vérification : %s\n\nCe code expire dans 10 minutes.", code)
 
-	// URL de l'API Twilio
-	urlStr := fmt.Sprintf("https://api.twilio.com/2010-04-01/Accounts/%s/Messages.json", accountSID)
+	// Formater le numéro de téléphone (OVH attend le format international sans +)
+	// Ex: +33612345678 -> 0033612345678
+	phoneNumber := strings.TrimPrefix(to, "+")
+	if !strings.HasPrefix(phoneNumber, "00") {
+		phoneNumber = "00" + phoneNumber
+	}
 
-	// Données du formulaire
-	msgData := url.Values{}
-	msgData.Set("To", to)
-	msgData.Set("From", fromNumber)
-	msgData.Set("Body", message)
+	// URL de l'API OVH
+	urlStr := fmt.Sprintf("https://eu.api.ovh.com/1.0/sms/%s/jobs", serviceName)
+
+	// Créer le body JSON
+	smsData := map[string]interface{}{
+		"message":  message,
+		"receivers": []string{phoneNumber},
+		"sender":   sender,
+		"charset":  "UTF-8",
+	}
+	jsonData, err := json.Marshal(smsData)
+	if err != nil {
+		return fmt.Errorf("failed to marshal JSON: %v", err)
+	}
+
+	// Timestamp pour la signature OVH
+	timestamp := fmt.Sprintf("%d", time.Now().Unix())
+
+	// Créer la signature OVH (SHA1)
+	// Signature = "$1$" + SHA1_HEX(AS+"+"+CK+"+"+METHOD+"+"+QUERY+"+"+BODY+"+"+TSTAMP)
+	signatureData := fmt.Sprintf("%s+%s+POST+%s+%s+%s",
+		applicationSecret,
+		consumerKey,
+		urlStr,
+		string(jsonData),
+		timestamp,
+	)
+	h := sha1.New()
+	h.Write([]byte(signatureData))
+	signature := fmt.Sprintf("$1$%x", h.Sum(nil))
 
 	// Créer la requête HTTP
 	client := &http.Client{}
-	req, err := http.NewRequest("POST", urlStr, strings.NewReader(msgData.Encode()))
+	req, err := http.NewRequest("POST", urlStr, bytes.NewBuffer(jsonData))
 	if err != nil {
 		return fmt.Errorf("failed to create request: %v", err)
 	}
 
-	// Ajouter l'authentification Basic Auth
-	req.SetBasicAuth(accountSID, authToken)
-	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
+	// Ajouter les headers OVH
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("X-Ovh-Application", applicationKey)
+	req.Header.Set("X-Ovh-Consumer", consumerKey)
+	req.Header.Set("X-Ovh-Signature", signature)
+	req.Header.Set("X-Ovh-Timestamp", timestamp)
 
 	// Envoyer la requête
 	resp, err := client.Do(req)
@@ -354,7 +394,7 @@ func sendVerificationSMS(to, code string) error {
 	// En cas d'erreur, lire la réponse pour le debugging
 	var result map[string]interface{}
 	json.NewDecoder(resp.Body).Decode(&result)
-	fmt.Printf("❌ Twilio error: %v\n", result)
+	fmt.Printf("❌ OVH SMS error: %v\n", result)
 	
-	return fmt.Errorf("twilio API error: status %d", resp.StatusCode)
+	return fmt.Errorf("ovh SMS API error: status %d", resp.StatusCode)
 }

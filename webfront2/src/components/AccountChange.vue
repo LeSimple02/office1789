@@ -66,10 +66,10 @@ let processingPayment = ref(false)
 let paymentMessage = ref('')
 
 const plans = [
-  { id: 0, name: 'Free', price: 0, storage: '2GB', features: ['Basic Email', 'Chat', 'Calendar', '2GB Storage'] },
-  { id: 1, name: 'Standard', price: 5, storage: '20GB', features: ['Professional Email', 'Priority Support', '20GB Storage', '50MB Attachments'] },
-  { id: 2, name: 'Professional', price: 12, storage: '100GB', features: ['Custom Domain', 'Team Collaboration', '100GB Storage', '3 Team Members', '200MB Attachments'] },
-  { id: 3, name: 'Enterprise', price: 49, storage: '500GB', features: ['Advanced Security', 'Unlimited Domains', '500GB Storage', '20 Team Members', '1GB Attachments', '24/7 Support'] }
+  { id: 0, name: 'Free', price: 0, storage: '1GB', features: ['Basic Email', 'Chat', 'Calendar', '1GB Storage'] },
+  { id: 1, name: 'Standard', price: 5, storage: '50GB', features: ['Professional Email', 'Priority Support', '50GB Storage', '50MB Attachments'] },
+  { id: 2, name: 'Professional', price: 12, storage: '200GB', features: ['Custom Domain', 'Team Collaboration', '200GB Storage', '3 Team Members', '200MB Attachments'] },
+  { id: 3, name: 'Enterprise', price: 49, storage: 'Illimité', features: ['Advanced Security', 'Unlimited Domains', 'Stockage illimité', '20 Team Members', '1GB Attachments', '24/7 Support'] }
 ]
 
 // Load 2FA status
