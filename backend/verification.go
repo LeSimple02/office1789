@@ -2,10 +2,14 @@ package main
 
 import (
 	"crypto/rand"
+	"encoding/json"
 	"fmt"
 	"math/big"
+	"net/http"
 	"net/smtp"
+	"net/url"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -104,10 +108,16 @@ func SendVerificationCode(c *gin.Context) {
 			return
 		}
 	} else {
-		// Pour le SMS, on pourrait intégrer un service comme Twilio
-		// Pour l'instant, on log juste le code
-		fmt.Printf("SMS Verification code for %s: %s\n", req.Contact, code)
-		// TODO: Intégrer un service SMS
+		// Envoyer par SMS via Twilio
+		err = sendVerificationSMS(req.Contact, code)
+		if err != nil {
+			fmt.Printf("Error sending verification SMS: %v\n", err)
+			c.JSON(500, gin.H{
+				"success": false,
+				"message": "Erreur lors de l'envoi du SMS",
+			})
+			return
+		}
 	}
 
 	c.JSON(200, gin.H{
@@ -286,4 +296,63 @@ func sendVerificationEmail(to, code string) error {
 	err := smtp.SendMail(addr, nil, from, []string{to}, []byte(message))
 
 	return err
+}
+
+// sendVerificationSMS envoie un SMS avec le code de vérification via Twilio
+func sendVerificationSMS(to, code string) error {
+	// Récupérer les credentials Twilio depuis les variables d'environnement
+	accountSID := os.Getenv("TWILIO_ACCOUNT_SID")
+	authToken := os.Getenv("TWILIO_AUTH_TOKEN")
+	fromNumber := os.Getenv("TWILIO_PHONE_NUMBER")
+
+	// Si les credentials ne sont pas configurés, logger et retourner une erreur
+	if accountSID == "" || authToken == "" || fromNumber == "" {
+		fmt.Println("⚠️  Twilio credentials not configured. Set TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, and TWILIO_PHONE_NUMBER")
+		fmt.Printf("📱 SMS Code for %s: %s\n", to, code)
+		// En mode développement, on accepte quand même (le code est loggé)
+		return nil
+	}
+
+	// Message SMS
+	message := fmt.Sprintf("Office1789 - Votre code de vérification : %s\n\nCe code expire dans 10 minutes.", code)
+
+	// URL de l'API Twilio
+	urlStr := fmt.Sprintf("https://api.twilio.com/2010-04-01/Accounts/%s/Messages.json", accountSID)
+
+	// Données du formulaire
+	msgData := url.Values{}
+	msgData.Set("To", to)
+	msgData.Set("From", fromNumber)
+	msgData.Set("Body", message)
+
+	// Créer la requête HTTP
+	client := &http.Client{}
+	req, err := http.NewRequest("POST", urlStr, strings.NewReader(msgData.Encode()))
+	if err != nil {
+		return fmt.Errorf("failed to create request: %v", err)
+	}
+
+	// Ajouter l'authentification Basic Auth
+	req.SetBasicAuth(accountSID, authToken)
+	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
+
+	// Envoyer la requête
+	resp, err := client.Do(req)
+	if err != nil {
+		return fmt.Errorf("failed to send SMS: %v", err)
+	}
+	defer resp.Body.Close()
+
+	// Vérifier la réponse
+	if resp.StatusCode >= 200 && resp.StatusCode < 300 {
+		fmt.Printf("✅ SMS sent successfully to %s\n", to)
+		return nil
+	}
+
+	// En cas d'erreur, lire la réponse pour le debugging
+	var result map[string]interface{}
+	json.NewDecoder(resp.Body).Decode(&result)
+	fmt.Printf("❌ Twilio error: %v\n", result)
+	
+	return fmt.Errorf("twilio API error: status %d", resp.StatusCode)
 }

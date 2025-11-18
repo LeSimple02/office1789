@@ -47,21 +47,22 @@ func RequestPasswordReset(c *gin.Context) {
 	var userID int
 	var username string
 	var recoveryEmail string
+	var phonenumber string
 
 	// Essayer d'abord par username
 	err := db.QueryRow(`
-		SELECT user_id, username, COALESCE(recovery_email, '') 
+		SELECT user_id, username, COALESCE(recovery_email, ''), COALESCE(phonenumber, '')
 		FROM Users 
 		WHERE username = $1
-	`, req.Identifier).Scan(&userID, &username, &recoveryEmail)
+	`, req.Identifier).Scan(&userID, &username, &recoveryEmail, &phonenumber)
 
 	// Si pas trouvé par username, essayer par recovery_email
 	if err != nil {
 		err = db.QueryRow(`
-			SELECT user_id, username, recovery_email 
+			SELECT user_id, username, recovery_email, COALESCE(phonenumber, '')
 			FROM Users 
 			WHERE recovery_email = $1 AND recovery_email IS NOT NULL AND recovery_email != ''
-		`, req.Identifier).Scan(&userID, &username, &recoveryEmail)
+		`, req.Identifier).Scan(&userID, &username, &recoveryEmail, &phonenumber)
 
 		if err != nil {
 			// Pour des raisons de sécurité, on ne dit pas si l'utilisateur existe ou non
@@ -80,6 +81,22 @@ func RequestPasswordReset(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{
 			"success": true,
 			"message": "Si cet utilisateur existe, un email a été envoyé",
+		})
+		return
+	}
+
+	// VÉRIFIER que le recovery_email OU le phonenumber a été vérifié
+	emailVerified := CheckVerificationStatus(recoveryEmail, "email")
+	phoneVerified := false
+	if phonenumber != "" {
+		phoneVerified = CheckVerificationStatus(phonenumber, "phone")
+	}
+
+	if !emailVerified && !phoneVerified {
+		fmt.Printf("User %s has no verified contact (email or phone)\n", username)
+		c.JSON(http.StatusForbidden, gin.H{
+			"success": false,
+			"message": "Vous devez d'abord vérifier votre email ou téléphone pour utiliser la récupération de mot de passe",
 		})
 		return
 	}
