@@ -48,21 +48,25 @@ func RequestPasswordReset(c *gin.Context) {
 	var username string
 	var recoveryEmail string
 	var phonenumber string
+	var emailVerified bool
+	var phoneVerified bool
 
 	// Essayer d'abord par username
 	err := db.QueryRow(`
-		SELECT user_id, username, COALESCE(recovery_email, ''), COALESCE(phonenumber, '')
+		SELECT user_id, username, COALESCE(recovery_email, ''), COALESCE(phonenumber, ''),
+		       COALESCE(recovery_email_verified, false), COALESCE(phonenumber_verified, false)
 		FROM Users 
 		WHERE username = $1
-	`, req.Identifier).Scan(&userID, &username, &recoveryEmail, &phonenumber)
+	`, req.Identifier).Scan(&userID, &username, &recoveryEmail, &phonenumber, &emailVerified, &phoneVerified)
 
 	// Si pas trouvé par username, essayer par recovery_email
 	if err != nil {
 		err = db.QueryRow(`
-			SELECT user_id, username, recovery_email, COALESCE(phonenumber, '')
+			SELECT user_id, username, recovery_email, COALESCE(phonenumber, ''),
+			       recovery_email_verified, COALESCE(phonenumber_verified, false)
 			FROM Users 
 			WHERE recovery_email = $1 AND recovery_email IS NOT NULL AND recovery_email != ''
-		`, req.Identifier).Scan(&userID, &username, &recoveryEmail, &phonenumber)
+		`, req.Identifier).Scan(&userID, &username, &recoveryEmail, &phonenumber, &emailVerified, &phoneVerified)
 
 		if err != nil {
 			// Pour des raisons de sécurité, on ne dit pas si l'utilisateur existe ou non
@@ -85,13 +89,7 @@ func RequestPasswordReset(c *gin.Context) {
 		return
 	}
 
-	// VÉRIFIER que le recovery_email OU le phonenumber a été vérifié
-	emailVerified := CheckVerificationStatus(recoveryEmail, "email")
-	phoneVerified := false
-	if phonenumber != "" {
-		phoneVerified = CheckVerificationStatus(phonenumber, "phone")
-	}
-
+	// VÉRIFIER que le recovery_email OU le phonenumber est vérifié de façon permanente
 	if !emailVerified && !phoneVerified {
 		fmt.Printf("User %s has no verified contact (email or phone)\n", username)
 		c.JSON(http.StatusForbidden, gin.H{
@@ -141,7 +139,7 @@ func RequestPasswordReset(c *gin.Context) {
 		return
 	}
 
-	fmt.Printf("Password reset email sent to %s for user %s\n", email, username)
+	fmt.Printf("Password reset email sent to %s for user %s\n", recoveryEmail, username)
 
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
@@ -218,14 +216,7 @@ func ResetPassword(c *gin.Context) {
 	}
 
 	// Hasher le nouveau mot de passe
-	hashedPassword, err := HashPassword(req.NewPassword)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"success": false,
-			"message": "Erreur lors du hashage",
-		})
-		return
-	}
+	hashedPassword := HashPassword(req.NewPassword)
 
 	// Chiffrer le mot de passe pour Mail/Matrix
 	encryptedPassword, err := EncryptPassword(req.NewPassword)
@@ -250,12 +241,8 @@ func ResetPassword(c *gin.Context) {
 		return
 	}
 
-	// Synchroniser avec le serveur Mail (postfix-accounts.cf)
-	err = UpdateMailPassword(username, req.NewPassword)
-	if err != nil {
-		fmt.Printf("Warning: Failed to sync mail password for %s: %v\n", username, err)
-		// Continue quand même, le mot de passe Office1789 est mis à jour
-	}
+	// Le mot de passe mail_password est déjà mis à jour dans la requête UPDATE ci-dessus
+	// Il sera synchronisé par le script sync-mail-passwords.sh qui tourne en cronjob
 
 	// Marquer le token comme utilisé
 	_, err = db.Exec(`

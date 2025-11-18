@@ -39,6 +39,24 @@
       <div class="dv-footer">
         <small>{{ files.length }} éléments</small>
       </div>
+
+      <!-- Storage Usage Bar - Only show in Drive and Shared, not in Trash -->
+      <div v-if="curr !== 'trash'" class="storage-info">
+        <div class="storage-header">
+          <span class="storage-icon">💾</span>
+          <span class="storage-text">Stockage</span>
+        </div>
+        <div class="storage-bar">
+          <div class="storage-fill" :style="{ width: storagePercentage + '%', background: storageColor }"></div>
+        </div>
+        <div class="storage-details">
+          <span>{{ humanSize(storageUsed) }} / {{ humanSize(storageLimit) }}</span>
+          <span class="storage-percent">{{ storagePercentage }}%</span>
+        </div>
+        <div v-if="storagePercentage >= 90" class="storage-warning">
+          ⚠️ Espace presque plein !
+        </div>
+      </div>
     </aside>
 
     <!-- MAIN -->
@@ -501,6 +519,7 @@ const API_MOVE_FOLDER = resolveAPI(import.meta.env.VITE_API_DRIVE_MOVE_FOLDER ||
 const API_SHARE = resolveAPI(import.meta.env.VITE_API_DRIVE_SHARE || '/api/drive/share')
 const API_UNSHARE = resolveAPI(import.meta.env.VITE_API_DRIVE_UNSHARE || '/api/drive/unshare')
 const API_GET_SHARES = resolveAPI(import.meta.env.VITE_API_DRIVE_GET_SHARES || '/api/drive/shares')
+const API_STORAGE_INFO = resolveAPI(import.meta.env.VITE_API_DRIVE_STORAGE_INFO || '/api/drive/storage-info')
 
 // ---------- état / UI ----------
 const userName = gls().username
@@ -508,6 +527,20 @@ const userEmail = ref('')
 const isMobile = ref(window.innerWidth <= 750)
 const searchQuery = ref('')
 const selectedFile = ref(null)
+
+// ---------- Storage info ----------
+const storageUsed = ref(0)
+const storageLimit = ref(0)
+const storagePercentage = computed(() => {
+  if (storageLimit.value === 0) return 0
+  return Math.min(100, Math.round((storageUsed.value / storageLimit.value) * 100))
+})
+const storageColor = computed(() => {
+  const pct = storagePercentage.value
+  if (pct >= 90) return '#ef4444' // rouge
+  if (pct >= 75) return '#f59e0b' // orange
+  return '#10b981' // vert
+})
 
 const curr = ref('drive') // drive | shared | trash
 const currentPath = ref('/') // toujours finie par '/'
@@ -683,8 +716,35 @@ async function fetchFiles() {
     console.error('fetchFiles error', err)
   }
 }
+
+// Fetch storage info
+async function fetchStorageInfo() {
+  try {
+    const res = await fetch(API_STORAGE_INFO, {
+      method: 'POST',
+      mode: 'cors',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username: userName, token: gls().sessionT }),
+    })
+    if (!res.ok) {
+      console.warn('storage-info failed', res.status)
+      return
+    }
+    const data = await res.json()
+    storageUsed.value = data.current_usage || 0
+    storageLimit.value = data.storage_limit || 0
+    // Handle unlimited storage (Enterprise)
+    if (data.unlimited) {
+      storageLimit.value = storageUsed.value * 2 || 1024 * 1024 * 1024 // Show bar at 50% if unlimited
+    }
+  } catch (err) {
+    console.error('fetchStorageInfo error', err)
+  }
+}
+
 watch(curr, async () => {
   await fetchFiles()
+  await fetchStorageInfo()
 })
 
 // normalise un chemin pour qu'il soit '/' ou commence et termine par '/'
@@ -909,9 +969,11 @@ function startUpload(item) {
         item.progress = 100
         item.status = 'done'
         await fetchFiles()
+        await fetchStorageInfo()
       } catch (e) {
         item.status = 'done'
         await fetchFiles()
+        await fetchStorageInfo()
       }
     } else {
       item.status = 'error'
@@ -1845,6 +1907,7 @@ watch(showOnlyofficeModal, (v) => {
 onMounted(async () => {
   try {
     await fetchFiles()
+    await fetchStorageInfo()
   } catch (e) {
     console.error('fetchFiles onMounted failed', e)
   }
@@ -1854,6 +1917,7 @@ onMounted(async () => {
 watch(() => gls().sessionT, (newToken) => {
   if (newToken) {
     fetchFiles().catch(err => console.error('fetchFiles on session change failed', err))
+    fetchStorageInfo().catch(err => console.error('fetchStorageInfo on session change failed', err))
   }
 })
 
@@ -1975,6 +2039,74 @@ watch(() => gls().sessionT, (newToken) => {
 .nav-item { background:transparent; border:none; padding:10px; text-align:left; border-radius:8px; cursor:pointer; color:#333; }
 .dark .nav-item { color:#e5e5e5; }
 .nav-item.active {  background: -webkit-linear-gradient(30deg, blue, red);; color:#fff; }
+
+/* Storage Info */
+.storage-info {
+  margin-top: auto;
+  margin-bottom: 8px;
+  padding: 12px;
+  background: #f9fafb;
+  border-radius: 12px;
+  border: 1px solid #e5e7eb;
+}
+.dark .storage-info {
+  background: #1a1a1a;
+  border-color: #2b2b2b;
+}
+.storage-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+.storage-icon {
+  font-size: 1.2rem;
+}
+.storage-bar {
+  height: 8px;
+  background: #e5e7eb;
+  border-radius: 999px;
+  overflow: hidden;
+  margin-bottom: 8px;
+}
+.dark .storage-bar {
+  background: #2b2b2b;
+}
+.storage-fill {
+  height: 100%;
+  transition: width 0.3s ease, background 0.3s ease;
+  border-radius: 999px;
+}
+.storage-details {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.85rem;
+  color: #666;
+}
+.dark .storage-details {
+  color: #bbb;
+}
+.storage-percent {
+  font-weight: 600;
+}
+.storage-warning {
+  margin-top: 8px;
+  padding: 6px 10px;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 8px;
+  font-size: 0.8rem;
+  color: #dc2626;
+  text-align: center;
+}
+.dark .storage-warning {
+  background: #3f1f1f;
+  border-color: #7f1d1d;
+  color: #fca5a5;
+}
+
 /* MAIN */
 .dv-main { flex:1; padding:16px; display:flex; flex-direction:column; gap:12px; }
 .dv-header { display:flex; justify-content:space-between; align-items:center; }

@@ -197,6 +197,8 @@ func VerifyCode(c *gin.Context) {
 		"success": true,
 		"message": "Code vérifié avec succès",
 		"verified": true,
+		"contact": req.Contact,
+		"type": req.Type,
 	})
 }
 

@@ -20,10 +20,43 @@ import (
 	"github.com/google/uuid"
 )
 
+// Storage limits per offer (in bytes)
+const (
+	StorageLimitFree         = 1 * 1024 * 1024 * 1024    // 1 GB for nboffer=0
+	StorageLimitStandard     = 50 * 1024 * 1024 * 1024   // 50 GB for nboffer=1
+	StorageLimitProfessional = 200 * 1024 * 1024 * 1024  // 200 GB for nboffer=2
+	StorageLimitEnterprise   = -1                         // Unlimited for nboffer=3
+)
+
 var (
 	downloadTokens     = map[string]downloadToken{}
 	downloadTokensLock sync.RWMutex
 )
+
+// getStorageLimit returns storage limit in bytes based on user's offer
+// Returns -1 for unlimited (Enterprise)
+func getStorageLimit(nboffer int) int64 {
+	switch nboffer {
+	case 0:
+		return StorageLimitFree
+	case 1:
+		return StorageLimitStandard
+	case 2:
+		return StorageLimitProfessional
+	case 3:
+		return StorageLimitEnterprise // unlimited
+	default:
+		return StorageLimitFree // default to free if unknown
+	}
+}
+
+// getUserStorageUsage calculates total storage used by a user
+func getUserStorageUsage(userID int) (int64, error) {
+	var totalSize int64
+	// Exclude files in trash (file_path starting with '/.trash/')
+	err := db.QueryRow(`SELECT COALESCE(SUM(file_size), 0) FROM DriveFiles WHERE user_id=$1 AND file_path NOT LIKE '/.trash/%'`, userID).Scan(&totalSize)
+	return totalSize, err
+}
 
 // getUserUploadDir retourne le chemin du répertoire d'upload basé sur user_id au lieu du username
 // Exemple: uploads/123 au lieu de uploads/matthis
@@ -138,9 +171,10 @@ func uploadFile(c *gin.Context) {
 		return
 	}
 
-	// Récupération user_id
+	// Récupération user_id et nboffer
 	var userID int
-	if err := db.QueryRow("SELECT user_id FROM Users WHERE username=$1", username).Scan(&userID); err != nil {
+	var nboffer int
+	if err := db.QueryRow("SELECT user_id, nboffer FROM Users WHERE username=$1", username).Scan(&userID, &nboffer); err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "user not found"})
 		return
 	}
@@ -167,6 +201,34 @@ func uploadFile(c *gin.Context) {
 	if len(fileHeaders) == 0 {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "no files uploaded"})
 		return
+	}
+
+	// Check storage limit
+	storageLimit := getStorageLimit(nboffer)
+	if storageLimit != -1 { // if not unlimited
+		currentUsage, err := getUserStorageUsage(userID)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "cannot check storage usage"})
+			return
+		}
+
+		// Calculate total size of files being uploaded
+		var uploadSize int64 = 0
+		for _, fh := range fileHeaders {
+			uploadSize += fh.Size
+		}
+
+		// Check if upload would exceed limit
+		if currentUsage+uploadSize > storageLimit {
+			c.JSON(http.StatusForbidden, gin.H{
+				"error":          "storage_limit_exceeded",
+				"current_usage":  currentUsage,
+				"storage_limit":  storageLimit,
+				"upload_size":    uploadSize,
+				"remaining":      storageLimit - currentUsage,
+			})
+			return
+		}
 	}
 
 	// Créer le dossier utilisateur si besoin
@@ -2090,4 +2152,52 @@ func getSharedFiles(c *gin.Context) {
     } else {
         c.JSON(http.StatusOK, gin.H{"shared_files": list})
     }
+}
+
+// getStorageInfo returns user's storage usage and limit
+func getStorageInfo(c *gin.Context) {
+	var req struct {
+		Username string `json:"username"`
+		Token    string `json:"token"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request"})
+		return
+	}
+
+	_, valid := validateSession(req.Token, req.Username)
+	if !valid {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid session"})
+		return
+	}
+
+	var userID int
+	var nboffer int
+	if err := db.QueryRow("SELECT user_id, nboffer FROM Users WHERE username=$1", req.Username).Scan(&userID, &nboffer); err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "user not found"})
+		return
+	}
+
+	currentUsage, err := getUserStorageUsage(userID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "cannot check storage usage"})
+		return
+	}
+
+	storageLimit := getStorageLimit(nboffer)
+	
+	response := gin.H{
+		"current_usage": currentUsage,
+		"storage_limit": storageLimit,
+		"nboffer":       nboffer,
+	}
+	
+	if storageLimit != -1 {
+		response["remaining"] = storageLimit - currentUsage
+		response["percentage_used"] = float64(currentUsage) / float64(storageLimit) * 100
+	} else {
+		response["unlimited"] = true
+	}
+
+	c.JSON(http.StatusOK, response)
 }

@@ -195,7 +195,7 @@ func ChangeI(c *gin.Context) {
 			return
 		}
 		
-		db.Exec("UPDATE Users SET recovery_email=$1 WHERE user_id=$2", cha.Email, sess.UserID)
+		db.Exec("UPDATE Users SET recovery_email=$1, recovery_email_verified=true WHERE user_id=$2", cha.Email, sess.UserID)
 	}
 	if cha.PhoneNumber != "" {
 		// Vérifier que le téléphone a été vérifié dans les 30 dernières minutes
@@ -218,7 +218,7 @@ func ChangeI(c *gin.Context) {
 			return
 		}
 		
-		db.Exec("UPDATE Users SET phonenumber=$1 WHERE user_id=$2", cha.PhoneNumber, sess.UserID)
+		db.Exec("UPDATE Users SET phonenumber=$1, phonenumber_verified=true WHERE user_id=$2", cha.PhoneNumber, sess.UserID)
 	}
 	
 	// Vérifier si le username change

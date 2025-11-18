@@ -166,9 +166,19 @@ func Sub(c *gin.Context) {
 	// Construire l'email du compte mail (toujours username@office1789.com)
 	mailAddress := subi.Username + "@office1789.com"
 	
+	// Déterminer si les contacts sont vérifiés
+	emailVerified := false
+	phoneVerified := false
+	if strings.TrimSpace(subi.Email) != "" {
+		emailVerified = true // Déjà vérifié via CheckVerificationStatus plus haut
+	}
+	if strings.TrimSpace(subi.PhoneNumber) != "" {
+		phoneVerified = true // Déjà vérifié via CheckVerificationStatus plus haut
+	}
+	
 	var userID int
-	err = db.QueryRow("INSERT INTO Users (username, password_hash, email, recovery_email, phonenumber, nboffer, date_joined, last_login, domain, mail_password) VALUES ($1, $2, $3, $4, $5, $6, NOW(), NOW(), $7, $8) RETURNING user_id", 
-		subi.Username, subi.Password, mailAddress, subi.Email, subi.PhoneNumber, subi.Nboffer, "@office1789", encryptedMailPassword).Scan(&userID)
+	err = db.QueryRow("INSERT INTO Users (username, password_hash, email, recovery_email, recovery_email_verified, phonenumber, phonenumber_verified, nboffer, date_joined, last_login, domain, mail_password, role) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW(), NOW(), $9, $10, 'user') RETURNING user_id", 
+		subi.Username, subi.Password, mailAddress, subi.Email, emailVerified, subi.PhoneNumber, phoneVerified, subi.Nboffer, "@office1789", encryptedMailPassword).Scan(&userID)
 
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create user"})

@@ -56,6 +56,7 @@ func main() {
 	r.POST("/api/drive/share", createShareFile)
 	r.POST("/api/drive/unshare", deactivateShareFile)
 	r.POST("/api/drive/shares", getSharedFiles)
+	r.POST("/api/drive/storage-info", getStorageInfo)
 	
 
 
@@ -102,6 +103,16 @@ func main() {
 	// Stripe payment routes
 	r.POST("/api/stripe/checkout", CreateCheckoutSession)
 	r.POST("/api/stripe/webhook", StripeWebhook)
+
+	// Admin routes (protégés par middleware)
+	admin := r.Group("/api/admin")
+	admin.Use(CheckAdminMiddleware())
+	{
+		admin.GET("/stats", GetAdminStats)
+		admin.GET("/users", GetAllUsers)
+		admin.POST("/users/role", UpdateUserRole)
+		admin.POST("/users/verify-contact", VerifyUserContact)
+	}
 
 	r.Run(":8080")
 }
