@@ -1,7 +1,8 @@
 <script setup>
-import { ref } from "vue"
+import { ref, computed } from "vue"
 import { gls } from "@/stores/global.js"
 import { useRouter } from 'vue-router'
+import { validatePassword, isValidEmail, isValidPhone, getStrengthColor } from '@/utils/validation'
 
 const router = useRouter()
 
@@ -28,6 +29,14 @@ let emailR = ref(false)
 let phonenumberR = ref(false)
 let loading = ref(true)
 let saving = ref(false)
+
+// Validation states
+let passwordStrength = ref({ valid: true, errors: [], strength: 0, strengthLabel: '' })
+let emailValid = ref(true)
+let phoneValid = ref(true)
+
+// Computed password strength color
+const strengthColor = computed(() => getStrengthColor(passwordStrength.value.strength))
 
 // Modal pour suppression
 let showDeleteModal = ref(false)
@@ -118,10 +127,55 @@ fetch(import.meta.env.VITE_APP_API_INFO_USER, {
     loading.value = false
   })
 
+// Check password strength
+function checkPasswordStrength() {
+  if (passf1.value) {
+    passwordStrength.value = validatePassword(passf1.value)
+  }
+}
+
+// Validate email format
+function checkEmail() {
+  if (newemail.value) {
+    emailValid.value = isValidEmail(newemail.value)
+  } else {
+    emailValid.value = true
+  }
+}
+
+// Validate phone format
+function checkPhone() {
+  phoneValid.value = isValidPhone(newphone.value)
+}
+
 function send() {
   usernameR.value = false
   emailR.value = false
   phonenumberR.value = false
+
+  // Valider email si modifié
+  if (newemail.value) {
+    checkEmail()
+    if (!emailValid.value) {
+      return
+    }
+  }
+
+  // Valider téléphone si modifié
+  if (newphone.value) {
+    checkPhone()
+    if (!phoneValid.value) {
+      return
+    }
+  }
+
+  // Valider mot de passe si modifié
+  if (passf1.value) {
+    checkPasswordStrength()
+    if (!passwordStrength.value.valid) {
+      return
+    }
+  }
 
   if (passf1.value !== passf2.value) {
     return
@@ -559,7 +613,14 @@ function getPlanName(id) {
             {{ $t('password') }}
           </label>
           <div class="password-input">
-            <input :type="passwordt" v-model="passf1" :placeholder="$t('passwordN') || 'New password'" class="input" />
+            <input 
+              :type="passwordt" 
+              v-model="passf1" 
+              :placeholder="$t('passwordN') || 'New password'" 
+              class="input"
+              minlength="8"
+              @input="checkPasswordStrength"
+            />
             <button type="button" class="icon-btn" @click="togglePassword1">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
@@ -567,8 +628,27 @@ function getPlanName(id) {
               </svg>
             </button>
           </div>
+          <!-- Indicateur de force du mot de passe -->
+          <div v-if="passf1" class="password-strength">
+            <div class="strength-bar-container">
+              <div 
+                class="strength-bar" 
+                :style="{ width: (passwordStrength.strength / 5 * 100) + '%', backgroundColor: strengthColor }"
+              ></div>
+            </div>
+            <p class="strength-label" :style="{ color: strengthColor }">{{ passwordStrength.strengthLabel }}</p>
+          </div>
+          <ul v-if="passf1 && passwordStrength.errors.length > 0" class="validation-errors">
+            <li v-for="error in passwordStrength.errors" :key="error">{{ error }}</li>
+          </ul>
           <div class="password-input">
-            <input :type="passwordt2" v-model="passf2" :placeholder="$t('repassword') || 'Confirm password'" class="input" />
+            <input 
+              :type="passwordt2" 
+              v-model="passf2" 
+              :placeholder="$t('repassword') || 'Confirm password'" 
+              class="input"
+              minlength="8"
+            />
             <button type="button" class="icon-btn" @click="togglePassword2">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
@@ -588,7 +668,14 @@ function getPlanName(id) {
             </svg>
             {{ $t('emaily') }}
           </label>
-          <input v-model="newemail" :placeholder="email" class="input" type="email" />
+          <input 
+            v-model="newemail" 
+            :placeholder="email" 
+            class="input" 
+            type="email"
+            @blur="checkEmail"
+          />
+          <p v-if="newemail && !emailValid" class="error">❌ Format d'email invalide</p>
           <p v-if="emailR" class="error">{{ $t('dejaEP') }}</p>
         </div>
 
@@ -600,7 +687,14 @@ function getPlanName(id) {
             </svg>
             {{ $t('phoney') }}
           </label>
-          <input v-model="newphone" :placeholder="phone" class="input" type="tel" />
+          <input 
+            v-model="newphone" 
+            :placeholder="phone" 
+            class="input" 
+            type="tel"
+            @blur="checkPhone"
+          />
+          <p v-if="newphone && !phoneValid" class="error">❌ Format de téléphone invalide</p>
           <p v-if="phonenumberR" class="error">{{ $t('dejaPP') }}</p>
         </div>
 
@@ -1358,6 +1452,65 @@ function getPlanName(id) {
   color: #dc3545;
   font-size: 13px;
   margin-top: 4px;
+}
+
+/* Password Strength Indicator */
+.password-strength {
+  margin-top: 8px;
+}
+
+.strength-bar-container {
+  width: 100%;
+  height: 6px;
+  background: rgba(0, 0, 0, 0.1);
+  border-radius: 3px;
+  overflow: hidden;
+  margin-bottom: 4px;
+}
+
+.dark .strength-bar-container {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.strength-bar {
+  height: 100%;
+  transition: all 0.3s ease;
+  border-radius: 3px;
+}
+
+.strength-label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  margin: 0;
+  text-align: right;
+}
+
+.validation-errors {
+  list-style: none;
+  padding: 8px 12px;
+  margin: 8px 0 0 0;
+  background: rgba(255, 60, 60, 0.05);
+  border-left: 3px solid #ff3c3c;
+  border-radius: 4px;
+}
+
+.dark .validation-errors {
+  background: rgba(255, 60, 60, 0.1);
+}
+
+.validation-errors li {
+  font-size: 0.85rem;
+  color: #ff3c3c;
+  margin: 4px 0;
+}
+
+.dark .validation-errors li {
+  color: #ff6b6b;
+}
+
+.validation-errors li::before {
+  content: '• ';
+  font-weight: bold;
 }
 
 .actions {

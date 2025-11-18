@@ -20,18 +20,48 @@
         <div class="form-group">
           <label>Nom d'utilisateur *</label>
           <div class="input-with-suffix">
-            <input v-model="username" type="text" class="input-field" required />
+            <input 
+              v-model="username" 
+              type="text" 
+              class="input-field" 
+              minlength="3"
+              maxlength="20"
+              pattern="[a-zA-Z0-9_]+"
+              @blur="checkUsername"
+              required 
+            />
             <span class="suffix">@office1789.com</span>
           </div>
+          <p v-if="!usernameValid.valid" class="error-message">❌ {{ usernameValid.error }}</p>
           <p v-if="usernameR" class="error-message">❌ {{$t('dejaUP')}}</p>
         </div>
 
         <div class="form-group">
           <label>Mot de passe *</label>
           <div class="input-with-icon">
-            <input v-model="passf1" :type="passw" class="input-field" required />
-            <button @click="show()" class="toggle-password">👁</button>
+            <input 
+              v-model="passf1" 
+              :type="passw" 
+              class="input-field" 
+              minlength="8"
+              @input="checkPasswordStrength"
+              required 
+            />
+            <button @click="show()" class="toggle-password" type="button">👁</button>
           </div>
+          <!-- Indicateur de force du mot de passe -->
+          <div v-if="passf1" class="password-strength">
+            <div class="strength-bar-container">
+              <div 
+                class="strength-bar" 
+                :style="{ width: (passwordStrength.strength / 5 * 100) + '%', backgroundColor: strengthColor }"
+              ></div>
+            </div>
+            <p class="strength-label" :style="{ color: strengthColor }">{{ passwordStrength.strengthLabel }}</p>
+          </div>
+          <ul v-if="passf1 && passwordStrength.errors.length > 0" class="validation-errors">
+            <li v-for="error in passwordStrength.errors" :key="error">{{ error }}</li>
+          </ul>
         </div>
 
         <div class="form-group">
@@ -49,13 +79,26 @@
         
         <div class="form-group">
           <label>Email</label>
-          <input v-model="email" type="email" class="input-field" />
+          <input 
+            v-model="email" 
+            type="email" 
+            class="input-field"
+            @blur="checkEmail"
+          />
+          <p v-if="email && !emailValid" class="error-message">❌ Format d'email invalide</p>
           <p v-if="emailR" class="error-message">❌ {{$t('dejaEP')}}</p>
         </div>
 
         <div class="form-group">
           <label>Numéro de téléphone</label>
-          <input v-model="phonenumber" type="tel" class="input-field" />
+          <input 
+            v-model="phonenumber" 
+            type="tel" 
+            class="input-field"
+            placeholder="+33612345678 ou 0612345678"
+            @blur="checkPhone"
+          />
+          <p v-if="phonenumber && !phoneValid" class="error-message">❌ Format de téléphone invalide</p>
           <p v-if="phonenumberR" class="error-message">❌ {{$t('dejaPP')}}</p>
         </div>
       </div>
@@ -74,9 +117,10 @@
 </template>
 
 <script setup>
-import {ref} from "vue"
+import {ref, computed} from "vue"
 import {gls} from "@/stores/global"
 import router from "@/router/index"
+import { validatePassword, isValidEmail, validateUsername, isValidPhone, getStrengthColor } from '@/utils/validation'
 
 let passw = ref("password")
 let passw2 = ref("password")
@@ -91,7 +135,71 @@ let usernameR = ref(0)
 let emailR = ref(0)
 let phonenumberR = ref(0)
 
+// Validation states
+let passwordStrength = ref({ valid: true, errors: [], strength: 0, strengthLabel: '' })
+let emailValid = ref(true)
+let usernameValid = ref({ valid: true, error: '' })
+let phoneValid = ref(true)
+
+// Check password strength
+function checkPasswordStrength() {
+  if (passf1.value) {
+    passwordStrength.value = validatePassword(passf1.value)
+  }
+}
+
+// Validate email format
+function checkEmail() {
+  if (email.value) {
+    emailValid.value = isValidEmail(email.value)
+  } else {
+    emailValid.value = true // Optional field
+  }
+}
+
+// Validate username format
+function checkUsername() {
+  if (username.value) {
+    usernameValid.value = validateUsername(username.value)
+  }
+}
+
+// Validate phone format
+function checkPhone() {
+  phoneValid.value = isValidPhone(phonenumber.value)
+}
+
+// Computed password strength color
+const strengthColor = computed(() => getStrengthColor(passwordStrength.value.strength))
+
 function verif(){
+  // Valider tous les champs
+  checkUsername()
+  checkEmail()
+  checkPhone()
+  checkPasswordStrength()
+  
+  // Vérifier username valide
+  if (!usernameValid.value.valid) {
+    return
+  }
+  
+  // Vérifier email valide
+  if (email.value && !emailValid.value) {
+    return
+  }
+  
+  // Vérifier téléphone valide
+  if (!phoneValid.value) {
+    return
+  }
+  
+  // Vérifier force mot de passe
+  if (!passwordStrength.value.valid) {
+    return
+  }
+  
+  // Vérifier correspondance mots de passe
   if(passf1.value == passf2.value && passf2.value !="" && passf1.value != "")
     connect()
 }
@@ -368,6 +476,57 @@ function show2(){
   font-size: 0.9rem;
   color: #ff3c3c;
   margin: 0;
+}
+
+/* Password Strength Indicator */
+.password-strength {
+  margin-top: 8px;
+}
+
+.strength-bar-container {
+  width: 100%;
+  height: 6px;
+  background: rgba(0, 0, 0, 0.1);
+  border-radius: 3px;
+  overflow: hidden;
+  margin-bottom: 4px;
+}
+
+.dark .strength-bar-container {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.strength-bar {
+  height: 100%;
+  transition: all 0.3s ease;
+  border-radius: 3px;
+}
+
+.strength-label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  margin: 0;
+  text-align: right;
+}
+
+.validation-errors {
+  list-style: none;
+  padding: 8px 12px;
+  margin: 8px 0 0 0;
+  background: rgba(255, 60, 60, 0.05);
+  border-left: 3px solid #ff3c3c;
+  border-radius: 4px;
+}
+
+.validation-errors li {
+  font-size: 0.85rem;
+  color: #ff3c3c;
+  margin: 4px 0;
+}
+
+.validation-errors li::before {
+  content: '• ';
+  font-weight: bold;
 }
 
 .btn-submit {
