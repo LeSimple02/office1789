@@ -75,6 +75,15 @@ func CreateSubAccount(c *gin.Context) {
 		return
 	}
 
+	// Check if sub-username is reserved
+	if isReservedUsername(req.SubUsername) {
+		c.JSON(http.StatusBadRequest, SubAccountResponse{
+			Success: false,
+			Message: "Ce nom d'utilisateur est réservé et ne peut pas être utilisé",
+		})
+		return
+	}
+
 	// Get user's offer and check sub-account limit
 	var nboffer int
 	var accountType string

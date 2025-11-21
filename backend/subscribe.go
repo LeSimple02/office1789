@@ -12,6 +12,39 @@ import (
 	"github.com/google/uuid"
 )
 
+// Usernames réservés pour le système
+var reservedUsernames = []string{
+	"noreply",
+	"no-reply",
+	"admin",
+	"administrator",
+	"postmaster",
+	"hostmaster",
+	"webmaster",
+	"root",
+	"system",
+	"support",
+	"info",
+	"contact",
+	"abuse",
+	"security",
+	"mailer-daemon",
+	"daemon",
+	"office1789",
+	"office",
+}
+
+// Vérifier si un username est réservé
+func isReservedUsername(username string) bool {
+	usernameLower := strings.ToLower(strings.TrimSpace(username))
+	for _, reserved := range reservedUsernames {
+		if usernameLower == reserved {
+			return true
+		}
+	}
+	return false
+}
+
 type Subscribe struct {
 	Username    string `json:"username"`
 	Password    string `json:"password"`
@@ -93,6 +126,15 @@ func Sub(c *gin.Context) {
 	
 	// Vérifier username
 	if strings.TrimSpace(subi.Username) != "" {
+		// Vérifier si le username est réservé
+		if isReservedUsername(subi.Username) {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"error": "reserved_username",
+				"message": "Ce nom d'utilisateur est réservé et ne peut pas être utilisé",
+			})
+			return
+		}
+		
 		rows := db.QueryRow("SELECT count(*) FROM Users WHERE username=$1", subi.Username)
 		rows.Scan(&count)
 
