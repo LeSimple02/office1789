@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"os/exec"
 	"strings"
 	"time"
 )
@@ -146,9 +147,82 @@ func syncVirtualMailboxes() error {
 
 // reloadPostfixConfig reloads Postfix configuration in mailserver container
 func reloadPostfixConfig() error {
-	// Note: This would execute: docker exec mailserver postfix reload
-	// For now, we'll just log it - implement actual docker exec if needed
-	fmt.Println("📮 Postfix configuration files updated. Run: docker exec mailserver postfix reload")
+	// Reload Postfix
+	cmd := exec.Command("docker", "exec", "mailserver", "postfix", "reload")
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("failed to reload Postfix: %v", err)
+	}
+	fmt.Println("✅ Postfix reloaded successfully")
+	return nil
+}
+
+// syncMatrixDomains adds custom domains to Matrix homeserver configuration
+func syncMatrixDomains() error {
+	// Query all verified custom domains
+	rows, err := db.Query(`
+		SELECT DISTINCT custom_domain 
+		FROM (
+			SELECT custom_domain FROM users WHERE domain_verified = TRUE AND custom_domain IS NOT NULL
+			UNION
+			SELECT custom_domain FROM organizations WHERE domain_verified = TRUE AND custom_domain IS NOT NULL
+		) AS domains
+	`)
+	if err != nil {
+		return fmt.Errorf("failed to query custom domains: %v", err)
+	}
+	defer rows.Close()
+
+	domains := []string{"office1789.com"} // Always include default domain
+	for rows.Next() {
+		var domain string
+		if err := rows.Scan(&domain); err == nil {
+			domains = append(domains, domain)
+		}
+	}
+
+	fmt.Printf("🔄 Matrix: Found %d domains to configure\n", len(domains))
+	
+	// Note: Matrix domains are typically configured at startup via homeserver.yaml
+	// For dynamic updates, you would need to:
+	// 1. Update /data/homeserver.yaml with new server_name or virtual_hosts
+	// 2. Restart synapse container
+	// For now, we'll just log them
+	fmt.Println("📝 Matrix domains to configure:", strings.Join(domains, ", "))
+	fmt.Println("⚠️  Note: Matrix requires homeserver.yaml update and container restart")
+	
+	return nil
+}
+
+// syncRoundcubeDomains updates Roundcube configuration for custom domains
+func syncRoundcubeDomains() error {
+	// Query all verified custom domains
+	rows, err := db.Query(`
+		SELECT DISTINCT custom_domain 
+		FROM (
+			SELECT custom_domain FROM users WHERE domain_verified = TRUE AND custom_domain IS NOT NULL
+			UNION
+			SELECT custom_domain FROM organizations WHERE domain_verified = TRUE AND custom_domain IS NOT NULL
+		) AS domains
+	`)
+	if err != nil {
+		return fmt.Errorf("failed to query custom domains: %v", err)
+	}
+	defer rows.Close()
+
+	domains := []string{"office1789.com"}
+	for rows.Next() {
+		var domain string
+		if err := rows.Scan(&domain); err == nil {
+			domains = append(domains, domain)
+		}
+	}
+
+	fmt.Printf("🔄 Roundcube: Found %d domains to configure\n", len(domains))
+	
+	// Roundcube identities are user-specific, so we just need to ensure
+	// the mail server accepts these domains (already done via Postfix)
+	fmt.Println("✅ Roundcube will automatically use custom domains via IMAP")
+	
 	return nil
 }
 
@@ -163,11 +237,29 @@ func SyncMailServerConfig() error {
 	if err := syncVirtualMailboxes(); err != nil {
 		return fmt.Errorf("failed to sync mailboxes: %v", err)
 	}
-	
-	if err := reloadPostfixConfig(); err != nil {
-		return fmt.Errorf("failed to reload Postfix: %v", err)
+
+	// Create Postfix hash database
+	cmd := exec.Command("docker", "exec", "mailserver", "postmap", virtualMailboxesFile)
+	if err := cmd.Run(); err != nil {
+		fmt.Printf("⚠️  Warning: Could not run postmap: %v\n", err)
 	}
-	
+
+	// Reload Postfix
+	if err := reloadPostfixConfig(); err != nil {
+		fmt.Printf("⚠️  Warning: Could not reload Postfix: %v\n", err)
+	}
+
+	// Sync Matrix domains (informational for now)
+	if err := syncMatrixDomains(); err != nil {
+		fmt.Printf("⚠️  Warning: Matrix sync failed: %v\n", err)
+	}
+
+	// Sync Roundcube (informational)
+	if err := syncRoundcubeDomains(); err != nil {
+		fmt.Printf("⚠️  Warning: Roundcube sync failed: %v\n", err)
+	}
+
+	fmt.Println("✅ Mail server synchronization completed")
 	return nil
 }
 

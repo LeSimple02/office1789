@@ -1,26 +1,20 @@
 <script setup>
 import AccountProfile from "@/components/AccountProfile.vue"
 import AccountChange from "@/components/AccountChange.vue"
-import {watch, ref} from "vue"
-import {useRoute} from 'vue-router'
-
-
-let change = ref(window.location.href.split('/')[4] == 'edit' ? 1 : 0)
+import { computed } from "vue"
+import { useRoute } from 'vue-router'
 
 const route = useRoute()
-function c(){
-	change.value = window.location.href.split('/')[4] == 'edit' ? 1 : 0
-}
 
-watch(()=>route.path, c)
+// Détermine quel composant afficher en fonction de la route
+const showProfile = computed(() => route.path === '/account')
+const showEdit = computed(() => route.path === '/account/edit')
 
 </script>
 
 <template>
-<AccountProfile v-if="!change"></AccountProfile>
-<AccountChange v-else></AccountChange>	
-
-
+<AccountProfile v-if="showProfile"></AccountProfile>
+<AccountChange v-else-if="showEdit"></AccountChange>	
 </template>
 
 

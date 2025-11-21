@@ -1,7 +1,7 @@
 <script setup>
 import { ref, computed } from "vue"
 import { gls } from "@/stores/global.js"
-import { useRouter } from 'vue-router'
+import { useRouter, RouterLink } from 'vue-router'
 import { validatePassword, isValidEmail, isValidPhone, getStrengthColor } from '@/utils/validation'
 
 const router = useRouter()

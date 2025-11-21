@@ -37,8 +37,13 @@ fetch(import.meta.env.VITE_APP_API_INFO_USER, {
 })
 
 const offerName = (num) => {
-  const offers = { 0: 'Free', 1: 'Standard', 2: 'Premium' }
+  const offers = { 0: 'Free', 1: 'Standard', 2: 'Professional', 3: 'Enterprise' }
   return offers[num] || 'Unknown'
+}
+
+const storageSize = (num) => {
+  const storage = { 0: '1GB', 1: '50GB', 2: '200GB', 3: 'Illimité' }
+  return storage[num] || '1GB'
 }
 
 const regenerateMatrix = async () => {
@@ -224,6 +229,18 @@ const cancelRegenerateMatrix = () => {
           <div class="info-content">
             <span class="info-label">{{ $t('offery') }}</span>
             <span class="info-value">{{ offerName(nboffer) }}</span>
+          </div>
+        </div>
+
+        <div class="info-card">
+          <div class="info-icon storage">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
+            </svg>
+          </div>
+          <div class="info-content">
+            <span class="info-label">Stockage</span>
+            <span class="info-value">{{ storageSize(nboffer) }}</span>
           </div>
         </div>
 
@@ -538,6 +555,10 @@ const cancelRegenerateMatrix = () => {
   flex-shrink: 0;
   background: -webkit-linear-gradient(30deg, blue, red);
   color: #fff;
+}
+
+.info-icon.storage {
+  background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
 }
 
 .info-content {

@@ -50,7 +50,8 @@
           <div class="storage-fill" :style="{ width: storagePercentage + '%', background: storageColor }"></div>
         </div>
         <div class="storage-details">
-          <span>{{ humanSize(storageUsed) }} / {{ humanSize(storageLimit) }}</span>
+          <span v-if="isUnlimitedStorage">{{ humanSize(storageUsed) }} / Illimité</span>
+          <span v-else>{{ humanSize(storageUsed) }} / {{ humanSize(storageLimit) }}</span>
           <span class="storage-percent">{{ storagePercentage }}%</span>
         </div>
         <div v-if="storagePercentage >= 90" class="storage-warning">
@@ -531,6 +532,7 @@ const selectedFile = ref(null)
 // ---------- Storage info ----------
 const storageUsed = ref(0)
 const storageLimit = ref(0)
+const isUnlimitedStorage = ref(false)
 const storagePercentage = computed(() => {
   if (storageLimit.value === 0) return 0
   return Math.min(100, Math.round((storageUsed.value / storageLimit.value) * 100))
@@ -734,6 +736,7 @@ async function fetchStorageInfo() {
     const data = await res.json()
     storageUsed.value = data.current_usage || 0
     storageLimit.value = data.storage_limit || 0
+    isUnlimitedStorage.value = data.unlimited || false
     // Handle unlimited storage (Enterprise)
     if (data.unlimited) {
       storageLimit.value = storageUsed.value * 2 || 1024 * 1024 * 1024 // Show bar at 50% if unlimited

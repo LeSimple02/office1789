@@ -202,6 +202,18 @@ func CreateSubAccount(c *gin.Context) {
 	subAccountEmail := req.SubUsername + "@office1789.com"
 	var subAccountID int
 	
+	// Sub-accounts inherit the parent's plan to access organization features
+	// They share the same storage and features as the organization
+	var parentOffer int
+	err = db.QueryRow(`SELECT nboffer FROM Users WHERE user_id=$1`, sess.UserID).Scan(&parentOffer)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, SubAccountResponse{
+			Success: false,
+			Message: "Failed to get parent plan: " + err.Error(),
+		})
+		return
+	}
+	
 	err = db.QueryRow(`
 		INSERT INTO Users (
 			username, password_hash, email, recovery_email, phonenumber,
@@ -210,7 +222,7 @@ func CreateSubAccount(c *gin.Context) {
 		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NOW(), NOW())
 		RETURNING user_id
 	`, req.SubUsername, string(hashedPassword), subAccountEmail, req.SubEmail, 
-	   req.SubPhoneNumber, nboffer, "@office1789", orgID, sess.UserID, "organization_member").Scan(&subAccountID)
+	   req.SubPhoneNumber, parentOffer, "@office1789", orgID, sess.UserID, "organization_member").Scan(&subAccountID)
 
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, SubAccountResponse{

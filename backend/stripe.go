@@ -248,17 +248,62 @@ func StripeWebhook(c *gin.Context) {
 		stripeCustomerID := checkoutSession.Customer.ID
 		stripeSubscriptionID := checkoutSession.Subscription.ID
 
+		// Déterminer le account_type selon le plan
+		accountType := "personal"
+		if planID >= 2 { // Professional (2) ou Enterprise (3)
+			accountType = "organization_owner"
+		}
+
 		// Mettre à jour l'abonnement de l'utilisateur avec les IDs Stripe
 		_, err = db.Exec(
-			"UPDATE Users SET nboffer=$1, stripe_customer_id=$2, stripe_subscription_id=$3 WHERE user_id=$4",
-			planID, stripeCustomerID, stripeSubscriptionID, userID,
+			"UPDATE users SET nboffer=$1, stripe_customer_id=$2, stripe_subscription_id=$3, account_type=$4 WHERE user_id=$5",
+			planID, stripeCustomerID, stripeSubscriptionID, accountType, userID,
 		)
 		if err != nil {
 			fmt.Printf("❌ Error updating subscription for user %d: %v\n", userID, err)
 		} else {
 			fmt.Printf("✅ Subscription activated: User %s (ID: %d) upgraded to plan %d\n", username, userID, planID)
+			fmt.Printf("   Account type: %s\n", accountType)
 			fmt.Printf("   Stripe Customer: %s, Subscription: %s, Session: %s\n",
 				stripeCustomerID, stripeSubscriptionID, checkoutSession.ID)
+
+			// Si plan Professional ou Enterprise, créer automatiquement l'organisation
+			if planID >= 2 {
+				var orgID int
+				maxMembers := 3 // Professional = 3 membres
+				if planID == 3 {
+					maxMembers = 20 // Enterprise = 20 membres
+				}
+
+				// Vérifier si l'organisation existe déjà
+				err = db.QueryRow("SELECT organization_id FROM organizations WHERE owner_user_id=$1", userID).Scan(&orgID)
+				if err != nil {
+					// Créer l'organisation
+					orgName := username + " Organization"
+					err = db.QueryRow(
+						"INSERT INTO organizations (organization_name, owner_user_id, max_members, created_at) VALUES ($1, $2, $3, NOW()) RETURNING organization_id",
+						orgName, userID, maxMembers,
+					).Scan(&orgID)
+
+					if err != nil {
+						fmt.Printf("⚠️  Warning: Could not create organization for user %d: %v\n", userID, err)
+					} else {
+						// Lier l'utilisateur à son organisation
+						_, err = db.Exec("UPDATE users SET organization_id=$1 WHERE user_id=$2", orgID, userID)
+						if err != nil {
+							fmt.Printf("⚠️  Warning: Could not link user to organization: %v\n", err)
+						} else {
+							fmt.Printf("✅ Organization created: %s (ID: %d, max_members: %d)\n", orgName, orgID, maxMembers)
+						}
+					}
+				} else {
+					// Mettre à jour max_members si le plan change
+					_, err = db.Exec("UPDATE organizations SET max_members=$1 WHERE organization_id=$2", maxMembers, orgID)
+					if err == nil {
+						fmt.Printf("✅ Organization updated: max_members set to %d\n", maxMembers)
+					}
+				}
+			}
 		}
 
 	case "customer.subscription.updated":
@@ -266,9 +311,37 @@ func StripeWebhook(c *gin.Context) {
 		fmt.Printf("Subscription updated event received\n")
 
 	case "customer.subscription.deleted":
-		// Abonnement annulé
-		fmt.Printf("Subscription cancelled event received\n")
-		// TODO: Rétrograder l'utilisateur vers le plan Free (0)
+		// Abonnement annulé - rétrograder l'utilisateur
+		var subscription stripe.Subscription
+		err := json.Unmarshal(event.Data.Raw, &subscription)
+		if err != nil {
+			fmt.Printf("Error parsing webhook JSON: %v\n", err)
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid event data"})
+			return
+		}
+
+		// Trouver l'utilisateur par subscription_id
+		var userID int
+		var username string
+		err = db.QueryRow(
+			"SELECT user_id, username FROM users WHERE stripe_subscription_id=$1",
+			subscription.ID,
+		).Scan(&userID, &username)
+
+		if err != nil {
+			fmt.Printf("⚠️  Warning: Could not find user for subscription %s: %v\n", subscription.ID, err)
+		} else {
+			// Rétrograder vers le plan Free (0) et type personal
+			_, err = db.Exec(
+				"UPDATE users SET nboffer=0, account_type='personal', stripe_subscription_id=NULL WHERE user_id=$1",
+				userID,
+			)
+			if err != nil {
+				fmt.Printf("❌ Error downgrading user %d: %v\n", userID, err)
+			} else {
+				fmt.Printf("✅ Subscription cancelled: User %s (ID: %d) downgraded to Free plan\n", username, userID)
+			}
+		}
 
 	case "invoice.payment_failed":
 		// Échec de paiement

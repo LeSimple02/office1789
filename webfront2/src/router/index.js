@@ -83,31 +83,28 @@ const router = createRouter({
     },
     {
       path: '/account',
-      children: [
-      {
-	path: '',
-	name: 'account',
-	component: ()=>import('../views/AccountView.vue')
-      },
-      {
-	path: 'edit',
-	component: ()=>import('../views/AccountView.vue'),
-      },
-      {
-	path: 'subscription-success',
-	name: 'subscription-success',
-	component: ()=>import('../components/SubscriptionSuccess.vue'),
-      },
-      {
-	path: 'organization',
-	name: 'organization',
-	component: ()=>import('../components/OrganizationPanel.vue'),
-      },
-      {
-	path: 'custom-domain',
-	name: 'custom-domain',
-	component: ()=>import('../components/CustomDomainPanel.vue'),
-      }]
+      name: 'account',
+      component: () => import('../views/AccountView.vue')
+    },
+    {
+      path: '/account/edit',
+      name: 'account-edit',
+      component: () => import('../views/AccountView.vue')
+    },
+    {
+      path: '/account/subscription-success',
+      name: 'subscription-success',
+      component: () => import('../components/SubscriptionSuccess.vue')
+    },
+    {
+      path: '/account/organization',
+      name: 'organization',
+      component: () => import('../components/OrganizationPanel.vue')
+    },
+    {
+      path: '/account/custom-domain',
+      name: 'custom-domain',
+      component: () => import('../components/CustomDomainPanel.vue')
     },
     {
       path: '/about',
