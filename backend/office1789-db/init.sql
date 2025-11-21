@@ -149,6 +149,9 @@ CREATE TABLE IF NOT EXISTS Organizations (
     organization_name VARCHAR(255) NOT NULL,
     owner_user_id INT, -- Will be set after user creation
     max_members INT DEFAULT 1, -- Maximum number of sub-accounts allowed
+    custom_domain VARCHAR(255), -- Domaine personnalisé (ex: company.com)
+    domain_verified BOOLEAN DEFAULT FALSE, -- Domaine vérifié via DNS
+    domain_verification_token VARCHAR(255), -- Token pour vérification DNS TXT
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -173,6 +176,8 @@ CREATE TABLE IF NOT EXISTS Users (
     organization_id INT, -- ID de l'organisation (si membre d'une organisation)
     parent_account_id INT, -- ID du compte parent (si sous-compte)
     account_type VARCHAR(20) DEFAULT 'personal', -- 'personal', 'organization_owner', 'organization_member'
+    custom_domain VARCHAR(255), -- Domaine personnalisé pour compte individuel Pro/Enterprise
+    domain_verified BOOLEAN DEFAULT FALSE, -- Domaine vérifié
     date_joined TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     last_login TIMESTAMP,
     FOREIGN KEY (organization_id) REFERENCES Organizations(organization_id) ON DELETE SET NULL,

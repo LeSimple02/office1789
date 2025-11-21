@@ -13,6 +13,7 @@ func welcome(c *gin.Context) {
 func main() {
 	Connectdb()
 	InitStripe() // Initialiser Stripe avec la clé API
+	StartMailSyncScheduler() // Start mail server sync for custom domains
 	r := gin.Default()
 
 	// CORS configuration with credentials support
@@ -108,6 +109,12 @@ func main() {
 	r.POST("/api/organization/create-subaccount", CreateSubAccount)
 	r.POST("/api/organization/members", GetOrganizationMembers)
 	r.POST("/api/organization/delete-member", DeleteSubAccount)
+
+	// Custom domain routes (for Professional/Enterprise)
+	r.POST("/api/domain/add", AddCustomDomain)
+	r.POST("/api/domain/verify", VerifyCustomDomain)
+	r.POST("/api/domain/info", GetCustomDomainInfo)
+	r.POST("/api/domain/remove", RemoveCustomDomain)
 
 	// Admin routes (protégés par middleware)
 	admin := r.Group("/api/admin")

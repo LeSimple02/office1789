@@ -102,6 +102,11 @@ const router = createRouter({
 	path: 'organization',
 	name: 'organization',
 	component: ()=>import('../components/OrganizationPanel.vue'),
+      },
+      {
+	path: 'custom-domain',
+	name: 'custom-domain',
+	component: ()=>import('../components/CustomDomainPanel.vue'),
       }]
     },
     {
