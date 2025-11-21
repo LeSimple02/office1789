@@ -1,13 +1,12 @@
 <template>
   <div class="admin-panel">
     <div class="admin-header">
-      <h1>🔐 Panel Administrateur</h1>
-      <p>Bienvenue {{ gls().username }}</p>
+      <h1>Panel Administrateur</h1>
     </div>
 
     <!-- Stats Cards -->
     <div class="stats-grid">
-      <div class="stat-card blue">
+      <div class="stat-card">
         <div class="stat-icon">👥</div>
         <div class="stat-content">
           <h3>{{ stats.total_users }}</h3>
@@ -15,7 +14,7 @@
         </div>
       </div>
       
-      <div class="stat-card green">
+      <div class="stat-card">
         <div class="stat-icon">✉️</div>
         <div class="stat-content">
           <h3>{{ stats.total_verified_emails }}</h3>
@@ -23,7 +22,7 @@
         </div>
       </div>
       
-      <div class="stat-card purple">
+      <div class="stat-card">
         <div class="stat-icon">📱</div>
         <div class="stat-content">
           <h3>{{ stats.total_verified_phones }}</h3>
@@ -31,7 +30,7 @@
         </div>
       </div>
       
-      <div class="stat-card red">
+      <div class="stat-card">
         <div class="stat-icon">⚠️</div>
         <div class="stat-content">
           <h3>{{ stats.users_without_contacts }}</h3>
@@ -39,7 +38,7 @@
         </div>
       </div>
       
-      <div class="stat-card orange">
+      <div class="stat-card">
         <div class="stat-icon">📁</div>
         <div class="stat-content">
           <h3>{{ stats.total_files }}</h3>
@@ -47,7 +46,7 @@
         </div>
       </div>
       
-      <div class="stat-card teal">
+      <div class="stat-card">
         <div class="stat-icon">📅</div>
         <div class="stat-content">
           <h3>{{ stats.total_calendar_events }}</h3>
@@ -369,92 +368,85 @@ function formatDate(dateString) {
 <style scoped>
 .admin-panel {
   min-height: 100vh;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: #f5f5f5;
   padding: 2rem;
 }
 
 .admin-header {
-  text-align: center;
-  color: white;
   margin-bottom: 2rem;
 }
 
 .admin-header h1 {
-  font-size: 2.5rem;
-  margin-bottom: 0.5rem;
-  font-weight: 700;
-}
-
-.admin-header p {
-  font-size: 1.1rem;
-  opacity: 0.9;
+  font-size: 2rem;
+  font-weight: 400;
+  color: #333;
+  margin: 0;
+  font-family: Roboto, sans-serif;
 }
 
 .stats-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
   gap: 1.5rem;
-  margin-bottom: 2rem;
+  margin-bottom: 3rem;
 }
 
 .stat-card {
   background: white;
-  border-radius: 16px;
+  border-radius: 8px;
   padding: 1.5rem;
   display: flex;
   align-items: center;
   gap: 1rem;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  border: 1px solid #e5e7eb;
+  transition: box-shadow 0.2s ease;
 }
 
 .stat-card:hover {
-  transform: translateY(-5px);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
 }
 
 .stat-icon {
-  font-size: 3rem;
+  font-size: 2.5rem;
   line-height: 1;
+  opacity: 0.8;
 }
 
 .stat-content h3 {
-  font-size: 2rem;
-  font-weight: 700;
+  font-size: 1.8rem;
+  font-weight: 500;
   margin: 0;
+  color: #333;
 }
 
 .stat-content p {
   font-size: 0.9rem;
   color: #666;
   margin: 0;
+  font-weight: 400;
 }
-
-.stat-card.blue .stat-icon { filter: hue-rotate(200deg); }
-.stat-card.green .stat-icon { filter: hue-rotate(100deg); }
-.stat-card.purple .stat-icon { filter: hue-rotate(270deg); }
-.stat-card.red .stat-icon { filter: hue-rotate(0deg); }
-.stat-card.orange .stat-icon { filter: hue-rotate(30deg); }
-.stat-card.teal .stat-icon { filter: hue-rotate(160deg); }
 
 .charts-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
   gap: 2rem;
-  margin-bottom: 2rem;
+  margin-bottom: 3rem;
 }
 
 .chart-card {
   background: white;
-  border-radius: 16px;
+  border-radius: 8px;
   padding: 2rem;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  border: 1px solid #e5e7eb;
 }
 
 .chart-card h2 {
   margin: 0 0 1.5rem 0;
-  font-size: 1.3rem;
+  font-size: 1.2rem;
   color: #333;
+  font-weight: 500;
 }
 
 .chart-card canvas {
@@ -463,9 +455,10 @@ function formatDate(dateString) {
 
 .users-section {
   background: white;
-  border-radius: 16px;
+  border-radius: 8px;
   padding: 2rem;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  border: 1px solid #e5e7eb;
 }
 
 .section-header {
@@ -479,23 +472,24 @@ function formatDate(dateString) {
 
 .section-header h2 {
   margin: 0;
-  font-size: 1.5rem;
+  font-size: 1.3rem;
   color: #333;
+  font-weight: 500;
 }
 
 .search-input {
-  padding: 0.75rem 1.25rem;
-  border: 2px solid #e5e7eb;
-  border-radius: 12px;
-  font-size: 1rem;
+  padding: 0.6rem 1rem;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  font-size: 0.95rem;
   width: 300px;
-  transition: all 0.3s ease;
+  transition: border-color 0.2s ease;
+  font-family: Roboto, sans-serif;
 }
 
 .search-input:focus {
   outline: none;
-  border-color: #667eea;
-  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+  border-color: #999;
 }
 
 .table-container {
@@ -509,14 +503,15 @@ function formatDate(dateString) {
 }
 
 .users-table thead {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
+  background: #f9fafb;
+  color: #333;
+  border-bottom: 2px solid #e5e7eb;
 }
 
 .users-table th {
   padding: 1rem;
   text-align: left;
-  font-weight: 600;
+  font-weight: 500;
 }
 
 .users-table tbody tr {
@@ -530,6 +525,7 @@ function formatDate(dateString) {
 
 .users-table tbody tr.admin-row {
   background-color: #fef3c7;
+  border-left: 3px solid #f59e0b;
 }
 
 .users-table tbody tr.admin-row:hover {
@@ -541,11 +537,11 @@ function formatDate(dateString) {
 }
 
 .username-badge {
-  background: #667eea;
-  color: white;
+  background: #e5e7eb;
+  color: #374151;
   padding: 0.25rem 0.75rem;
-  border-radius: 8px;
-  font-weight: 600;
+  border-radius: 6px;
+  font-weight: 500;
 }
 
 .verified-badge {
@@ -619,18 +615,17 @@ function formatDate(dateString) {
 .btn-action {
   padding: 0.5rem 1rem;
   border: none;
-  border-radius: 8px;
+  border-radius: 6px;
   font-size: 0.85rem;
-  font-weight: 600;
+  font-weight: 500;
   cursor: pointer;
-  transition: all 0.3s ease;
-  background: #667eea;
+  transition: background-color 0.2s ease;
+  background: #4b5563;
   color: white;
 }
 
 .btn-action:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+  background: #374151;
 }
 
 .btn-action.btn-danger {
@@ -638,7 +633,7 @@ function formatDate(dateString) {
 }
 
 .btn-action.btn-danger:hover {
-  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+  background: #dc2626;
 }
 
 .btn-action.btn-verify {
@@ -646,7 +641,7 @@ function formatDate(dateString) {
 }
 
 .btn-action.btn-verify:hover {
-  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+  background: #059669;
 }
 
 @media (max-width: 768px) {
