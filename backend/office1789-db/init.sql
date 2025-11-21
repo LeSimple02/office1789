@@ -142,6 +142,16 @@ CREATE TABLE IF NOT EXISTS CalendarEvents (
 -- Connecting to the database
 \c office1789;*/
 
+-- Table for storing organizations (for Enterprise accounts with sub-accounts)
+-- MUST be created BEFORE Users table due to foreign key
+CREATE TABLE IF NOT EXISTS Organizations (
+    organization_id SERIAL PRIMARY KEY,
+    organization_name VARCHAR(255) NOT NULL,
+    owner_user_id INT, -- Will be set after user creation
+    max_members INT DEFAULT 1, -- Maximum number of sub-accounts allowed
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
 -- Table for storing users
 CREATE TABLE IF NOT EXISTS Users (
     user_id SERIAL PRIMARY KEY,
@@ -160,9 +170,18 @@ CREATE TABLE IF NOT EXISTS Users (
     role VARCHAR(20) DEFAULT 'user', -- 'user' ou 'admin'
     stripe_customer_id VARCHAR(255), -- ID du client Stripe
     stripe_subscription_id VARCHAR(255), -- ID de l'abonnement Stripe actif
+    organization_id INT, -- ID de l'organisation (si membre d'une organisation)
+    parent_account_id INT, -- ID du compte parent (si sous-compte)
+    account_type VARCHAR(20) DEFAULT 'personal', -- 'personal', 'organization_owner', 'organization_member'
     date_joined TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    last_login TIMESTAMP
+    last_login TIMESTAMP,
+    FOREIGN KEY (organization_id) REFERENCES Organizations(organization_id) ON DELETE SET NULL,
+    FOREIGN KEY (parent_account_id) REFERENCES Users(user_id) ON DELETE CASCADE
 );
+
+-- Add foreign key constraint for Organizations.owner_user_id after Users table is created
+ALTER TABLE Organizations ADD CONSTRAINT fk_owner_user 
+    FOREIGN KEY (owner_user_id) REFERENCES Users(user_id) ON DELETE CASCADE;
 
 -- Table for storing user drive data (files)
 CREATE TABLE IF NOT EXISTS DriveFiles (

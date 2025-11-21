@@ -66,10 +66,61 @@ let processingPayment = ref(false)
 let paymentMessage = ref('')
 
 const plans = [
-  { id: 0, name: 'Free', price: 0, storage: '1GB', features: ['Basic Email', 'Chat', 'Calendar', '1GB Storage'] },
-  { id: 1, name: 'Standard', price: 5, storage: '50GB', features: ['Professional Email', 'Priority Support', '50GB Storage', '50MB Attachments'] },
-  { id: 2, name: 'Professional', price: 12, storage: '200GB', features: ['Custom Domain', 'Team Collaboration', '200GB Storage', '3 Team Members', '200MB Attachments'] },
-  { id: 3, name: 'Enterprise', price: 49, storage: 'Illimité', features: ['Advanced Security', 'Unlimited Domains', 'Stockage illimité', '20 Team Members', '1GB Attachments', '24/7 Support'] }
+  { 
+    id: 0, 
+    name: 'Free', 
+    price: 0, 
+    storage: '1GB', 
+    features: [
+      'Email basique', 
+      'Chat Matrix', 
+      'Calendrier', 
+      '1GB de stockage', 
+      'Pas de partage de fichiers'
+    ] 
+  },
+  { 
+    id: 1, 
+    name: 'Standard', 
+    price: 5, 
+    storage: '50GB', 
+    features: [
+      'Email professionnel', 
+      'Support prioritaire ⭐', 
+      '50GB de stockage', 
+      'Pas de partage de fichiers',
+      'Sauvegardes quotidiennes'
+    ] 
+  },
+  { 
+    id: 2, 
+    name: 'Professional', 
+    price: 12, 
+    storage: '200GB', 
+    features: [
+      'Collaboration d\'équipe', 
+      'Support prioritaire ⭐', 
+      '200GB de stockage', 
+      'Partage avec 3 membres',
+      'Historique 90 jours',
+      'API Access'
+    ] 
+  },
+  { 
+    id: 3, 
+    name: 'Enterprise', 
+    price: 49, 
+    storage: 'Illimité', 
+    features: [
+      'Sécurité avancée', 
+      'Support prioritaire 24/7 ⭐⭐', 
+      'Stockage illimité', 
+      'Partage avec 20 membres', 
+      'SSO & SAML',
+      'SLA 99.9%',
+      'Gestion avancée'
+    ] 
+  }
 ]
 
 // Load 2FA status
@@ -792,6 +843,25 @@ function getPlanName(id) {
               Plan actuel
             </div>
           </div>
+        </div>
+
+        <!-- Organization Management Link (Professional/Enterprise only) -->
+        <div v-if="nboffer >= 2" class="organization-link-section">
+          <RouterLink to="/account/organization" class="organization-link-btn">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+              <circle cx="9" cy="7" r="4"></circle>
+              <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+              <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+            </svg>
+            <div class="link-content">
+              <h4>🏢 Gestion de l'organisation</h4>
+              <p>Créer et gérer vos sous-comptes ({{ nboffer === 2 ? '3' : '20' }} comptes max)</p>
+            </div>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="9 18 15 12 9 6"></polyline>
+            </svg>
+          </RouterLink>
         </div>
       </div>
 
@@ -1624,6 +1694,79 @@ function getPlanName(id) {
 .dark .auth-zone {
   background: rgba(59,130,246,0.08);
   border-color: rgba(59,130,246,0.3);
+}
+
+/* Organization Link Section */
+.organization-link-section {
+  margin-top: 24px;
+  padding: 16px;
+  background: linear-gradient(135deg, rgba(102, 126, 234, 0.05) 0%, rgba(118, 75, 162, 0.05) 100%);
+  border: 2px solid rgba(102, 126, 234, 0.2);
+  border-radius: 16px;
+}
+.dark .organization-link-section {
+  background: rgba(102, 126, 234, 0.08);
+  border-color: rgba(102, 126, 234, 0.3);
+}
+
+.organization-link-btn {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  width: 100%;
+  padding: 20px;
+  background: white;
+  border: 2px solid rgba(102, 126, 234, 0.2);
+  border-radius: 12px;
+  text-decoration: none;
+  color: inherit;
+  transition: all 0.3s ease;
+  cursor: pointer;
+}
+.dark .organization-link-btn {
+  background: #2C2C2E;
+  border-color: rgba(102, 126, 234, 0.4);
+}
+
+.organization-link-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 20px rgba(102, 126, 234, 0.3);
+  border-color: rgba(102, 126, 234, 0.5);
+}
+.dark .organization-link-btn:hover {
+  box-shadow: 0 4px 20px rgba(102, 126, 234, 0.2);
+}
+
+.organization-link-btn svg:first-child {
+  color: #667eea;
+  flex-shrink: 0;
+}
+
+.link-content {
+  flex: 1;
+}
+
+.link-content h4 {
+  margin: 0 0 4px 0;
+  font-size: 18px;
+  color: #2c3e50;
+}
+.dark .link-content h4 {
+  color: #e5e7eb;
+}
+
+.link-content p {
+  margin: 0;
+  font-size: 14px;
+  color: #6c757d;
+}
+.dark .link-content p {
+  color: #9ca3af;
+}
+
+.organization-link-btn svg:last-child {
+  color: #667eea;
+  flex-shrink: 0;
 }
 
 .auth-title {

@@ -28,6 +28,14 @@ const (
 	StorageLimitEnterprise   = -1                         // Unlimited for nboffer=3
 )
 
+// Team member limits per offer (number of people you can share files with)
+const (
+	TeamMembersFree         = 0   // Cannot share files
+	TeamMembersStandard     = 0   // Cannot share files
+	TeamMembersProfessional = 3   // Can share with 3 team members
+	TeamMembersEnterprise   = 20  // Can share with 20 team members
+)
+
 var (
 	downloadTokens     = map[string]downloadToken{}
 	downloadTokensLock sync.RWMutex
@@ -47,6 +55,22 @@ func getStorageLimit(nboffer int) int64 {
 		return StorageLimitEnterprise // unlimited
 	default:
 		return StorageLimitFree // default to free if unknown
+	}
+}
+
+// getTeamMembersLimit returns the number of team members allowed based on user's offer
+func getTeamMembersLimit(nboffer int) int {
+	switch nboffer {
+	case 0:
+		return TeamMembersFree
+	case 1:
+		return TeamMembersStandard
+	case 2:
+		return TeamMembersProfessional
+	case 3:
+		return TeamMembersEnterprise
+	default:
+		return TeamMembersFree // default to free if unknown
 	}
 }
 
@@ -1961,6 +1985,46 @@ func createShareFile(c *gin.Context) {
         return
     }
 
+    // Check user's offer and team members limit
+    var nboffer int
+    if err := db.QueryRow("SELECT nboffer FROM Users WHERE user_id=$1", sharerID).Scan(&nboffer); err != nil {
+        c.JSON(http.StatusInternalServerError, gin.H{"error": 1, "message": "failed to get user plan"})
+        return
+    }
+
+    teamLimit := getTeamMembersLimit(nboffer)
+    if teamLimit == 0 {
+        c.JSON(http.StatusForbidden, gin.H{
+            "error": 1, 
+            "message": "File sharing is not available on your plan. Please upgrade to Professional or Enterprise.",
+            "upgrade_required": true,
+        })
+        return
+    }
+
+    // Count current active shares by this user
+    var activeSharesCount int
+    err := db.QueryRow(`
+        SELECT COUNT(DISTINCT shared_with_user_id) 
+        FROM SharedFiles 
+        WHERE shared_by_user_id=$1 AND active=true
+    `, sharerID).Scan(&activeSharesCount)
+    if err != nil {
+        c.JSON(http.StatusInternalServerError, gin.H{"error": 1, "message": "failed to count shares"})
+        return
+    }
+
+    if activeSharesCount >= teamLimit {
+        c.JSON(http.StatusForbidden, gin.H{
+            "error": 1,
+            "message": fmt.Sprintf("Team member limit reached (%d/%d). Upgrade to share with more people.", activeSharesCount, teamLimit),
+            "current_shares": activeSharesCount,
+            "limit": teamLimit,
+            "upgrade_required": true,
+        })
+        return
+    }
+
     // target user id
     var targetID int
     if err := db.QueryRow("SELECT user_id FROM Users WHERE username=$1", req.ShareWithUsername).Scan(&targetID); err != nil {
@@ -1985,7 +2049,7 @@ func createShareFile(c *gin.Context) {
     }
 
     // upsert into SharedFiles
-    _, err := db.Exec(`
+    _, err = db.Exec(`
         INSERT INTO SharedFiles (file_id, shared_with_user_id, shared_by_user_id, permission, active, date_shared)
         VALUES ($1,$2,$3,$4,true,NOW())
         ON CONFLICT (file_id, shared_with_user_id)

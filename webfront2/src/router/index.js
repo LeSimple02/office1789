@@ -97,6 +97,11 @@ const router = createRouter({
 	path: 'subscription-success',
 	name: 'subscription-success',
 	component: ()=>import('../components/SubscriptionSuccess.vue'),
+      },
+      {
+	path: 'organization',
+	name: 'organization',
+	component: ()=>import('../components/OrganizationPanel.vue'),
       }]
     },
     {

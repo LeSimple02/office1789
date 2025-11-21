@@ -27,14 +27,15 @@ type ChangeIn struct {
 }
 
 type UserProfile struct {
-	Username      string `json:"username"`
-	Domain        string `json:"Domain"`
-	Email         string `json:"Email"`         // Email de récupération (recovery_email)
-	RecoveryEmail string `json:"RecoveryEmail"` // Alias pour clarté
-	PhoneNumber   string `json:"PhoneNumber"`
-	Nboffer       int    `json:"Nboffer"`
-	DateJoined    string `json:"DateJoined"`
-	LastLogin     string `json:"LastLogin"`
+	Username           string `json:"username"`
+	Domain             string `json:"Domain"`
+	Email              string `json:"Email"` // Email de récupération (recovery_email)
+	RecoveryEmail      string `json:"RecoveryEmail"` // Alias pour clarté
+	PhoneNumber        string `json:"PhoneNumber"`
+	Nboffer            int    `json:"Nboffer"`
+	DateJoined         string `json:"DateJoined"`
+	LastLogin          string `json:"LastLogin"`
+	HasPrioritySupport bool   `json:"has_priority_support"` // true si nboffer >= 1
 }
 
 func getinfop(c *gin.Context) {
@@ -54,6 +55,9 @@ func getinfop(c *gin.Context) {
 	rows := db.QueryRow("SELECT username, domain, nboffer, date_joined, last_login, phonenumber, COALESCE(recovery_email, '') FROM Users WHERE user_id=$1", session.UserID)
 	rows.Scan(&infop.Username, &infop.Domain, &infop.Nboffer, &infop.DateJoined, &infop.LastLogin, &infop.PhoneNumber, &infop.Email)
 	infop.RecoveryEmail = infop.Email // Copier Email et RecoveryEmail pour compatibilité frontend
+	
+	// Déterminer si l'utilisateur a le support prioritaire (Standard ou supérieur)
+	infop.HasPrioritySupport = infop.Nboffer >= 1
 
 	c.JSON(http.StatusOK, infop)
 }

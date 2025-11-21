@@ -104,6 +104,11 @@ func main() {
 	r.POST("/api/stripe/checkout", CreateCheckoutSession)
 	r.POST("/api/stripe/webhook", StripeWebhook)
 
+	// Organization routes (for Professional/Enterprise)
+	r.POST("/api/organization/create-subaccount", CreateSubAccount)
+	r.POST("/api/organization/members", GetOrganizationMembers)
+	r.POST("/api/organization/delete-member", DeleteSubAccount)
+
 	// Admin routes (protégés par middleware)
 	admin := r.Group("/api/admin")
 	admin.Use(CheckAdminMiddleware())
