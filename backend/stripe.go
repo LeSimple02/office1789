@@ -9,6 +9,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/stripe/stripe-go/v81"
 	checkoutsession "github.com/stripe/stripe-go/v81/checkout/session"
+	"github.com/stripe/stripe-go/v81/subscription"
 	"github.com/stripe/stripe-go/v81/webhook"
 )
 
@@ -29,6 +30,46 @@ func getStripePriceID(planID int) string {
 	priceID := priceIDs[planID]
 	fmt.Printf("🔍 DEBUG: Price ID récupéré pour plan %d: '%s'\n", planID, priceID)
 	return priceID
+}
+
+// UpdateStripeSubscription met à jour un abonnement Stripe existant (upgrade/downgrade avec prorata)
+func UpdateStripeSubscription(userID int, username string, newPlanID int, stripeCustomerID string, stripeSubscriptionID string) error {
+	priceID := getStripePriceID(newPlanID)
+	if priceID == "" {
+		return fmt.Errorf("invalid price ID for plan %d", newPlanID)
+	}
+
+	fmt.Printf("🔄 Updating Stripe subscription for user %s (ID: %d)\n", username, userID)
+	fmt.Printf("   Customer: %s, Subscription: %s, New Plan: %d\n", stripeCustomerID, stripeSubscriptionID, newPlanID)
+
+	// Récupérer l'abonnement actuel
+	sub, err := subscription.Get(stripeSubscriptionID, nil)
+	if err != nil {
+		return fmt.Errorf("failed to get subscription: %v", err)
+	}
+
+	// Mettre à jour l'abonnement avec le nouveau prix
+	// Stripe applique automatiquement le prorata
+	updateParams := &stripe.SubscriptionParams{
+		CancelAtPeriodEnd: stripe.Bool(false),
+		ProrationBehavior: stripe.String("create_prorations"), // Active le prorata automatique
+		Items: []*stripe.SubscriptionItemsParams{
+			{
+				ID:    stripe.String(sub.Items.Data[0].ID),
+				Price: stripe.String(priceID),
+			},
+		},
+	}
+
+	updatedSub, err := subscription.Update(stripeSubscriptionID, updateParams)
+	if err != nil {
+		return fmt.Errorf("failed to update subscription: %v", err)
+	}
+
+	fmt.Printf("✅ Subscription updated successfully: %s\n", updatedSub.ID)
+	fmt.Printf("   New price: %s, Status: %s\n", priceID, updatedSub.Status)
+
+	return nil
 }
 
 // CreateCheckoutSession crée une session de paiement Stripe
@@ -58,6 +99,39 @@ func CreateCheckoutSession(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"success": false,
 			"message": "Invalid plan. Only paid plans (1-3) require payment.",
+		})
+		return
+	}
+
+	// Vérifier si l'utilisateur a déjà un abonnement Stripe actif
+	var stripeCustomerID, stripeSubscriptionID string
+	err := db.QueryRow("SELECT stripe_customer_id, stripe_subscription_id FROM Users WHERE user_id=$1", sess.UserID).Scan(&stripeCustomerID, &stripeSubscriptionID)
+	
+	// Si l'utilisateur a déjà un abonnement Stripe actif, on le met à jour au lieu d'en créer un nouveau
+	if err == nil && stripeCustomerID != "" && stripeSubscriptionID != "" {
+		fmt.Printf("🔄 User %s already has a Stripe subscription, updating instead of creating new one\n", req.Username)
+		
+		// Mettre à jour l'abonnement Stripe existant avec prorata
+		err := UpdateStripeSubscription(sess.UserID, req.Username, req.PlanID, stripeCustomerID, stripeSubscriptionID)
+		if err != nil {
+			fmt.Printf("❌ Error updating Stripe subscription: %v\n", err)
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"success": false,
+				"message": "Failed to update subscription: " + err.Error(),
+			})
+			return
+		}
+		
+		// Mettre à jour le plan dans la base de données
+		_, err = db.Exec("UPDATE Users SET nboffer=$1 WHERE user_id=$2", req.PlanID, sess.UserID)
+		if err != nil {
+			fmt.Printf("❌ Error updating plan in database: %v\n", err)
+		}
+		
+		c.JSON(http.StatusOK, gin.H{
+			"success": true,
+			"url":     fmt.Sprintf("%s/account/subscription-success", os.Getenv("FRONTEND_URL")),
+			"message": "Subscription updated successfully with prorated billing",
 		})
 		return
 	}
@@ -170,13 +244,21 @@ func StripeWebhook(c *gin.Context) {
 		var planID int
 		fmt.Sscanf(checkoutSession.ClientReferenceID, "%d:%[^:]:%d", &userID, &username, &planID)
 
-		// Mettre à jour l'abonnement de l'utilisateur
-		_, err = db.Exec("UPDATE Users SET nboffer=$1 WHERE user_id=$2", planID, userID)
+		// Récupérer les IDs Stripe depuis la session
+		stripeCustomerID := checkoutSession.Customer.ID
+		stripeSubscriptionID := checkoutSession.Subscription.ID
+
+		// Mettre à jour l'abonnement de l'utilisateur avec les IDs Stripe
+		_, err = db.Exec(
+			"UPDATE Users SET nboffer=$1, stripe_customer_id=$2, stripe_subscription_id=$3 WHERE user_id=$4",
+			planID, stripeCustomerID, stripeSubscriptionID, userID,
+		)
 		if err != nil {
-			fmt.Printf("Error updating subscription for user %d: %v\n", userID, err)
+			fmt.Printf("❌ Error updating subscription for user %d: %v\n", userID, err)
 		} else {
-			fmt.Printf("✅ Subscription activated: User %s (ID: %d) upgraded to plan %d via Stripe session %s\n",
-				username, userID, planID, checkoutSession.ID)
+			fmt.Printf("✅ Subscription activated: User %s (ID: %d) upgraded to plan %d\n", username, userID, planID)
+			fmt.Printf("   Stripe Customer: %s, Subscription: %s, Session: %s\n",
+				stripeCustomerID, stripeSubscriptionID, checkoutSession.ID)
 		}
 
 	case "customer.subscription.updated":

@@ -158,6 +158,8 @@ CREATE TABLE IF NOT EXISTS Users (
     mail_password VARCHAR(255), -- Mot de passe chiffré AES-256-GCM pour Mail/Matrix
     nboffer INT,
     role VARCHAR(20) DEFAULT 'user', -- 'user' ou 'admin'
+    stripe_customer_id VARCHAR(255), -- ID du client Stripe
+    stripe_subscription_id VARCHAR(255), -- ID de l'abonnement Stripe actif
     date_joined TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     last_login TIMESTAMP
 );
