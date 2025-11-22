@@ -438,16 +438,16 @@ select:hover {
 }
 #toggle {
   border: none;
-  width: 20%;
-  margin-left: -10%;
   
+  
+  display: flex;
   padding: 0;
   font-size: 28px;
   cursor: pointer;
   
   transition: all 0.3s ease;
   position: relative;
-  left: 50%;
+ 
   
 }
 #toggle:hover {
