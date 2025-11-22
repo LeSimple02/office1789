@@ -9,6 +9,8 @@ import vueDevTools from 'vite-plugin-vue-devtools'
 export default defineConfig((mode)=>{
 	const env = loadEnv(mode, process.cwd(), '');
 	return{
+  // Use relative base so built assets resolve under Cordova file:// scheme
+  base: './',
  
   plugins: [
     vue(),

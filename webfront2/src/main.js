@@ -14,11 +14,15 @@ const app = createApp(App)
 app.use(createPinia())
 app.use(router)
 
+const currentLang = gls().lang || 'en'
 const i18n = createI18n({
-    locale: gls().lang,
+    locale: currentLang,
     fallbackLocale: 'en',
-    messages: traduction
+    messages: traduction,
+    warnHtmlMessage: false,
+    escapeParameter: false,
 })
+console.log('[i18n] Loaded locale:', currentLang)
 
 app.use(i18n)
 app.mount('#app')

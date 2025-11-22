@@ -13,8 +13,8 @@
     "test:e2e:dev": "start-server-and-test 'vite dev --port 4173' http://localhost:4173 'cypress open --e2e'",
     "lint": "eslint . --fix",
     "format": "prettier --write src/",
-    "cordova:copy": "npm run build && mkdir cordova\\www 2>NUL && robocopy dist cordova\\www /MIR",
-    "cordova:android": "npm run cordova:copy && cd cordova && npx cordova platform add android && npx cordova build android"
+    "cordova:copy": "npm run build && node scripts/copy-dist-cordova.js",
+    "cordova:android": "npm run cordova:copy && cd ../cordova-app && npx cordova build android"
   },
   "dependencies": {
     "@fullcalendar/daygrid": "^6.1.19",
