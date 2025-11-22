@@ -1,13 +1,35 @@
-FROM golang:1.24
+# Build stage
+FROM golang:1.23-alpine AS builder
 
-WORKDIR /usr/src/app
+WORKDIR /app
 
-# pre-copy/cache go.mod for pre-downloading dependencies and only redownloading them in subsequent builds if they change
-COPY * ./
+# Copy go mod files
+COPY go.mod go.sum ./
 RUN go mod download
 
-COPY . .
-RUN go build -v -o /usr/local/bin/app ./...
+# Copy source code
+COPY *.go ./
 
-CMD ["app"]
+# Build the application
+RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o main .
+
+# Runtime stage
+FROM alpine:latest
+
+RUN apk --no-cache add ca-certificates tzdata
+
+WORKDIR /root/
+
+# Copy the binary from builder
+COPY --from=builder /app/main .
+
+# Create uploads directory
+RUN mkdir -p uploads
+
+# Expose port
+EXPOSE 8080
+
+# Run the application
+CMD ["./main"]
+
 

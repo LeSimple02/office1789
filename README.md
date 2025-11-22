@@ -36,11 +36,11 @@ Office1789 réunit sous une interface intégrée : Webmail (Roundcube), Chat tem
 
 ## 3. Fonctionnalités clés
 ✅ SSO entre services (Roundcube, Element, OnlyOffice)  
-✅ Gestion d’organisation, utilisateurs, abonnements  
+✅ Gestion d'organisation, utilisateurs, abonnements  
 ✅ Stockage & édition collaborative de documents  
 ✅ Chat (Matrix) + notifications temps réel  
 ✅ Mobile & Desktop packaging  
-✅ Configuration centralisée des domaines / ports (`configure.py`, `config.py`)  
+✅ Configuration centralisée des domaines / ports (`config.py`)
 
 ## 4. Démarrage rapide (local)
 ### Prérequis
@@ -60,11 +60,11 @@ cd office1789
 
 ### Configuration interactive (facultative)
 ```bash
-python configure.py    # génère / met à jour config.json
+python config.py       # génère / met à jour config.json (mode interactif)
 ```
 
 ### Configuration programmatique / environnement
-`config.py` charge `config.json` + variables d’environnement (ex: `OFFICE1789_BACKEND_URL`).
+`config.py` charge `config.json` + variables d'environnement (ex: `OFFICE1789_BACKEND_URL`).
 ```bash
 python config.py print
 python config.py export-frontend    # écrit webfront2/src/config/runtime-config.json
@@ -104,8 +104,7 @@ python startOffice1789.py
 ```
 
 ## 5. Configuration & environnements
-`configure.py` : assistant interactif domaines / ports (écrit `config.json`).  
-`config.py` : assemble URLs (local vs production) + overrides env (ex: `OFFICE1789_ENV=production`).  
+`config.py` : assistant interactif domaines / ports (écrit `config.json`) + assemble URLs (local vs production) + overrides env (ex: `OFFICE1789_ENV=production`).  
 Frontend consomme `runtime-config.json` si présent pour déterminer `API_BASE`.
 
 Variables d’environnement courantes:

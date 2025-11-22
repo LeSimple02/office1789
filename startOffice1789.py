@@ -5,6 +5,52 @@ import json
 import os
 import time
 import sys
+import urllib.request
+try:
+    from tqdm import tqdm
+except ImportError:
+    tqdm = None
+
+def check_env_files():
+    """Vérifie si les fichiers .env existent et propose de les générer"""
+    backend_env = os.path.join(os.path.dirname(__file__), 'backend', '.env')
+    frontend_env = os.path.join(os.path.dirname(__file__), 'webfront2', '.env')
+    docker_env = os.path.join(os.path.dirname(__file__), 'docker', '.env')
+    
+    missing = []
+    if not os.path.exists(backend_env):
+        missing.append('backend/.env')
+    if not os.path.exists(frontend_env):
+        missing.append('webfront2/.env')
+    if not os.path.exists(docker_env):
+        missing.append('docker/.env')
+    
+    if missing:
+        print("\n⚠️  Fichiers .env manquants:")
+        for f in missing:
+            print(f"   - {f}")
+        print("\n🔑 Génération des secrets et fichiers .env...")
+        
+        try:
+            result = subprocess.run(
+                [sys.executable, 'config.py', 'generate-secrets'],
+                input='YES I AM SURE\n',
+                text=True,
+                capture_output=True
+            )
+            if result.returncode == 0:
+                print("✅ Fichiers .env générés avec succès!")
+                return True
+            else:
+                print(f"❌ Erreur lors de la génération: {result.stderr}")
+                print("\n💡 Exécutez manuellement: python config.py generate-secrets")
+                return False
+        except Exception as e:
+            print(f"❌ Erreur: {e}")
+            print("\n💡 Exécutez manuellement: python config.py generate-secrets")
+            return False
+    
+    return True
 
 def load_config():
     """Charge la configuration depuis config.json"""
@@ -13,7 +59,9 @@ def load_config():
         with open(config_path, 'r', encoding='utf-8') as f:
             return json.load(f)
     except FileNotFoundError:
-        print("❌ Fichier config.json introuvable. Utilisation de la configuration par défaut.")
+        print("❌ Fichier config.json introuvable.")
+        print("💡 Exécutez: python config.py configure")
+        print("\nUtilisation de la configuration par défaut...")
         return {
             "domains": {
                 "main": "office1789.com",
@@ -24,7 +72,9 @@ def load_config():
             "ports": {
                 "frontend": 5173,
                 "backend": 8080,
-                "roundcube": 8081
+                "roundcube": 8081,
+                "element": 8083,
+                "onlyoffice": 8082
             },
             "autostart": {
                 "docker_containers": True,
@@ -55,7 +105,7 @@ def start_docker_containers():
         client = docker.from_env()
         docker_dir = os.path.join(os.path.dirname(__file__), 'docker')
         
-        # Liste des conteneurs à démarrer dans l'ordre
+        # Liste des conteneurs à démarrer dans l'ordre (sans backend/frontend qui sont en local)
         containers = [
             "postgres_db",
             "postgres_roundcube", 
@@ -68,58 +118,80 @@ def start_docker_containers():
             "onlyoffice"
         ]
         
-        # Vérifier si les conteneurs existent et compter ceux qui sont manquants
-        missing_containers = []
-        for container_name in containers:
-            try:
-                client.containers.get(container_name)
-            except docker.errors.NotFound:
-                missing_containers.append(container_name)
+        # Lancer docker compose up pour créer/démarrer tous les conteneurs
+        print(f"   📦 Lancement de docker compose (cela peut prendre quelques minutes)...")
+        try:
+            process = subprocess.Popen(
+                ['docker', 'compose', 'up', '-d', '--build'],
+                cwd=docker_dir,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                text=True
+            )
+            
+            # Afficher une barre de progression basée sur le temps estimé
+            if tqdm:
+                total_steps = len(containers) * 10
+                with tqdm(total=total_steps, desc="   Conteneurs", unit="step") as pbar:
+                    last_update = time.time()
+                    for line in process.stdout:
+                        # Mettre à jour la barre toutes les 0.5 secondes
+                        current = time.time()
+                        if current - last_update > 0.5 and pbar.n < total_steps - 5:
+                            pbar.update(1)
+                            last_update = current
+                        # Afficher les lignes importantes
+                        line = line.strip()
+                        if any(keyword in line for keyword in ['Creating', 'Starting', 'Created', 'Started', 'Recreating', 'Building']):
+                            pbar.set_postfix_str(line[-50:] if len(line) > 50 else line)
+                    # Compléter la barre
+                    pbar.n = total_steps
+                    pbar.refresh()
+            else:
+                # Fallback sans tqdm - afficher les lignes importantes
+                for line in process.stdout:
+                    line = line.strip()
+                    if any(keyword in line for keyword in ['Pulling', 'Creating', 'Starting', 'Created', 'Started', 'Recreating', 'Building']):
+                        print(f"      {line}")
+            
+            process.wait()
+            
+            if process.returncode == 0:
+                print("   ✅ Conteneurs créés avec succès!")
+            else:
+                print(f"   ⚠️  Quelques warnings (c'est normal lors de la première création)")
+        except FileNotFoundError:
+            print("   ❌ 'docker compose' introuvable. Installez Docker Desktop.")
+            return False
+        except Exception as e:
+            print(f"   ⚠️  Erreur: {e}")
         
-        # Si des conteneurs manquent, lancer docker-compose up -d avec rebuild
-        if missing_containers:
-            print(f"   🔨 {len(missing_containers)} conteneur(s) manquant(s): {', '.join(missing_containers[:3])}...")
-            print("   📦 Création des conteneurs avec docker-compose up -d --force-recreate...")
-            try:
-                # Forcer la recréation pour éviter les images obsolètes (OIDC, etc.)
-                result = subprocess.run(
-                    ['docker-compose', 'up', '-d', '--force-recreate', '--remove-orphans'],
-                    cwd=docker_dir,
-                    capture_output=True,
-                    text=True,
-                    timeout=300  # 5 minutes max
-                )
-                if result.returncode == 0:
-                    print("   ✅ Conteneurs créés avec succès!")
-                    time.sleep(5)  # Attendre que les conteneurs démarrent
-                else:
-                    print(f"   ⚠️  docker-compose a retourné des warnings")
-                    if result.stderr:
-                        print(f"   {result.stderr[:200]}")
-            except subprocess.TimeoutExpired:
-                print("   ⚠️  docker-compose prend trop de temps, vérification des conteneurs...")
-            except FileNotFoundError:
-                print("   ❌ docker-compose introuvable. Installez Docker Compose.")
-                return False
-            except Exception as e:
-                print(f"   ⚠️  Erreur docker-compose: {e}")
+        # Attendre un peu que les conteneurs démarrent
+        print("\n   ⏳ Attente du démarrage complet (5 secondes)...")
+        time.sleep(5)
         
-        # Démarrer/vérifier chaque conteneur individuellement
+        # Vérifier que les conteneurs sont bien démarrés
+        print("   🔍 Vérification des conteneurs...")
+        running_count = 0
         for container_name in containers:
             try:
                 container = client.containers.get(container_name)
-                if container.status != "running":
-                    print(f"   ▶️  Démarrage de {container_name}...")
+                status = container.status
+                if status == "running":
+                    running_count += 1
+                    print(f"   ✅ {container_name} est actif")
+                elif status in ["created", "restarting"]:
+                    print(f"   ⏳ {container_name} démarre...")
                     container.start()
-                    time.sleep(1)
+                    running_count += 1
                 else:
-                    print(f"   ✅ {container_name} est déjà en cours d'exécution")
+                    print(f"   ⚠️  {container_name} : {status}")
             except docker.errors.NotFound:
-                print(f"   ⚠️  Conteneur {container_name} toujours introuvable")
+                print(f"   ⚠️  {container_name} introuvable")
             except Exception as e:
-                print(f"   ❌ Erreur lors du démarrage de {container_name}: {e}")
+                print(f"   ⚠️  {container_name} : {e}")
         
-        print("\n✅ Conteneurs Docker vérifiés!")
+        print(f"\n   ✅ {running_count}/{len(containers)} conteneurs actifs!")
         
     except docker.errors.DockerException as e:
         print(f"❌ Erreur Docker: {e}")
@@ -258,23 +330,21 @@ if __name__ == "__main__":
     # Démarrer les conteneurs Docker si configuré
     if config['autostart']['docker_containers']:
         if not start_docker_containers():
-            print("\n⚠️  Erreur lors du démarrage des conteneurs Docker.")
-            print("Voulez-vous continuer sans Docker? (o/n)")
-            response = input().lower()
-            if response != 'o':
-                sys.exit(1)
-        
-        # Attendre que les conteneurs soient prêts
-        print("\n⏳ Attente du démarrage des services (10 secondes)...")
-        time.sleep(10)
+            print("\n⚠️  Impossible de démarrer les conteneurs Docker.")
+            print("💡 Vérifiez que Docker Desktop est lancé.")
+            sys.exit(1)
+        else:
+            # Attendre que les conteneurs soient prêts
+            print("\n⏳ Attente du démarrage des services Docker (10 secondes)...")
+            time.sleep(10)
     
-    # Démarrer le backend si configuré
+    # Démarrer le backend si configuré (en local, pas dans Docker)
     backend_process = None
     if config['autostart']['backend']:
         backend_process = start_backend(config)
         time.sleep(2)  # Attendre que le backend démarre
     
-    # Démarrer le frontend si configuré
+    # Démarrer le frontend si configuré (en local, pas dans Docker)
     frontend_process = None
     if config['autostart']['frontend']:
         frontend_process = start_frontend(config)
@@ -291,7 +361,7 @@ if __name__ == "__main__":
     
     print("\n" + "="*60)
     print("✅ Office1789 est prêt à l'emploi!")
-    print("   Les logs du backend et du frontend s'affichent ci-dessous.")
+    print("   Backend et frontend en local, services Docker actifs.")
     print("   Appuyez sur Ctrl+C pour arrêter tous les services.")
     print("="*60 + "\n")
     
@@ -312,4 +382,6 @@ if __name__ == "__main__":
             frontend_process.terminate()
         if backend_process:
             backend_process.terminate()
+        print("💡 Les conteneurs Docker continuent de tourner.")
+        print("   Pour les arrêter: cd docker && docker compose down")
         print("👋 Au revoir!")

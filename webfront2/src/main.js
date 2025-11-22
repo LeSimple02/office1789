@@ -19,10 +19,12 @@ const i18n = createI18n({
     locale: currentLang,
     fallbackLocale: 'en',
     messages: traduction,
+    availableLocales: ['en', 'fr', 'es', 'zh', 'ja', 'it', 'de', 'pt', 'ru', 'ar', 'ko', 'nl'],
     warnHtmlMessage: false,
     escapeParameter: false,
 })
 console.log('[i18n] Loaded locale:', currentLang)
+console.log('[i18n] Available locales:', i18n.global.availableLocales)
 
 app.use(i18n)
 app.mount('#app')

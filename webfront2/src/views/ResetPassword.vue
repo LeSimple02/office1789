@@ -8,23 +8,23 @@
                 d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"/>
         </svg>
       </div>
-      <h1>🔐 Réinitialiser le mot de passe</h1>
-      <h2>Créez un nouveau mot de passe sécurisé</h2>
+      <h1>🔐 {{ $t('resetPasswordTitle') }}</h1>
+      <h2>{{ $t('createNewSecurePassword') }}</h2>
     </div>
 
     <!-- Form Card -->
     <div v-if="!success && !error" class="form-card">
       <div class="form-section">
-        <h3>Nouveau mot de passe</h3>
+        <h3>{{ $t('newPassword') }}</h3>
         
         <div class="form-group">
-          <label>Mot de passe *</label>
+          <label>{{ $t('password') }} *</label>
           <div class="input-with-icon">
             <input 
               v-model="password" 
               :type="showPassword ? 'text' : 'password'" 
               class="input-field" 
-              placeholder="Entrez votre nouveau mot de passe"
+              :placeholder="$t('enterNewPassword')"
               @input="checkPasswordStrength"
               minlength="8"
               required 
@@ -50,13 +50,13 @@
         </div>
 
         <div class="form-group">
-          <label>Confirmer le mot de passe *</label>
+          <label>{{ $t('confirmPassword') }} *</label>
           <div class="input-with-icon">
             <input 
               v-model="confirmPassword" 
               :type="showConfirmPassword ? 'text' : 'password'" 
               class="input-field" 
-              placeholder="Confirmez votre nouveau mot de passe"
+              :placeholder="$t('confirmNewPassword')"
               required 
             />
             <button @click="toggleConfirmPassword" class="toggle-password" type="button">
@@ -64,13 +64,13 @@
             </button>
           </div>
           <p v-if="password !== confirmPassword && confirmPassword" class="error-message">
-            ❌ Les mots de passe ne correspondent pas
+            {{ $t('passwordsDoNotMatch') }}
           </p>
         </div>
 
         <button @click="resetPassword" class="submit-btn" :disabled="loading">
-          <span v-if="!loading">Réinitialiser le mot de passe</span>
-          <span v-else>⏳ Réinitialisation en cours...</span>
+          <span v-if="!loading">{{ $t('resetPassword') }}</span>
+          <span v-else>⏳ {{ $t('loading') }}</span>
         </button>
       </div>
     </div>
@@ -83,9 +83,9 @@
                 d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
         </svg>
       </div>
-      <h2>✅ Mot de passe réinitialisé avec succès !</h2>
-      <p>Vous pouvez maintenant vous connecter avec votre nouveau mot de passe.</p>
-      <router-link to="/login" class="btn-link">Se connecter</router-link>
+      <h2>✅ {{ $t('passwordResetSuccess') }}</h2>
+      <p>{{ $t('passwordResetSuccessMessage') }}</p>
+      <router-link to="/login" class="btn-link">{{ $t('backToLogin') }}</router-link>
     </div>
 
     <!-- Error Message -->
@@ -96,9 +96,9 @@
                 d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
         </svg>
       </div>
-      <h2>❌ Erreur</h2>
+      <h2>{{ $t('error') }}</h2>
       <p>{{ errorMessage }}</p>
-      <router-link to="/forgot" class="btn-link">Demander un nouveau lien</router-link>
+      <router-link to="/forgot" class="btn-link">{{ $t('requestNewLink') }}</router-link>
     </div>
   </div>
 </template>

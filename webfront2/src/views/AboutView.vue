@@ -8,73 +8,73 @@
                 d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
         </svg>
       </div>
-      <h1>ℹ️ À propos d'Office1789</h1>
-      <h2>Découvrez notre suite collaborative souveraine</h2>
+      <h1>ℹ️ {{ $t('aboutOffice1789') }}</h1>
+      <h2>{{ $t('discoverCollaborativeSuite') }}</h2>
     </div>
 
     <!-- Mission Section -->
     <div class="mission-section">
-      <h2 class="section-title">🎯 Notre Mission</h2>
+      <h2 class="section-title">🎯 {{ $t('ourMission') }}</h2>
       <div class="mission-grid">
         <div class="mission-card">
           <div class="mission-icon">🚀</div>
-          <h3>Innovation</h3>
-          <p>Développer des outils collaboratifs modernes et performants qui rivalisent avec les géants américains</p>
+          <h3>{{ $t('innovation') }}</h3>
+          <p>{{ $t('developModernTools') }}</p>
         </div>
         
         <div class="mission-card">
           <div class="mission-icon">🇫🇷</div>
-          <h3>Souveraineté</h3>
-          <p>Garantir l'hébergement de vos données en France et en Europe pour une totale maîtrise</p>
+          <h3>{{ $t('sovereignty') }}</h3>
+          <p>{{ $t('guaranteeDataHosting') }}</p>
         </div>
         
         <div class="mission-card">
           <div class="mission-icon">🔒</div>
-          <h3>Confidentialité</h3>
-          <p>Protéger vos données avec un chiffrement de bout en bout et sans revente à des tiers</p>
+          <h3>{{ $t('confidentiality') }}</h3>
+          <p>{{ $t('protectDataEndToEnd') }}</p>
         </div>
         
         <div class="mission-card">
           <div class="mission-icon">♻️</div>
-          <h3>Éco-responsable</h3>
-          <p>Utiliser des serveurs verts et optimiser notre infrastructure pour réduire notre empreinte carbone</p>
+          <h3>{{ $t('ecoResponsible') }}</h3>
+          <p>{{ $t('useGreenServers') }}</p>
         </div>
       </div>
     </div>
 
     <!-- Values Section -->
     <div class="values-section">
-      <h2 class="section-title">💎 Nos Valeurs</h2>
+      <h2 class="section-title">💎 {{ $t('ourValues') }}</h2>
       <div class="values-content">
         <div class="value-item">
           <span class="value-number">01</span>
           <div class="value-info">
-            <h3>Transparence</h3>
-            <p>Nous croyons en une communication ouverte avec nos utilisateurs. Pas de conditions cachées, pas de collecte de données à votre insu.</p>
+            <h3>{{ $t('transparency') }}</h3>
+            <p>{{ $t('openCommunication') }}</p>
           </div>
         </div>
         
         <div class="value-item">
           <span class="value-number">02</span>
           <div class="value-info">
-            <h3>Accessibilité</h3>
-            <p>Des tarifs justes et une offre gratuite complète pour rendre le numérique accessible à tous, particuliers comme entreprises.</p>
+            <h3>{{ $t('accessibility') }}</h3>
+            <p>{{ $t('fairPricing') }}</p>
           </div>
         </div>
         
         <div class="value-item">
           <span class="value-number">03</span>
           <div class="value-info">
-            <h3>Performance</h3>
-            <p>Des outils rapides, fiables et disponibles 24/7 avec une infrastructure cloud de dernière génération.</p>
+            <h3>{{ $t('performance') }}</h3>
+            <p>{{ $t('fastReliableTools') }}</p>
           </div>
         </div>
         
         <div class="value-item">
           <span class="value-number">04</span>
           <div class="value-info">
-            <h3>Innovation Continue</h3>
-            <p>Nous améliorons constamment nos services en écoutant vos retours et en intégrant les dernières technologies.</p>
+            <h3>{{ $t('continuousInnovation') }}</h3>
+            <p>{{ $t('constantlyImprove') }}</p>
           </div>
         </div>
       </div>
@@ -82,35 +82,35 @@
 
     <!-- Why Choose Us Section -->
     <div class="why-section">
-      <h2 class="section-title">⭐ Pourquoi Office1789 ?</h2>
+      <h2 class="section-title">⭐ {{ $t('whyOffice1789') }}</h2>
       <div class="why-grid">
         <div class="why-card">
-          <h3>📊 Statistiques</h3>
+          <h3>📊 {{ $t('statistics') }}</h3>
           <div class="stats">
             <div class="stat-item">
               <span class="stat-value">99.9%</span>
-              <span class="stat-label">Disponibilité</span>
+              <span class="stat-label">{{ $t('availability') }}</span>
             </div>
             <div class="stat-item">
               <span class="stat-value">50 Go</span>
-              <span class="stat-label">Stockage</span>
+              <span class="stat-label">{{ $t('storage') }}</span>
             </div>
             <div class="stat-item">
               <span class="stat-value">100%</span>
-              <span class="stat-label">Français</span>
+              <span class="stat-label">{{ $t('french') }}</span>
             </div>
           </div>
         </div>
         
         <div class="why-card">
-          <h3>🎁 Avantages</h3>
+          <h3>🎁 {{ $t('advantages') }}</h3>
           <ul class="advantages-list">
-            <li>✅ Sans publicité</li>
-            <li>✅ Open Source</li>
-            <li>✅ Support réactif</li>
-            <li>✅ Migration facile</li>
-            <li>✅ Applications mobiles</li>
-            <li>✅ Intégrations tierces</li>
+            <li>✅ {{ $t('noAds') }}</li>
+            <li>✅ {{ $t('openSource') }}</li>
+            <li>✅ {{ $t('reactiveSupport') }}</li>
+            <li>✅ {{ $t('easyMigration') }}</li>
+            <li>✅ {{ $t('mobileApps') }}</li>
+            <li>✅ {{ $t('thirdPartyIntegrations') }}</li>
           </ul>
         </div>
       </div>
@@ -123,14 +123,14 @@
 
     <!-- Offres -->
     <div class="offers-section">
-      <h2 class="section-title">📦 Nos Offres</h2>
+      <h2 class="section-title">📦 {{ $t('ourOffers') }}</h2>
       <div id="offer" v-html="$t('offer')"></div>
     </div>
 
     <!-- CTA -->
     <div class="cta-card">
-      <h3>Prêt à rejoindre Office1789 ?</h3>
-      <p>Créez votre compte gratuitement et profitez de tous nos services</p>
+      <h3>{{ $t('readyToJoin') }}</h3>
+      <p>{{ $t('createAccountEnjoyServices') }}</p>
       <RouterLink to="/createaccount" class="btn-cta">{{$t('createac')}}</RouterLink>
     </div>
   </div>

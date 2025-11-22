@@ -1,10 +1,10 @@
 <template>
   <div class="storage-quota">
-    <div v-if="loading" class="loading">Chargement...</div>
+    <div v-if="loading" class="loading">{{ $t('loading') }}...</div>
     <div v-else-if="error" class="error">{{ error }}</div>
     <div v-else class="quota-display">
       <div class="quota-header">
-        <h3>💾 Stockage</h3>
+        <h3>💾 {{ $t('storage') }}</h3>
         <span class="offer-badge" :class="'offer-' + storageInfo.nboffer">
           {{ getOfferName(storageInfo.nboffer) }}
         </span>
@@ -16,8 +16,8 @@
       
       <div class="quota-text">
         <span v-if="storageInfo.unlimited">
-          {{ formatBytes(storageInfo.current_usage) }} utilisés
-          <span class="unlimited-badge">✨ Illimité</span>
+          {{ formatBytes(storageInfo.current_usage) }} {{ $t('used') }}
+          <span class="unlimited-badge">✨ {{ $t('unlimited') }}</span>
         </span>
         <span v-else>
           {{ formatBytes(storageInfo.current_usage) }} / {{ formatBytes(storageInfo.storage_limit) }}
@@ -26,10 +26,10 @@
       </div>
       
       <div v-if="!storageInfo.unlimited && storageInfo.remaining < 0" class="quota-warning">
-        ⚠️ Quota dépassé ! Supprimez des fichiers pour libérer de l'espace.
+        ⚠️ {{ $t('quotaExceeded') }}
       </div>
       <div v-else-if="!storageInfo.unlimited && storageInfo.percentage_used > 90" class="quota-warning">
-        ⚠️ Espace presque plein. Pensez à améliorer votre offre.
+        ⚠️ {{ $t('almostFullUpgrade') }}
       </div>
     </div>
   </div>

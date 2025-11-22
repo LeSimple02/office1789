@@ -1,7 +1,7 @@
 <template>
   <div class="admin-panel">
     <div class="admin-header">
-      <h1>Panel Administrateur</h1>
+      <h1>{{ $t('adminPanel') }}</h1>
     </div>
 
     <!-- Stats Cards -->
@@ -10,7 +10,7 @@
         <div class="stat-icon">👥</div>
         <div class="stat-content">
           <h3>{{ stats.total_users }}</h3>
-          <p>Utilisateurs</p>
+          <p>{{ $t('users') }}</p>
         </div>
       </div>
       
@@ -18,7 +18,7 @@
         <div class="stat-icon">✉️</div>
         <div class="stat-content">
           <h3>{{ stats.total_verified_emails }}</h3>
-          <p>Emails vérifiés</p>
+          <p>{{ $t('verifiedEmails') }}</p>
         </div>
       </div>
       
@@ -26,7 +26,7 @@
         <div class="stat-icon">📱</div>
         <div class="stat-content">
           <h3>{{ stats.total_verified_phones }}</h3>
-          <p>Téléphones vérifiés</p>
+          <p>{{ $t('verifiedPhones') }}</p>
         </div>
       </div>
       
@@ -34,7 +34,7 @@
         <div class="stat-icon">⚠️</div>
         <div class="stat-content">
           <h3>{{ stats.users_without_contacts }}</h3>
-          <p>Sans contact vérifié</p>
+          <p>{{ $t('withoutVerifiedContact') }}</p>
         </div>
       </div>
       
@@ -42,7 +42,7 @@
         <div class="stat-icon">📁</div>
         <div class="stat-content">
           <h3>{{ stats.total_files }}</h3>
-          <p>Fichiers stockés</p>
+          <p>{{ $t('storedFiles') }}</p>
         </div>
       </div>
       
@@ -50,7 +50,7 @@
         <div class="stat-icon">📅</div>
         <div class="stat-content">
           <h3>{{ stats.total_calendar_events }}</h3>
-          <p>Événements calendrier</p>
+          <p>{{ $t('calendarEvents') }}</p>
         </div>
       </div>
     </div>
@@ -58,12 +58,12 @@
     <!-- Charts -->
     <div class="charts-grid">
       <div class="chart-card">
-        <h2>📊 Distribution des vérifications</h2>
+        <h2>📊 {{ $t('verificationDistribution') }}</h2>
         <canvas ref="verificationChart"></canvas>
       </div>
       
       <div class="chart-card">
-        <h2>📈 Abonnements</h2>
+        <h2>📈 {{ $t('subscriptions') }}</h2>
         <canvas ref="offersChart"></canvas>
       </div>
     </div>
@@ -71,11 +71,11 @@
     <!-- Users Table -->
     <div class="users-section">
       <div class="section-header">
-        <h2>👥 Gestion des utilisateurs</h2>
+        <h2>👥 {{ $t('userManagement') }}</h2>
         <input 
           v-model="searchQuery" 
           type="text" 
-          placeholder="🔍 Rechercher un utilisateur..." 
+          :placeholder="'🔍 ' + $t('searchUser')" 
           class="search-input"
         />
       </div>
@@ -85,14 +85,14 @@
           <thead>
             <tr>
               <th>ID</th>
-              <th>Username</th>
-              <th>Email</th>
-              <th>Recovery Email</th>
-              <th>Téléphone</th>
-              <th>Rôle</th>
-              <th>Offre</th>
-              <th>Inscrit le</th>
-              <th>Actions</th>
+              <th>{{ $t('username') }}</th>
+              <th>{{ $t('email') }}</th>
+              <th>{{ $t('recoveryEmail') }}</th>
+              <th>{{ $t('phone') }}</th>
+              <th>{{ $t('role') }}</th>
+              <th>{{ $t('offer') }}</th>
+              <th>{{ $t('registeredOn') }}</th>
+              <th>{{ $t('actions') }}</th>
             </tr>
           </thead>
           <tbody>
@@ -129,17 +129,17 @@
               <td>{{ formatDate(user.date_joined) }}</td>
               <td class="actions-cell">
                 <button @click="toggleRole(user)" class="btn-action" :class="{ 'btn-danger': user.role === 'admin' }">
-                  {{ user.role === 'admin' ? '⬇️ Rétrograder' : '⬆️ Promouvoir' }}
+                  {{ user.role === 'admin' ? '⬇️ ' + $t('demote') : '⬆️ ' + $t('promote') }}
                 </button>
                 <button v-if="!user.recovery_email_verified && user.recovery_email" 
                         @click="verifyContact(user.user_id, 'email')" 
                         class="btn-action btn-verify">
-                  ✉️ Vérifier Email
+                  ✉️ {{ $t('verify') }} {{ $t('email') }}
                 </button>
                 <button v-if="!user.phonenumber_verified && user.phonenumber" 
                         @click="verifyContact(user.user_id, 'phone')" 
                         class="btn-action btn-verify">
-                  📱 Vérifier Tel
+                  📱 {{ $t('verify') }} {{ $t('phone') }}
                 </button>
               </td>
             </tr>

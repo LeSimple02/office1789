@@ -9,7 +9,7 @@
         </svg>
       </div>
       <h1>☁️ Drive Office1789</h1>
-      <p class="hero-subtitle">Gérez vos fichiers en toute sécurité</p>
+      <p class="hero-subtitle">{{ $t('manageSecurely') }}</p>
     </div>
 
     <!-- Drive Content Wrapper -->
@@ -25,51 +25,51 @@
       </div>
 
       <div class="dv-actions">
-        <button class="dv-btn primary" @click="openUploadModal">📤 Upload</button>
-        <button class="dv-btn" @click="showNewFolderModal = true">📁 Nouveau dossier</button>
-        <button class="dv-btn" @click="showNewFileModal = true">📄 Nouveau fichier</button>
+        <button class="dv-btn primary" @click="openUploadModal">📤 {{ $t('upload') }}</button>
+        <button class="dv-btn" @click="showNewFolderModal = true">📁 {{ $t('newFolder') }}</button>
+        <button class="dv-btn" @click="showNewFileModal = true">📄 {{ $t('newFile') }}</button>
       </div>
 
       <nav class="dv-nav" aria-label="navigation drive">
-        <button :class="['nav-item', { active: curr === 'drive' }]" @click="changec('drive')">📂 Mes fichiers</button>
-        <button :class="['nav-item', { active: curr === 'shared' }]" @click="changec('shared')">🤝 Partagés</button>
-        <button :class="['nav-item', { active: curr === 'trash' }]" @click="changec('trash')">🗑️ Corbeille</button>
+        <button :class="['nav-item', { active: curr === 'drive' }]" @click="changec('drive')">📂 {{ $t('myFiles') }}</button>
+        <button :class="['nav-item', { active: curr === 'shared' }]" @click="changec('shared')">🤝 {{ $t('shared') }}</button>
+        <button :class="['nav-item', { active: curr === 'trash' }]" @click="changec('trash')">🗑️ {{ $t('trash') }}</button>
       </nav>
 
       <div class="dv-footer">
-        <small>{{ files.length }} éléments</small>
+        <small>{{ files.length }} {{ $t('items') }}</small>
       </div>
 
       <!-- Storage Usage Bar - Only show in Drive and Shared, not in Trash -->
       <div v-if="curr !== 'trash'" class="storage-info">
         <div class="storage-header">
           <span class="storage-icon">💾</span>
-          <span class="storage-text">Stockage</span>
+          <span class="storage-text">{{ $t('storage') }}</span>
         </div>
         <div class="storage-bar">
           <div class="storage-fill" :style="{ width: storagePercentage + '%', background: storageColor }"></div>
         </div>
         <div class="storage-details">
-          <span v-if="isUnlimitedStorage">{{ humanSize(storageUsed) }} / Illimité</span>
+          <span v-if="isUnlimitedStorage">{{ humanSize(storageUsed) }} / {{ $t('unlimited') }}</span>
           <span v-else>{{ humanSize(storageUsed) }} / {{ humanSize(storageLimit) }}</span>
           <span class="storage-percent">{{ storagePercentage }}%</span>
         </div>
         <div v-if="storagePercentage >= 90" class="storage-warning">
-          ⚠️ Espace presque plein !
+          ⚠️ {{ $t('almostFull') }}
         </div>
       </div>
     </aside>
 
     <!-- Mobile FAB Menu -->
     <div class="mobile-fab-menu">
-      <button class="fab-main" @click="showMobileFab = !showMobileFab" title="Actions">
+      <button class="fab-main" @click="showMobileFab = !showMobileFab" :title="$t('actions')">
         {{ showMobileFab ? '✖' : '➕' }}
       </button>
       <transition name="fab-items">
         <div v-if="showMobileFab" class="fab-items">
-          <button class="fab-item" @click="openUploadModal(); showMobileFab = false">📤 Upload</button>
-          <button class="fab-item" @click="showNewFolderModal = true; showMobileFab = false">📁 Dossier</button>
-          <button class="fab-item" @click="showNewFileModal = true; showMobileFab = false">📄 Fichier</button>
+          <button class="fab-item" @click="openUploadModal(); showMobileFab = false">📤 {{ $t('upload') }}</button>
+          <button class="fab-item" @click="showNewFolderModal = true; showMobileFab = false">📁 {{ $t('folder') }}</button>
+          <button class="fab-item" @click="showNewFileModal = true; showMobileFab = false">📄 {{ $t('file') }}</button>
         </div>
       </transition>
     </div>
@@ -78,7 +78,7 @@
     <main class="dv-main">
       <div v-if="movingInProgress" class="moving-overlay" aria-live="polite" style="position:fixed;left:0;top:0;right:0;bottom:0;display:flex;align-items:center;justify-content:center;z-index:9999;pointer-events:none">
         <div style="background:rgba(0,0,0,0.6);color:#fff;padding:12px 18px;border-radius:10px;pointer-events:auto;">
-          Déplacement en cours… ⏳
+          {{ $t('movingInProgress') }} ⏳
         </div>
       </div>
       <header class="dv-header">
@@ -117,16 +117,16 @@
       </div>
 
         <div class="dv-tools">
-          <input class="dv-search" v-model="searchQuery" placeholder="Rechercher..." />
-          <button class="dv-btn small" :class="{ 'dv-btn small active': sMul}" @click="selectMultiple">Sélection Multiple</button>
+          <input class="dv-search" v-model="searchQuery" :placeholder="$t('searchPlaceholder')" />
+          <button class="dv-btn small" :class="{ 'dv-btn small active': sMul}" @click="selectMultiple">{{ $t('multipleSelection') }}</button>
           <label v-if="sMul" class="dv-btn small">Tout sélectionner :
             <input type="checkbox" id="select-mul" v-model="sMulAll" @click="selectAll" style="margin-right:6px" />
             </label>
-          <button v-if="curr !== 'trash' && sMul" class="dv-btn danger" @click="moveSelectedToTrash">Mettre à la corbeille</button>
+          <button v-if="curr !== 'trash' && sMul" class="dv-btn danger" @click="moveSelectedToTrash">{{ $t('moveToTrash') }}</button>
             <button v-else-if="curr === 'trash'&& sMul" class="dv-btn danger" @click="deleteSelectedPermanently">
-              Supprimer définitivement
+              {{ $t('deletePermanently') }}
             </button>
-          <button class="dv-btn green" v-if="sMul" @click="moveFile(selectedFile)">Déplacer fichiers</button>
+          <button class="dv-btn green" v-if="sMul" @click="moveFile(selectedFile)">{{ $t('moveFiles') }}</button>
           <button class="dv-btn green" v-if="sMul" @click="downloadSelectedAsZip(selectedFile)">Télécharger</button>
           <button class="dv-btn small" v-if="!sMul" @click="selectFirst">Sélectionner 1er</button>
           <button class="dv-btn small" @click="clearSelection">Effacer</button>
@@ -149,7 +149,7 @@
                @drop.prevent="onDropUp"
                :class="{ 'up-target': dragTarget === 'up' }"
           >
-            <button class="dv-btn small" @click="goUp">⬆️ Remonter</button>
+            <button class="dv-btn small" @click="goUp">⬆️ {{ $t('goUp') }}</button>
           </div>
 
           <div v-if="filteredFiles.length === 0" class="dv-empty">
@@ -159,8 +159,8 @@
                 <path d="M6 10c1.333-2 4-2 6 0 2 2.667 4.667 2.667 6 0" stroke="#a0b4ff" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>
               </svg>
             </div>
-            <p class="dv-empty-text">Aucun fichier ici</p>
-            <p class="dv-empty-sub">Glisse-dépose un fichier/dossier ici ou clique sur <strong>Upload</strong>.</p>
+            <p class="dv-empty-text">{{ $t('noFilesHere') }}</p>
+            <p class="dv-empty-sub">{{ $t('dragDropInfo') }} <strong>{{ $t('upload') }}</strong>.</p>
           </div>
 
           <ul v-else class="dv-items" role="list">
@@ -190,22 +190,22 @@
                 <div class="icon" v-else>📄</div>
                 <div class="meta">
                   <div class="name">{{ it.name }}</div>
-                  <div class="sub">{{ it.type === 'folder' ? 'Dossier' : (it.sizeLabel || humanSize(it.size)) }} • {{ it.date }}</div>
+                  <div class="sub">{{ it.type === 'folder' ? $t('folder') : (it.sizeLabel || humanSize(it.size)) }} • {{ it.date }}</div>
                 </div>
               </div>
 
               <div class="actions">
               
-              <button class="dv-mini" @click.stop="startRename(it)" title="Renommer">✏️</button>
+              <button class="dv-mini" @click.stop="startRename(it)" :title="$t('rename')">✏️</button>
               
-              <button class="dv-mini" @click.stop="downloadFile(it)" title="Télécharger">⬇️</button>
+              <button class="dv-mini" @click.stop="downloadFile(it)" :title="$t('download')">⬇️</button>
 
               <!-- si on est pas dans la corbeille, proposer mise à la corbeille -->
-              <button v-if="it.folder !== 'trash'" class="dv-mini" @click.stop="moveToTrash(it.id)" title="Mettre à la corbeille">🗑️</button>
+              <button v-if="it.folder !== 'trash'" class="dv-mini" @click.stop="moveToTrash(it.id)" :title="$t('moveToTrash')">🗑️</button>
               
 
               <!-- si on est dans la corbeille, proposer suppression définitive (confirm) -->
-              <button v-else class="dv-mini danger" @click.stop="confirmPermanentDelete(it)" title="Supprimer définitivement">🗑️❌</button>
+              <button v-else class="dv-mini danger" @click.stop="confirmPermanentDelete(it)" :title="$t('deletePermanently')">🗑️❌</button>
             </div>
 
             </li>
@@ -221,27 +221,27 @@
                 <path d="M8 14s1.5-4 4-4 4 4 4 4" stroke="#ffd4b3" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>
               </svg>
             </div>
-            <p class="dv-empty-text-centered">Sélectionne un fichier pour voir l'aperçu</p>
+            <p class="dv-empty-text-centered">{{ $t('selectFileToPreview') }}</p>
           </div>
 
           <div v-else class="dv-detail-card">
             <div class="detail-top">
               <div class="detail-info">
                 <h3 class="detail-name">{{ selectedFile.name }}</h3>
-                <div class="detail-meta">{{ selectedFile.mime || (selectedFile.type === 'folder' ? 'Dossier' : '') }} • {{ selectedFile.date }}</div>
+                <div class="detail-meta">{{ selectedFile.mime || (selectedFile.type === 'folder' ? $t('folder') : '') }} • {{ selectedFile.date }}</div>
               </div>
 
               <div class="detail-actions">
-                <button class="dv-btn" @click="openAction(selectedFile)">Ouvrir</button>
-                <button class="dv-btn green" @click="downloadFile(selectedFile)">Télécharger</button>
-                <button class="dv-btn" @click="startRename(selectedFile)">Renommer</button>
-                <button class="dv-btn purple" @click="shareFile(selectedFile)">Partager</button>
-                <button class="dv-btn green" @click="moveFile(selectedFile)">Déplacer fichier</button>
-                <button v-if="curr !== 'trash'" class="dv-btn danger" @click="moveToTrash(selectedFile.id)">Mettre à la corbeille</button>
+                <button class="dv-btn" @click="openAction(selectedFile)">{{ $t('open') }}</button>
+                <button class="dv-btn green" @click="downloadFile(selectedFile)">{{ $t('download') }}</button>
+                <button class="dv-btn" @click="startRename(selectedFile)">{{ $t('rename') }}</button>
+                <button class="dv-btn purple" @click="shareFile(selectedFile)">{{ $t('share') }}</button>
+                <button class="dv-btn green" @click="moveFile(selectedFile)">{{ $t('moveFile') }}</button>
+                <button v-if="curr !== 'trash'" class="dv-btn danger" @click="moveToTrash(selectedFile.id)">{{ $t('moveToTrash') }}</button>
                 
                 <template v-else>
-                  <button class="dv-btn" @click="restoreFile(selectedFile)">Restaurer</button>
-                  <button class="dv-btn danger" @click="confirmPermanentDelete(selectedFile)">Supprimer définitivement</button>
+                  <button class="dv-btn" @click="restoreFile(selectedFile)">{{ $t('restore') }}</button>
+                  <button class="dv-btn danger" @click="confirmPermanentDelete(selectedFile)">{{ $t('deletePermanently') }}</button>
                 </template>
               </div>
             </div>
@@ -276,10 +276,10 @@
                   <!-- OnlyOffice: open in modal -->
                   <div class="onlyoffice-placeholder" style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;">
                     <div style="text-align:center">
-                      <p style="margin:0 0 8px 0">Ce document doit être ouvert dans l'éditeur OnlyOffice.</p>
+                      <p style="margin:0 0 8px 0">{{ $t('documentMustBeOpenedInOnlyOffice') }}</p>
                       <div style="display:flex;gap:8px;justify-content:center">
-                        <button class="dv-btn" @click="(showOnlyofficeModal = true, openInOnlyOffice(selectedFile))">Ouvrir dans OnlyOffice</button>
-                        <button class="dv-btn" @click="downloadFile(selectedFile)">Télécharger</button>
+                        <button class="dv-btn" @click="(showOnlyofficeModal = true, openInOnlyOffice(selectedFile))">{{ $t('openInOnlyOffice') }}</button>
+                        <button class="dv-btn" @click="downloadFile(selectedFile)">{{ $t('download') }}</button>
                       </div>
                     </div>
                   </div>
@@ -290,21 +290,21 @@
                 </template>
 
                 <template v-else>
-                  <div class="no-preview">Aperçu non disponible pour ce fichier</div>
+                  <div class="no-preview">{{ $t('noPreviewAvailable') }}</div>
                 </template>
 
 
                 <template v-else>
-                  <div class="no-preview">Aperçu non disponible pour ce fichier</div>
+                  <div class="no-preview">{{ $t('noPreviewAvailable') }}</div>
                 </template>
               </div>
 
               <div class="info-panel">
-                <p><strong>Nom :</strong> {{ selectedFile.name }}</p>
-                <p v-if="selectedFile.size"><strong>Taille :</strong> {{ selectedFile.sizeLabel || humanSize(selectedFile.size) }}</p>
-                <p><strong>Type :</strong> {{ selectedFile.mime || selectedFile.type }}</p>
-                <p><strong>Propriétaire :</strong> {{ selectedFile.owner }}</p>
-                <p><strong>Emplacement :</strong> {{ selectedFile.parentPath || '/' }}</p>
+                <p><strong>{{ $t('name') }} :</strong> {{ selectedFile.name }}</p>
+                <p v-if="selectedFile.size"><strong>{{ $t('size') }} :</strong> {{ selectedFile.sizeLabel || humanSize(selectedFile.size) }}</p>
+                <p><strong>{{ $t('type') }} :</strong> {{ selectedFile.mime || selectedFile.type }}</p>
+                <p><strong>{{ $t('owner') }} :</strong> {{ selectedFile.owner }}</p>
+                <p><strong>{{ $t('location') }} :</strong> {{ selectedFile.parentPath || '/' }}</p>
               </div>
             </div>
           </div>
@@ -333,10 +333,10 @@
 
     <div v-if="uploadQueue.length" style="margin-top:12px; max-height:40vh; overflow:auto; padding-right:4px">
       <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px">
-        <strong>Uploads en cours</strong>
+        <strong>{{ $t('uploadsInProgress') }}</strong>
         <div style="display:flex; gap:8px; align-items:center">
           <small>{{ uploadsSummary }}</small>
-          <button class="dv-btn small" @click="cancelAllUploads">Annuler tout</button>
+          <button class="dv-btn small" @click="cancelAllUploads">{{ $t('cancelAll') }}</button>
         </div>
       </div>
 
@@ -346,7 +346,7 @@
           <div class="progress-fill" :style="{ width: overallProgress + '%' }"></div>
         </div>
         <div style="font-size:0.85rem; margin-top:6px; display:flex; justify-content:space-between">
-          <span>Global</span>
+          <span>{{ $t('global') }}</span>
           <span>{{ overallProgress }}%</span>
         </div>
       </div>
@@ -369,23 +369,23 @@
             </div>
 
             <div style="display:flex; gap:8px; margin-top:6px; align-items:center">
-              <small v-if="u.status === 'uploading'">Envoi…</small>
-              <small v-else-if="u.status === 'done'" style="color:green">Terminé</small>
-              <small v-else-if="u.status === 'error'" style="color:#c00">Erreur</small>
-              <small v-else-if="u.status === 'cancelled'" style="color:#999">Annulé</small>
+              <small v-if="u.status === 'uploading'">{{ $t('sending') }}</small>
+              <small v-else-if="u.status === 'done'" style="color:green">{{ $t('completed') }}</small>
+              <small v-else-if="u.status === 'error'" style="color:#c00">{{ $t('error') }}</small>
+              <small v-else-if="u.status === 'cancelled'" style="color:#999">{{ $t('cancelled') }}</small>
             </div>
           </div>
 
           <div style="display:flex; flex-direction:column; gap:6px; align-items:flex-end">
-            <button v-if="u.status === 'uploading'" class="dv-mini" @click="cancelUpload(u.id)" title="Annuler">✖️</button>
-            <button v-else class="dv-mini" @click="retryUpload(u.id)" title="Réessayer">↻</button>
+            <button v-if="u.status === 'uploading'" class="dv-mini" @click="cancelUpload(u.id)" :title="$t('cancel')">✖️</button>
+            <button v-else class="dv-mini" @click="retryUpload(u.id)" :title="$t('retry')">↻</button>
           </div>
         </li>
       </ul>
     </div>
 
     <div class="modal-actions">
-      <button class="dv-btn" @click="showUploadModal = false">Fermer</button>
+      <button class="dv-btn" @click="showUploadModal = false">{{ $t('close') }}</button>
     </div>
   </div>
   <div class="backdrop" @click="showUploadModal = false"></div>
@@ -393,15 +393,15 @@
 
     <!-- NEW FOLDER MODAL -->
     <div v-if="showNewFolderModal" class="modal-wrap" @keydown.esc="showNewFolderModal = false">
-      <div class="modal" role="dialog" aria-modal="true" aria-label="Nouveau dossier">
-        <h3>Nouveau dossier</h3>
-        <input v-model="newFolderName" placeholder="Nom du dossier" class="compose-input" @keyup.enter="createFolder" />
+      <div class="modal" role="dialog" aria-modal="true" :aria-label="$t('newFolder')">
+        <h3>{{ $t('newFolder') }}</h3>
+        <input v-model="newFolderName" :placeholder="$t('folderName')" class="compose-input" @keyup.enter="createFolder" />
         <div class="modal-actions" style="justify-content:space-between;">
           <div>
-            <button class="dv-btn ghost" @click="showNewFolderModal = false">Annuler</button>
+            <button class="dv-btn ghost" @click="showNewFolderModal = false">{{ $t('cancel') }}</button>
           </div>
           <div style="display:flex; gap:8px;">
-            <button class="dv-btn" @click="createFolder">Créer</button>
+            <button class="dv-btn" @click="createFolder">{{ $t('create') }}</button>
           </div>
         </div>
       </div>
@@ -410,23 +410,23 @@
 
     <!-- NEW FILE MODAL -->
     <div v-if="showNewFileModal" class="modal-wrap" @keydown.esc="showNewFileModal = false">
-      <div class="modal" role="dialog" aria-modal="true" aria-label="Nouveau fichier">
-        <h3>Nouveau fichier</h3>
+      <div class="modal" role="dialog" aria-modal="true" :aria-label="$t('newFile')">
+        <h3>{{ $t('newFile') }}</h3>
         <div class="form-group">
-          <label>Type de fichier</label>
+          <label>{{ $t('fileType') }}</label>
           <select v-model="newFileType" style="width:100%; padding:8px; border-radius:6px; border:1px solid #e6e6ee; margin-bottom:12px;">
-            <option value="docx">📄 Document Word (.docx)</option>
-            <option value="xlsx">📊 Feuille Excel (.xlsx)</option>
-            <option value="pptx">📽️ Présentation PowerPoint (.pptx)</option>
+            <option value="docx">📄 {{ $t('wordDocument') }} (.docx)</option>
+            <option value="xlsx">📊 {{ $t('excelSheet') }} (.xlsx)</option>
+            <option value="pptx">📽️ {{ $t('powerpointPresentation') }} (.pptx)</option>
           </select>
         </div>
-        <input v-model="newFileName" placeholder="Nom du fichier (sans extension)" class="compose-input" @keyup.enter="createFile" />
+        <input v-model="newFileName" :placeholder="$t('fileNameNoExtension')" class="compose-input" @keyup.enter="createFile" />
         <div class="modal-actions" style="justify-content:space-between;">
           <div>
-            <button class="dv-btn ghost" @click="showNewFileModal = false">Annuler</button>
+            <button class="dv-btn ghost" @click="showNewFileModal = false">{{ $t('cancel') }}</button>
           </div>
           <div style="display:flex; gap:8px;">
-            <button class="dv-btn primary" @click="createFile">Créer et ouvrir</button>
+            <button class="dv-btn primary" @click="createFile">{{ $t('createAndOpen') }}</button>
           </div>
         </div>
       </div>
@@ -435,12 +435,12 @@
 
     <!-- RENAME MODAL -->
     <div v-if="showRenameModal" class="modal-wrap" @keydown.esc="showRenameModal = false">
-      <div class="modal" role="dialog" aria-modal="true" aria-label="Renommer">
-        <h3>Renommer</h3>
+      <div class="modal" role="dialog" aria-modal="true" :aria-label="$t('rename')">
+        <h3>{{ $t('rename') }}</h3>
         <input v-model="renameValue" @keyup.enter="applyRename" />
         <div class="modal-actions">
-          <button class="dv-btn" @click="showRenameModal = false">Annuler</button>
-          <button class="dv-btn primary" @click="applyRename">Valider</button>
+          <button class="dv-btn" @click="showRenameModal = false">{{ $t('cancel') }}</button>
+          <button class="dv-btn primary" @click="applyRename">{{ $t('validate') }}</button>
         </div>
       </div>
       <div class="backdrop" @click="showRenameModal = false"></div>

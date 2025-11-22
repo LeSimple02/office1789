@@ -9,16 +9,16 @@
         </svg>
       </div>
       <h1>✨ {{$t("createac")}}</h1>
-      <h2>Rejoignez la révolution numérique française</h2>
+      <h2>{{ $t('joinDigitalRevolution') }}</h2>
     </div>
 
     <!-- Form Card -->
     <div class="form-card">
       <div class="form-section">
-        <h3>Informations du compte</h3>
+        <h3>{{ $t('accountInformation') }}</h3>
         
         <div class="form-group">
-          <label>Nom d'utilisateur *</label>
+          <label>{{ $t('usernameField') }}</label>
           <div class="input-with-suffix">
             <input 
               v-model="username" 
@@ -37,7 +37,7 @@
         </div>
 
         <div class="form-group">
-          <label>Mot de passe *</label>
+          <label>{{ $t('passwordField') }}</label>
           <div class="input-with-icon">
             <input 
               v-model="passf1" 
@@ -65,7 +65,7 @@
         </div>
 
         <div class="form-group">
-          <label>Confirmer le mot de passe *</label>
+          <label>{{ $t('confirmPasswordField') }}</label>
           <div class="input-with-icon">
             <input v-model="passf2" :type="passw2" class="input-field" required />
             <button @click="show2()" class="toggle-password">👁</button>
@@ -75,30 +75,30 @@
       </div>
 
       <div class="form-section">
-        <h3>Informations personnelles</h3>
+        <h3>{{ $t('personalInformation') }}</h3>
         
         <div class="form-group">
-          <label>Email</label>
+          <label>{{ $t('emailField') }}</label>
           <input 
             v-model="email" 
             type="email" 
             class="input-field"
             @blur="checkEmail"
           />
-          <p v-if="email && !emailValid" class="error-message">❌ Format d'email invalide</p>
+          <p v-if="email && !emailValid" class="error-message">❌ {{ $t('invalidEmailFormat') }}</p>
           <p v-if="emailR" class="error-message">❌ {{$t('dejaEP')}}</p>
         </div>
 
         <div class="form-group">
-          <label>Numéro de téléphone</label>
+          <label>{{ $t('phoneNumberField') }}</label>
           <input 
             v-model="phonenumber" 
             type="tel" 
             class="input-field"
-            placeholder="+33612345678 ou 0612345678"
+            :placeholder="$t('phonePlaceholder')"
             @blur="checkPhone"
           />
-          <p v-if="phonenumber && !phoneValid" class="error-message">❌ Format de téléphone invalide</p>
+          <p v-if="phonenumber && !phoneValid" class="error-message">❌ {{ $t('invalidPhoneFormat') }}</p>
           <p v-if="phonenumberR" class="error-message">❌ {{$t('dejaPP')}}</p>
         </div>
       </div>
@@ -108,10 +108,10 @@
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
                 d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
         </svg>
-        Créer mon compte
+        {{ $t('createMyAccount') }}
       </button>
 
-      <RouterLink to="/login" class="back-link">← Déjà un compte ? Se connecter</RouterLink>
+      <RouterLink to="/login" class="back-link">← {{ $t('alreadyHaveAccount') }}</RouterLink>
     </div>
   </div>
 </template>

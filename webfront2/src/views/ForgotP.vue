@@ -9,13 +9,13 @@
         </svg>
       </div>
       <h1>🔑 {{$t('forgotp')}}</h1>
-      <h2>Récupérez l'accès à votre compte</h2>
+      <h2>{{ $t('recoverAccountAccess') }}</h2>
 
       <div class="form-content">
         <input 
           v-model="id" 
           type="text" 
-          placeholder="Identifiant ou email" 
+          :placeholder="$t('identifierOrEmail')" 
           class="input-field"
           required 
         />
@@ -25,14 +25,14 @@
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
                   d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
           </svg>
-          <span v-if="!loading">Envoyer l'email</span>
-          <span v-else>⏳ Envoi en cours...</span>
+          <span v-if="!loading">{{ $t('sendEmail') }}</span>
+          <span v-else>⏳ {{ $t('sendingInProgress') }}</span>
         </button>
 
-        <p v-if="sendm=='nothing'" class="message error">❌ Veuillez entrer votre identifiant</p>
-        <p v-if="sendm==true" class="message success">✅ Un email vient de vous être envoyé</p>
+        <p v-if="sendm=='nothing'" class="message error">❌ {{ $t('pleaseEnterIdentifier') }}</p>
+        <p v-if="sendm==true" class="message success">✅ {{ $t('emailHasBeenSent') }}</p>
 
-        <RouterLink to="/login" class="back-link">← Retour à la connexion</RouterLink>
+        <RouterLink to="/login" class="back-link">← {{ $t('backToLogin') }}</RouterLink>
       </div>
     </div>
 
@@ -42,7 +42,7 @@
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
               d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
       </svg>
-      <p>Entrez votre identifiant ou email et nous vous enverrons un lien pour réinitialiser votre mot de passe</p>
+      <p>{{ $t('forgotPasswordInfo') }}</p>
     </div>
   </div>
 </template>

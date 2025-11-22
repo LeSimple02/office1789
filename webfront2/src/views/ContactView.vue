@@ -8,8 +8,8 @@
                 d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
         </svg>
       </div>
-      <h1>✉️ Contactez-nous</h1>
-      <h2>Nous sommes là pour vous aider</h2>
+      <h1>✉️ {{ $t('contactUs') }}</h1>
+      <h2>{{ $t('hereToHelp') }}</h2>
     </div>
 
     <!-- Formulaire de contact -->
@@ -17,23 +17,23 @@
       <form @submit.prevent="submitForm" class="contact-form">
         <div class="form-row">
           <div class="form-group">
-            <label for="name">Nom complet</label>
+            <label for="name">{{ $t('fullName') }}</label>
             <input 
               id="name" 
               v-model="formData.name" 
               type="text" 
-              placeholder="Votre nom" 
+              :placeholder="$t('yourName')" 
               required 
             />
           </div>
           
           <div class="form-group">
-            <label for="email">Email</label>
+            <label for="email">{{ $t('email') }}</label>
             <input 
               id="email" 
               v-model="formData.email" 
               type="email" 
-              placeholder="votre@email.com" 
+              :placeholder="$t('yourEmail')" 
               required 
             />
           </div>
@@ -41,33 +41,23 @@
 
         <div class="form-row">
           <div class="form-group">
-            <label for="phone">Téléphone (optionnel)</label>
-            <input 
-              id="phone" 
-              v-model="formData.phone" 
-              type="tel" 
-              placeholder="+33 6 12 34 56 78" 
-            />
-          </div>
-          
-          <div class="form-group">
-            <label for="subject">Sujet</label>
+            <label for="subject">{{ $t('subject') }}</label>
             <select id="subject" v-model="formData.subject" required>
-              <option value="">Sélectionnez un sujet</option>
-              <option value="general">Question générale</option>
-              <option value="support">Support technique</option>
-              <option value="sales">Ventes</option>
-              <option value="feedback">Feedback</option>
+              <option value="">{{ $t('selectSubject') }}</option>
+              <option value="general">{{ $t('generalQuestion') }}</option>
+              <option value="support">{{ $t('technicalSupport') }}</option>
+              <option value="sales">{{ $t('sales') }}</option>
+              <option value="feedback">{{ $t('feedback') }}</option>
             </select>
           </div>
         </div>
 
         <div class="form-group full-width">
-          <label for="message">Message</label>
+          <label for="message">{{ $t('message') }}</label>
           <textarea 
             id="message" 
             v-model="formData.message" 
-            placeholder="Écrivez votre message ici..." 
+            :placeholder="$t('yourMessage')" 
             rows="6"
             required
           ></textarea>
@@ -78,14 +68,14 @@
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
                   d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/>
           </svg>
-          Envoyer le message
+          {{ $t('sendMessage') }}
         </button>
 
         <div v-if="submitStatus === 'success'" class="alert alert-success">
-          ✅ Message envoyé avec succès !
+          ✅ {{ $t('messageSentSuccess') }}
         </div>
         <div v-if="submitStatus === 'error'" class="alert alert-error">
-          ❌ Erreur lors de l'envoi. Veuillez réessayer.
+          ❌ {{ $t('error') }}
         </div>
       </form>
     </div>
@@ -101,7 +91,7 @@
       <div class="info-card">
         <div class="info-icon">📞</div>
         <h3>Téléphone</h3>
-        <p>+33 1 23 45 67 89</p>
+        <p></p>
       </div>
       
       <div class="info-card">

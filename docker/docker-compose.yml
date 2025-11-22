@@ -1,13 +1,48 @@
-version: "3.8"
-
+# Load all environment variables from .env file
 services:
+  # Backend API (Go) - DÉSACTIVÉ, lancé en local via startOffice1789.py
+  # backend:
+  #   build:
+  #     context: ../backend
+  #     dockerfile: Dockerfile
+  #   container_name: office1789_backend
+  #   env_file:
+  #     - ../backend/.env
+  #   ports:
+  #     - "8080:8080"
+  #   volumes:
+  #     - ../backend/uploads:/root/uploads
+  #   depends_on:
+  #     - postgres_db
+  #   restart: unless-stopped
+  #   networks:
+  #     - office_network
+
+  # Frontend (Vue.js) - DÉSACTIVÉ, lancé en local via startOffice1789.py
+  # frontend:
+  #   build:
+  #     context: ../webfront2
+  #     dockerfile: Dockerfile
+  #     args:
+  #       - NODE_ENV=production
+  #   container_name: office1789_frontend
+  #   ports:
+  #     - "5173:80"
+  #   depends_on:
+  #     - backend
+  #   restart: unless-stopped
+  #   networks:
+  #     - office_network
+
   postgres_db:
     image: postgres:16
     container_name: postgres_db
+    env_file:
+      - .env
     environment:
-      POSTGRES_USER: robespierre
-      POSTGRES_PASSWORD: guillotine
-      POSTGRES_DB: office1789
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
     ports:
       - "5432:5432"
     volumes:
@@ -20,6 +55,8 @@ services:
     container_name: mailserver
     hostname: mail.office1789.com
     domainname: office1789.com
+    env_file:
+      - .env
     ports:
       - "25:25"
       - "143:143"
@@ -44,6 +81,7 @@ services:
       - TLS_LEVEL=modern
       - SSL_CERT_PATH=/etc/ssl/dms/cert
       - SSL_KEY_PATH=/etc/ssl/dms/key
+      - POSTMASTER_PASSWORD=${MAIL_ADMIN_PASSWORD}
     cap_add:
       - NET_ADMIN
     restart: always
@@ -57,11 +95,13 @@ services:
   onlyoffice:
     image: onlyoffice/documentserver:latest
     container_name: onlyoffice
+    env_file:
+      - .env
     ports:
       - "8082:80"
     environment:
-      - JWT_ENABLED=false
-      - JWT_SECRET=changeme_verysecret
+      - JWT_ENABLED=true
+      - JWT_SECRET=${ONLYOFFICE_JWT_SECRET}
       - ALLOW_PRIVATE_IP_ADDRESS=true
       - ALLOW_META_IP_ADDRESS=true
     restart: always
@@ -72,10 +112,12 @@ services:
   postgres_roundcube:
     image: postgres:16
     container_name: postgres_roundcube
+    env_file:
+      - .env
     environment:
-      POSTGRES_DB: roundcube
-      POSTGRES_USER: roundcube
-      POSTGRES_PASSWORD: roundcube1789
+      POSTGRES_DB: ${ROUNDCUBE_DB_NAME}
+      POSTGRES_USER: ${ROUNDCUBE_DB_USER}
+      POSTGRES_PASSWORD: ${ROUNDCUBE_DB_PASSWORD}
     healthcheck:
       # Use superuser for healthcheck to avoid failure if role roundcube not yet ready
       test: ["CMD-SHELL", "pg_isready -U postgres || exit 1"]
@@ -93,6 +135,8 @@ services:
       context: ./DockerfileRC
       dockerfile: Dockerfile
     container_name: roundcube
+    env_file:
+      - .env
     ports:
       - "8081:80"
     volumes:
@@ -100,9 +144,9 @@ services:
     environment:
       ROUNDCUBEMAIL_DB_TYPE: pgsql
       ROUNDCUBEMAIL_DB_HOST: postgres_roundcube
-      ROUNDCUBEMAIL_DB_NAME: roundcube
-      ROUNDCUBEMAIL_DB_USER: roundcube
-      ROUNDCUBEMAIL_DB_PASSWORD: roundcube1789
+      ROUNDCUBEMAIL_DB_NAME: ${ROUNDCUBE_DB_NAME}
+      ROUNDCUBEMAIL_DB_USER: ${ROUNDCUBE_DB_USER}
+      ROUNDCUBEMAIL_DB_PASSWORD: ${ROUNDCUBE_DB_PASSWORD}
       ROUNDCUBEMAIL_DEFAULT_HOST: tls://mailserver
       ROUNDCUBEMAIL_DEFAULT_PORT: 143
       ROUNDCUBEMAIL_SMTP_SERVER: tls://mailserver
@@ -121,10 +165,12 @@ services:
   postgres_synapse:
     image: postgres:16
     container_name: postgres_synapse
+    env_file:
+      - .env
     environment:
-      POSTGRES_DB: synapse
-      POSTGRES_USER: synapse
-      POSTGRES_PASSWORD: synapse1789
+      POSTGRES_DB: ${SYNAPSE_DB_NAME}
+      POSTGRES_USER: ${SYNAPSE_DB_USER}
+      POSTGRES_PASSWORD: ${SYNAPSE_DB_PASSWORD}
     healthcheck:
       # Use superuser for healthcheck to avoid failure if role synapse not yet ready
       test: ["CMD-SHELL", "pg_isready -U postgres || exit 1"]
@@ -140,6 +186,8 @@ services:
   synapse:
     image: matrixdotorg/synapse:latest
     container_name: synapse
+    env_file:
+      - .env
     ports:
       - "8008:8008"
     environment:
@@ -147,9 +195,9 @@ services:
       SYNAPSE_REPORT_STATS: "no"
       SYNAPSE_NO_TLS: "true"
       POSTGRES_HOST: postgres_synapse
-      POSTGRES_DB: synapse
-      POSTGRES_USER: synapse
-      POSTGRES_PASSWORD: synapse1789
+      POSTGRES_DB: ${SYNAPSE_DB_NAME}
+      POSTGRES_USER: ${SYNAPSE_DB_USER}
+      POSTGRES_PASSWORD: ${SYNAPSE_DB_PASSWORD}
     volumes:
       - ./synapse/conf:/data
     depends_on:
@@ -183,10 +231,9 @@ services:
     ports:
       - "3478:3478/tcp"
       - "3478:3478/udp"
-      - "49160-49200:49160-49200/udp"
-      - "49160-49200:49160-49200/tcp"
+      - "49160-49170:49160-49170/udp"
     volumes:
-      - ./coturn/turnserver.conf:/etc/coturn/turnserver.conf:ro
+      - ./coturn/turnserver.conf:/etc/coturn/turnserver.conf
     networks:
       - office_network
 

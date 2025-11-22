@@ -239,7 +239,7 @@ const cancelRegenerateMatrix = () => {
             </svg>
           </div>
           <div class="info-content">
-            <span class="info-label">Stockage</span>
+            <span class="info-label">{{ $t('storage') }}</span>
             <span class="info-value">{{ storageSize(nboffer) }}</span>
           </div>
         </div>

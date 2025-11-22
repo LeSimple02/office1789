@@ -11,6 +11,22 @@ const isDark = useDark()
 const toggleDark = useToggle(isDark)
 const menuOpen = ref(false)
 
+// Noms complets des langues pour l'affichage
+const languageNames = {
+  'en': 'English',
+  'fr': 'Français',
+  'es': 'Español',
+  'zh': '中文',
+  'ja': '日本語',
+  'it': 'Italiano',
+  'de': 'Deutsch',
+  'pt': 'Português',
+  'ru': 'Русский',
+  'ar': 'العربية',
+  'ko': '한국어',
+  'nl': 'Nederlands'
+}
+
 // Empêcher le scroll quand le menu est ouvert
 const toggleMenu = () => {
   menuOpen.value = !menuOpen.value
@@ -65,13 +81,13 @@ function decof(){
       </RouterLink>
 
       <div class="nav-settings">
-        <select v-model="$i18n.locale" @click="save()">
+        <select v-model="$i18n.locale" @change="save()">
           <option
             v-for="locale in $i18n.availableLocales"
             :key="`locale-${locale}`"
             :value="locale"
           >
-            {{ locale }}
+            {{ languageNames[locale] || locale }}
           </option>
         </select>
         <button @click="toggleDark()" id="toggle">
@@ -85,17 +101,17 @@ function decof(){
         id="bdeco"
         v-if="gls().log == 1"
         @click="popup = 1; closeMenu()"
-        title="Déconnexion"
+        :title="$t('logout')"
       >
-        Déconnexion
+        {{ $t('logout') }}
       </button>
     </nav>
   </header>
   <div v-if="popup==1" id="sb"></div>
   <div v-if="popup==1" id="pop">
-    <p>Are you sure you want to log out?</p>
-    <button @click="popup=0" id="Cancel">Cancel</button>
-    <button @click="decof" id="Yes">Yes</button>
+    <p>{{ $t('confirmLogout') }}</p>
+    <button @click="popup=0" id="Cancel">{{ $t('cancel') }}</button>
+    <button @click="decof" id="Yes">{{ $t('yes') }}</button>
   </div>
   <RouterView></RouterView>
   <footer>
@@ -429,8 +445,11 @@ select option {
   padding: 8px;
 }
 .dark select option {
-  background: #2C2C2E;
+  background: #1C1C1E;
   color: white;
+}
+.dark select option:hover {
+  background: #2C2C2E;
 }
 select:hover {
   transform: translateY(-2px);

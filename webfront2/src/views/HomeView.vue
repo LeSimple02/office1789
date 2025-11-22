@@ -9,7 +9,7 @@
         </svg>
       </div>
       <h1>{{ $t('presentation1I') }}</h1>
-      <h2>Leurs privilèges, notre Révolution</h2>
+      <h2>{{ $t('theirPrivilegesOurRevolution') }}</h2>
       <div class="hero-actions">
         <RouterLink to="/createaccount" class="btn-create">
           {{ $t('create') }}
@@ -84,38 +84,38 @@
 
     <!-- Services Section -->
     <div class="services-section">
-      <h2 class="section-title">Nos Services</h2>
-      <p class="section-subtitle">Une suite complète d'outils pour votre productivité</p>
+      <h2 class="section-title">{{ $t('ourServices') }}</h2>
+      <p class="section-subtitle">{{ $t('completeProductivityTools') }}</p>
       
       <div class="services-grid">
         <div class="service-card">
           <div class="service-icon">📧</div>
-          <h3>Messagerie</h3>
-          <p>Email professionnel avec 10 Go de stockage, calendrier intégré et contacts centralisés</p>
+          <h3>{{ $t('messaging') }}</h3>
+          <p>{{ $t('professionalEmailWith10GB') }}</p>
         </div>
         
         <div class="service-card">
           <div class="service-icon">💬</div>
-          <h3>Chat</h3>
-          <p>Communication instantanée avec vos collaborateurs, groupes de discussion et appels intégrés</p>
+          <h3>{{ $t('chat') }}</h3>
+          <p>{{ $t('instantCommunicationWithColleagues') }}</p>
         </div>
         
         <div class="service-card">
           <div class="service-icon">☁️</div>
-          <h3>Stockage Cloud</h3>
-          <p>50 Go de stockage sécurisé pour tous vos documents avec partage facile</p>
+          <h3>{{ $t('cloudStorage') }}</h3>
+          <p>{{ $t('secureStorage50GB') }}</p>
         </div>
         
         <div class="service-card">
           <div class="service-icon">📄</div>
-          <h3>Suite Bureautique</h3>
-          <p>Éditeur de texte, tableur et présentations avec OnlyOffice intégré</p>
+          <h3>{{ $t('officeSuite') }}</h3>
+          <p>{{ $t('textEditorSpreadsheetPresentation') }}</p>
         </div>
         
         <div class="service-card">
           <div class="service-icon">📅</div>
-          <h3>Calendrier</h3>
-          <p>Organisez vos rendez-vous et événements avec un calendrier complet</p>
+          <h3>{{ $t('calendarService') }}</h3>
+          <p>{{ $t('organizeAppointmentsEvents') }}</p>
         </div>
         
         <div class="service-card">

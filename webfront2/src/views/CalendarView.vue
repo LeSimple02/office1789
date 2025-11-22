@@ -154,15 +154,15 @@ onMounted(() => {
                 d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
         </svg>
       </div>
-      <h1>📅 Calendrier Office1789</h1>
-      <h2>Organisez vos rendez-vous et événements</h2>
+      <h1>📅 {{ $t('calendarOffice1789') }}</h1>
+      <h2>{{ $t('organizeAppointments') }}</h2>
       
       <button @click="showAddEventModal = true" class="btn-add-event">
         <svg class="btn-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
                 d="M12 4v16m8-8H4"/>
         </svg>
-        Ajouter un événement
+        {{ $t('addEvent') }}
       </button>
     </div>
 
@@ -175,39 +175,39 @@ onMounted(() => {
     <div v-if="showAddEventModal" class="modal-overlay" @click.self="showAddEventModal = false">
       <div class="modal">
         <div class="modal-header">
-          <h3>✨ Nouvel Événement</h3>
+          <h3>✨ {{ $t('newEvent') }}</h3>
           <button class="close-btn" @click="showAddEventModal = false">✕</button>
         </div>
         
         <div class="form-grid">
           <div class="form-group">
-            <label>Titre *</label>
-            <input v-model="newEventTitle" class="input" placeholder="Titre de l'événement" />
+            <label>{{ $t('title') }} *</label>
+            <input v-model="newEventTitle" class="input" :placeholder="$t('eventTitle')" />
           </div>
           
           <div class="form-group">
-            <label>Date *</label>
+            <label>{{ $t('date') }} *</label>
             <input v-model="newEventDate" type="date" class="input" />
           </div>
           
           <div class="form-group">
-            <label>Heure de début</label>
+            <label>{{ $t('startTime') }}</label>
             <input v-model="newEventStartTime" type="time" class="input" />
           </div>
           
           <div class="form-group">
-            <label>Heure de fin</label>
+            <label>{{ $t('endTime') }}</label>
             <input v-model="newEventEndTime" type="time" class="input" />
           </div>
           
           <div class="form-group full-width">
-            <label>Lieu</label>
-            <input v-model="newEventLocation" class="input" placeholder="Lieu de l'événement" />
+            <label>{{ $t('location') }}</label>
+            <input v-model="newEventLocation" class="input" :placeholder="$t('eventLocation')" />
           </div>
           
           <div class="form-group full-width">
-            <label>Description</label>
-            <textarea v-model="newEventDescription" class="textarea" placeholder="Description de l'événement" rows="4"></textarea>
+            <label>{{ $t('description') }}</label>
+            <textarea v-model="newEventDescription" class="textarea" :placeholder="$t('eventDescription')" rows="4"></textarea>
           </div>
         </div>
         
@@ -216,9 +216,9 @@ onMounted(() => {
             <svg width="20" height="20" fill="currentColor" viewBox="0 0 24 24">
               <path d="M12 4v16m8-8H4"/>
             </svg>
-            Ajouter
+            {{ $t('add') }}
           </button>
-          <button class="btn btn-secondary" @click="showAddEventModal = false">Annuler</button>
+          <button class="btn btn-secondary" @click="showAddEventModal = false">{{ $t('cancel') }}</button>
         </div>
       </div>
     </div>
@@ -227,13 +227,13 @@ onMounted(() => {
     <div v-if="showDeleteEventModal" class="modal-overlay" @click.self="showDeleteEventModal = false">
       <div class="modal modal-small">
         <div class="modal-header">
-          <h3>🗑️ Supprimer l'événement</h3>
+          <h3>🗑️ {{ $t('deleteEvent') }}</h3>
           <button class="close-btn" @click="showDeleteEventModal = false">✕</button>
         </div>
         
         <div class="modal-body">
           <p class="delete-message">
-            Êtes-vous sûr de vouloir supprimer l'événement 
+            {{ $t('confirmDeleteEvent') }}
             <strong>"{{ selectedEvent?.title }}"</strong> ?
           </p>
         </div>
@@ -243,9 +243,9 @@ onMounted(() => {
             <svg width="20" height="20" fill="currentColor" viewBox="0 0 24 24">
               <path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
             </svg>
-            Supprimer
+            {{ $t('delete') }}
           </button>
-          <button class="btn btn-secondary" @click="showDeleteEventModal = false">Annuler</button>
+          <button class="btn btn-secondary" @click="showDeleteEventModal = false">{{ $t('cancel') }}</button>
         </div>
       </div>
     </div>
