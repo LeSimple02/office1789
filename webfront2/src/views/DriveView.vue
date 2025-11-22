@@ -60,6 +60,20 @@
       </div>
     </aside>
 
+    <!-- Mobile FAB Menu -->
+    <div class="mobile-fab-menu">
+      <button class="fab-main" @click="showMobileFab = !showMobileFab" title="Actions">
+        {{ showMobileFab ? '✖' : '➕' }}
+      </button>
+      <transition name="fab-items">
+        <div v-if="showMobileFab" class="fab-items">
+          <button class="fab-item" @click="openUploadModal(); showMobileFab = false">📤 Upload</button>
+          <button class="fab-item" @click="showNewFolderModal = true; showMobileFab = false">📁 Dossier</button>
+          <button class="fab-item" @click="showNewFileModal = true; showMobileFab = false">📄 Fichier</button>
+        </div>
+      </transition>
+    </div>
+
     <!-- MAIN -->
     <main class="dv-main">
       <div v-if="movingInProgress" class="moving-overlay" aria-live="polite" style="position:fixed;left:0;top:0;right:0;bottom:0;display:flex;align-items:center;justify-content:center;z-index:9999;pointer-events:none">
@@ -158,8 +172,9 @@
                 active: selectedFile && selectedFile.id === it.id,
                 'folder-hover': dragTarget === it.id
               }"
-              @click="it.type === 'folder' ? openFolder(it) : openFile(it)"
-              draggable="true"
+              @click.stop="selectItem(it)"
+              @touchend.prevent="selectItem(it)"
+              :draggable="!isMobile"
               @dragstart="onDragStart($event, it)"
               @dragend="onDragEnd"
               @dragover.prevent="onItemDragOver(it)"
@@ -525,7 +540,16 @@ const API_STORAGE_INFO = resolveAPI(import.meta.env.VITE_API_DRIVE_STORAGE_INFO 
 // ---------- état / UI ----------
 const userName = gls().username
 const userEmail = ref('')
-const isMobile = ref(window.innerWidth <= 750)
+const isMobile = computed(() => window.innerWidth <= 900)
+
+// Fonction de sélection adaptée mobile
+function selectItem(it) {
+  if (it.type === 'folder') {
+    openFolder(it)
+  } else {
+    openFile(it)
+  }
+}
 const searchQuery = ref('')
 const selectedFile = ref(null)
 
@@ -534,8 +558,10 @@ const storageUsed = ref(0)
 const storageLimit = ref(0)
 const isUnlimitedStorage = ref(false)
 const storagePercentage = computed(() => {
-  if (storageLimit.value === 0) return 0
-  return Math.min(100, Math.round((storageUsed.value / storageLimit.value) * 100))
+  if (isUnlimitedStorage.value) return 0
+  if (storageLimit.value === 0 || storageLimit.value === null) return 0
+  const pct = (storageUsed.value / storageLimit.value) * 100
+  return Math.min(100, Math.round(pct))
 })
 const storageColor = computed(() => {
   const pct = storagePercentage.value
@@ -577,6 +603,7 @@ const dragTarget = ref(null)
 // upload UI state & queue
 const uploadInput = ref(null)
 const showUploadModal = ref(false)
+const showMobileFab = ref(false)
 const showNewFolderModal = ref(false)
 const showNewFileModal = ref(false)
 const showRenameModal = ref(false)
@@ -1608,6 +1635,11 @@ const filteredFiles = computed(() => {
   return list.filter(f => (f.name || '').toLowerCase().includes(q))
 })
 
+// Nombre de fichiers hors corbeille
+const fileCount = computed(() => {
+  return files.value.filter(f => f.folder !== 'trash').length
+})
+
 let _onlyofficeScriptLoading = null
 function loadOnlyOfficeScript() {
   if (window.DocEditor || (window.DocsAPI && window.DocsAPI.DocEditor)) return Promise.resolve()
@@ -2113,13 +2145,13 @@ watch(() => gls().sessionT, (newToken) => {
 
 /* MAIN */
 .dv-main { flex:1; padding:16px; display:flex; flex-direction:column; gap:12px; }
-.dv-header { display:flex; justify-content:space-between; align-items:center; }
-.dv-breadcrumbs { display:flex; align-items:center; gap:8px; }
+.dv-header { display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; }
+.dv-breadcrumbs { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
 .crumb { background:transparent; border:none; color:#0066cc; cursor:pointer; padding:6px 8px; border-radius:6px; }
 .crumb-target { background:#e8f4ff; }
 .slash { color:#888 }
 .current { font-weight:600; }
-.dv-tools { display:flex; gap:8px; align-items:center; }
+.dv-tools { display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
 .dv-search { padding:8px 10px; border-radius:8px; border:1px solid #e0e0e6; }
 /* BODY SPLIT */
 .dv-body { display:grid; grid-template-columns: 420px 1fr; gap:20px; height: calc(100% - 60px); }
@@ -2177,30 +2209,33 @@ watch(() => gls().sessionT, (newToken) => {
 .dark .info-panel { color:white; background:none; }
 
 /* MODALS (centered) */
-.modal-wrap { position:fixed; inset:0; display:flex; align-items:center; justify-content:center; z-index:2000; }
-.modal { width:420px; background:#fff; padding:50px; border-radius:12px; box-shadow:0 10px 40px rgba(0,0,0,0.12); z-index:2001; }
+.modal-wrap { position:fixed; inset:0; display:flex; align-items:center; justify-content:center; z-index:10000; overflow-y:auto; }
+.modal { width:90%; max-width:420px; background:#fff; padding:32px; border-radius:12px; box-shadow:0 10px 40px rgba(0,0,0,0.12); z-index:10001; max-height:90vh; overflow-y:auto; }
 .dark .modal { background:#1e1e1e; color:#e5e5e5; }
-.backdrop { position:fixed; inset:0; background:rgba(0,0,0,0.25); z-index:2000; }
-.upload-zone { border:2px dashed #e6e6ee; border-radius:8px; padding:18px; text-align:center; cursor:pointer; margin:10px 0; }
+.backdrop { position:fixed; inset:0; background:rgba(0,0,0,0.25); z-index:9999; }
+.upload-zone { border:2px dashed #e6e6ee; border-radius:8px; padding:18px; text-align:center; cursor:pointer; margin:10px 0; touch-action:manipulation; }
 .modal-actions { display:flex; gap:8px; justify-content:flex-end; margin-top:12px; }
 .modal input, .modal textarea, .modal .compose-input { width:100%; padding:10px; border-radius:8px; border:1px solid #e6e6ee; }
 .dark .modal input, .dark .modal .compose-input { background:#121212; border:1px solid #333; color:#eee; }
 
 /* OnlyOffice modal styles */
 .modal.onlyoffice-modal {
-  width: 90vw;
+  width: 95vw;
   max-width: 1200px;
-  height: 90vh;
+  height: 85vh;
+  max-height: 85vh;
   padding: 12px;
   display: flex;
   flex-direction: column;
   transition: all 0.2s ease;
+  overflow: hidden;
 }
 
 .modal.onlyoffice-modal.fullscreen {
   width: 100vw;
   height: 100vh;
   max-width: 100vw;
+  max-height: 100vh;
   border-radius: 0;
   padding: 8px;
   transition: all 0.2s ease;
@@ -2237,9 +2272,376 @@ watch(() => gls().sessionT, (newToken) => {
 
 /* responsive */
 @media (max-width: 900px) {
-  .dv-body { grid-template-columns: 1fr; }
-  .dv-sidebar { display:none; }
-  .info-panel { width:100%; border-left:none; padding-left:0; }
+  /* Layout principal */
+  #drive-v2 { 
+    padding-bottom: 0;
+    padding-top: 0;
+    height: 100vh;
+    min-height: 100vh;
+  }
+  
+  /* Hero masqué sur mobile */
+  .drive-hero-card { 
+    display: none;
+  }
+  
+  /* Wrapper full width */
+  .drive-content-wrapper { 
+    flex-direction: column;
+    height: calc(100vh - 66px);
+  }
+  
+  /* Sidebar masquée */
+  .dv-sidebar { 
+    display: none; 
+  }
+  
+  /* Main prend tout l'espace sous le header */
+  .dv-main { 
+    padding: 0;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  /* Zone centrale scrollable (liste fichiers + panneau droit) */
+  .dv-body {
+    flex: 1;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Liste fichiers : simple padding bas pour éviter masquage par FAB/barre */
+  .dv-items {
+    padding-bottom: 160px; /* place pour outils + FAB */
+  }
+  
+  /* Header sticky avec tabs */
+  .dv-header { 
+    position: relative;
+    top: 0;
+    flex-direction: column; 
+    align-items: stretch; 
+    gap: 0;
+    padding: 0;
+    background: #fff;
+    border-radius: 0;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    margin: 0;
+    z-index: 100;
+  }
+  
+  .dark .dv-header {
+    background: #1e1e1e;
+  }
+  
+  /* Breadcrumbs compact sticky */
+  .dv-breadcrumbs { 
+    width: 100%; 
+    justify-content: flex-start; 
+    overflow-x: auto; 
+    overflow-y: hidden;
+    padding: 8px 12px;
+    margin: 0;
+    background: transparent;
+    border-bottom: none;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+  
+  .dv-breadcrumbs::-webkit-scrollbar {
+    display: none;
+  }
+  
+  .dark .dv-breadcrumbs {
+    background: transparent;
+    border-bottom-color: transparent;
+  }
+  
+  .crumb {
+    font-size: 0.85rem;
+    padding: 6px 12px;
+    white-space: nowrap;
+    font-weight: 500;
+  }
+  
+  /* Search bar séparée */
+  .dv-search { 
+    width: calc(100% - 24px);
+    margin: 8px 12px;
+    padding: 12px 16px;
+    font-size: 1rem;
+    border-radius: 12px;
+    border: 2px solid #e5e7eb;
+  }
+  
+  .dark .dv-search {
+    background: #1a1a1a;
+    border-color: #333;
+    color: #e5e5e5;
+  }
+  
+  /* Tools en scroll horizontal */
+  .dv-tools { 
+    display: flex;
+    gap: 8px;
+    width: 100%;
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding: 8px 12px 12px 12px;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+  
+  .dv-tools::-webkit-scrollbar {
+    display: none;
+  }
+  
+  .dv-tools .dv-btn { 
+    padding: 8px 16px;
+    font-size: 0.85rem;
+    white-space: nowrap;
+    flex-shrink: 0;
+    border-radius: 20px;
+  }
+  
+  /* Body en single column */
+  .dv-body { 
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    height: auto;
+    padding: 0;
+  }
+  
+  /* Liste full width sans border */
+  .dv-list { 
+    padding: 0;
+    width: 100%;
+    min-height: 400px;
+    max-height: none;
+    border: none;
+    border-radius: 0;
+    background: transparent;
+  }
+  
+  .dark .dv-list {
+    background: transparent;
+  }
+  
+  /* Items fichiers style iOS */
+  .dv-item { 
+    padding: 16px;
+    gap: 12px;
+    border-radius: 0;
+    border-bottom: 1px solid #f0f0f0;
+    background: #fff;
+    margin: 0;
+    cursor: pointer;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: rgba(0, 0, 0, 0.1);
+    user-select: none;
+    min-height: 60px;
+  }
+  
+  .dark .dv-item {
+    background: #1e1e1e;
+    border-bottom-color: #2b2b2b;
+  }
+  
+  .dv-item:hover {
+    background: #f8f9fa;
+  }
+  
+  .dark .dv-item:hover {
+    background: #252525;
+  }
+  
+  .dv-item.active {
+    background: #e8f4ff;
+  }
+  
+  .dark .dv-item.active {
+    background: #1a2332;
+  }
+  
+  .dv-item .left { 
+    gap: 12px;
+    flex: 1;
+    min-width: 0;
+  }
+  
+  .icon { 
+    font-size: 1.5rem;
+    flex-shrink: 0;
+    width: 40px;
+    text-align: center;
+  }
+  
+  .meta .name {
+    font-size: 1rem;
+    font-weight: 500;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  
+  .meta .sub {
+    font-size: 0.85rem;
+    margin-top: 2px;
+  }
+  
+  /* Actions swipe-style */
+  .dv-item .actions { 
+    display: flex;
+    gap: 6px;
+    flex-shrink: 0;
+  }
+  
+  .dv-mini { 
+    padding: 12px;
+    font-size: 1.2rem;
+    min-width: 44px;
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 8px;
+  }
+  
+  /* Detail panel */
+  .dv-detail { 
+    padding: 16px;
+    width: 100%;
+    border: none;
+    border-radius: 0;
+    margin: 0;
+  }
+  
+  .detail-top { 
+    flex-direction: column; 
+    gap: 16px;
+  }
+  
+  .detail-info {
+    width: 100%;
+  }
+  
+  .detail-name {
+    font-size: 1.2rem;
+    font-weight: 600;
+    word-break: break-word;
+    margin-bottom: 8px;
+  }
+  
+  .detail-meta {
+    font-size: 0.9rem;
+  }
+  
+  .detail-actions { 
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    width: 100%;
+  }
+  
+  .detail-actions .dv-btn { 
+    width: 100%;
+    padding: 14px 16px;
+    font-size: 0.95rem;
+    font-weight: 500;
+    text-align: center;
+    border-radius: 12px;
+  }
+  
+  .detail-body { 
+    flex-direction: column;
+    gap: 12px;
+  }
+  
+  .preview { 
+    width: 100%;
+    min-height: 250px;
+  }
+  
+  .preview-img,
+  .preview-video {
+    max-height: 300px;
+  }
+  
+  .info-panel { 
+    width: 100%;
+    padding: 12px;
+    background: #f9f9f9;
+    border-radius: 8px;
+    margin-top: 8px;
+  }
+  
+  .dark .info-panel {
+    background: #1a1a1a;
+  }
+  
+  /* Modals */
+  .modal { 
+    width: calc(100vw - 24px);
+    max-width: 420px;
+    padding: 20px;
+    max-height: 85vh;
+    overflow-y: auto;
+  }
+  
+  .modal h3 {
+    font-size: 1.2rem;
+  }
+  
+  .modal input,
+  .modal textarea,
+  .modal .compose-input {
+    font-size: 1rem;
+    padding: 12px;
+  }
+  
+  .modal-actions {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  
+  .modal-actions .dv-btn {
+    flex: 1;
+    min-width: 120px;
+  }
+  
+  /* Upload zone */
+  .upload-zone { 
+    padding: 40px 20px;
+    font-size: 1rem;
+    min-height: 120px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+  }
+  
+  /* OnlyOffice modal */
+  .modal.onlyoffice-modal { 
+    width: 100vw;
+    height: 100vh;
+    max-width: 100vw;
+    max-height: 100vh;
+    border-radius: 0;
+    padding: 0;
+    margin: 0;
+  }
+  
+  .onlyoffice-header {
+    padding: 12px;
+  }
+  
+  .onlyoffice-container {
+    height: calc(100vh - 60px);
+  }
 }
 
 /* up target highlight */
@@ -2248,6 +2650,101 @@ watch(() => gls().sessionT, (newToken) => {
 
 /* small extras */
 .dv-up { margin-bottom: 8px; display:flex; justify-content:flex-start; }
+
+/* Mobile FAB Menu */
+.mobile-fab-menu {
+  display: none;
+}
+
+@media (max-width: 900px) {
+  .mobile-fab-menu {
+    display: block;
+    position: fixed;
+    bottom: 100px;
+    right: 16px;
+    z-index: 1000;
+  }
+  
+  .fab-main {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #2563eb, #dc2626);
+    color: white;
+    border: none;
+    font-size: 1.8rem;
+    box-shadow: 0 4px 20px rgba(37, 99, 235, 0.4);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+    animation: fabPulse 2s ease-in-out infinite;
+  }
+  
+  @keyframes fabPulse {
+    0%, 100% {
+      box-shadow: 0 4px 20px rgba(37, 99, 235, 0.4);
+    }
+    50% {
+      box-shadow: 0 6px 28px rgba(220, 38, 38, 0.5);
+    }
+  }
+  
+  .fab-main:hover {
+    transform: scale(1.1) rotate(90deg);
+    box-shadow: 0 8px 32px rgba(220, 38, 38, 0.6);
+  }
+  
+  .fab-main:active {
+    transform: scale(0.95) rotate(180deg);
+  }
+  
+  .fab-items {
+    position: absolute;
+    bottom: 70px;
+    right: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    animation: fabSlideIn 0.3s ease;
+  }
+  
+  @keyframes fabSlideIn {
+    from {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  
+  .fab-item {
+    background: white;
+    color: #333;
+    border: none;
+    padding: 12px 20px;
+    border-radius: 24px;
+    font-size: 0.95rem;
+    font-weight: 600;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all 0.2s ease;
+  }
+  
+  .dark .fab-item {
+    background: #1e1e1e;
+    color: #e5e5e5;
+  }
+  
+  .fab-item:hover {
+    transform: translateX(-4px);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
+  }
+}
 
 
 /* when OnlyOffice editor is open we enlarge the preview area */

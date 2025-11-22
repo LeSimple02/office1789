@@ -10,6 +10,22 @@ import verifback from "./views/backwork.js"
 const isDark = useDark()
 const toggleDark = useToggle(isDark)
 const menuOpen = ref(false)
+
+// Empêcher le scroll quand le menu est ouvert
+const toggleMenu = () => {
+  menuOpen.value = !menuOpen.value
+  if (menuOpen.value) {
+    document.body.classList.add('menu-open')
+  } else {
+    document.body.classList.remove('menu-open')
+  }
+}
+
+const closeMenu = () => {
+  menuOpen.value = false
+  document.body.classList.remove('menu-open')
+}
+
 let menu1 = [{name : "Home", link : "/"},{name : "Login", link : "/login"},{name : "About", link : "/about"}]
 let menu2 = [{name : "Mail", link : "/mail"}, {name : "Drive", link : "/drive"}, {name : "Chat", link : "/chat"}, {name : "Calendar", link : "/calendar"}, {name : "Account", link : "/account"}]
 verifback()
@@ -35,22 +51,45 @@ function decof(){
   <header>
     <img class="logo" v-if="!isDark" src="@/assets/logo.png" />
     <img class="logo" v-if="isDark" src="@/assets/logol.png" />
-    <button class="burger" @click="menuOpen = !menuOpen" aria-label="Menu">
+    <button class="burger" @click="toggleMenu" aria-label="Menu">
       ☰
     </button>
     <nav :class="{ open: menuOpen }">
-      <RouterLink v-for="key in menu" :key="key.name" v-bind:to="key.link" @click="menuOpen = false">{{ $t(key.name) }}</RouterLink>
-      <div>
+      <RouterLink
+        v-for="key in menu"
+        :key="key.name"
+        :to="key.link"
+        @click="closeMenu"
+      >
+        {{ $t(key.name) }}
+      </RouterLink>
+
+      <div class="nav-settings">
         <select v-model="$i18n.locale" @click="save()">
-          <option v-for="locale in $i18n.availableLocales" :key="`locale-${locale}`" :value="locale">{{ locale }}</option>
+          <option
+            v-for="locale in $i18n.availableLocales"
+            :key="`locale-${locale}`"
+            :value="locale"
+          >
+            {{ locale }}
+          </option>
         </select>
         <button @click="toggleDark()" id="toggle">
           <i inline-block align-middle i="dark:carbon-moon carbon-sun" />
           <span class="ml-2">{{ isDark ? "🌕" : "☀️" }}</span>
         </button>
       </div>
+
+      <!-- Bouton déconnexion toujours en dernier, desktop + mobile -->
+      <button
+        id="bdeco"
+        v-if="gls().log == 1"
+        @click="popup = 1; closeMenu()"
+        title="Déconnexion"
+      >
+        Déconnexion
+      </button>
     </nav>
-    <button id="bdeco" v-if="gls().log == 1" @click="popup = 1" title="Déconnexion">Déconnexion</button>
   </header>
   <div v-if="popup==1" id="sb"></div>
   <div v-if="popup==1" id="pop">
@@ -76,6 +115,25 @@ export default {
 </script>
 
 <style>
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html, body {
+  width: 100%;
+  overflow-x: hidden;
+  margin: 0;
+  padding: 0;
+}
+
+#app {
+  width: 100%;
+  overflow-x: hidden;
+  min-height: 100vh;
+}
+
 @font-face {
   font-family: roboto;
   src: url("@/assets/roboto/RobotoCondensed-Regular.ttf");
@@ -86,10 +144,13 @@ export default {
 }
 header{
   display: flex;
-  height: 50px;
+  height: 100px;
   align-items: center;
   justify-content: center;
-  position: relative;
+  position: sticky;
+  top: 0;
+  background: white;
+  z-index: 10000;
 }
 h1 {
   font-family: roboto;
@@ -102,13 +163,13 @@ header > nav > div {
   align-items: center;
 }
 nav {
-  padding-left: 10px;
+  padding-left: 16px;
   border-left: 1px solid black;
   display: flex;
   align-items: center;
   height: 35px;
   position: relative;
-  gap: 20px;
+  gap: 28px;
 }
 nav a.router-link-active {
   background: -webkit-linear-gradient(30deg, blue, red);
@@ -146,7 +207,7 @@ nav a.router-link-active:hover {
   transform: translateY(-3px) scale(1.06);
 }
 nav a {
-  padding: 0 1rem;
+  padding: 10px;
   font-size: 20px;
   border-left: 1px solid var(--color-border);
   font-family: 'Roboto', sans-serif;
@@ -377,15 +438,17 @@ select:hover {
 }
 #toggle {
   border: none;
-  background: none;
+  width: 20%;
+  margin-left: -10%;
+  
   padding: 0;
   font-size: 28px;
   cursor: pointer;
-  margin-left: 8px;
+  
   transition: all 0.3s ease;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  position: relative;
+  left: 50%;
+  
 }
 #toggle:hover {
   transform: scale(1.15) rotate(15deg);
@@ -397,8 +460,8 @@ header {
   display: flex;
   align-items: center;
   justify-content: flex-start;
-  gap: 24px;
-  padding: 16px 40px;
+  gap: 32px;
+  padding: 20px 48px;
   background: rgba(255, 255, 255, 0.98);
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
   border-radius: 0 0 32px 32px;
@@ -406,7 +469,7 @@ header {
   backdrop-filter: blur(10px);
   position: sticky;
   top: 0;
-  z-index: 100;
+  z-index: 10000;
 }
 header:hover {
   box-shadow: 0 6px 28px rgba(0, 0, 0, 0.12);
@@ -455,7 +518,7 @@ header:hover {
   cursor: pointer;
   color: black;
   padding: 8px;
-  z-index: 150;
+  z-index: 10001;
   transition: all 0.3s ease;
 }
 .burger:hover {
@@ -484,35 +547,44 @@ header:hover {
     display: block;
     margin-left: auto;
   }
-  
-  #bdeco {
-    display: none;
-  }
-  
+
   nav {
     position: fixed;
     top: 66px;
     left: 0;
     right: 0;
-    background: rgba(255, 255, 255, 0.98);
+    background: white;
     width: 100%;
     height: calc(100vh - 66px);
+    display: flex;
     flex-direction: column;
     align-items: stretch;
     justify-content: flex-start;
-    padding: 24px 20px;
+    padding: 24px 20px 40px 20px;
     gap: 12px;
     border-left: none;
-    border-top: 2px solid #e5e7eb;
+    border-top: none;
     transform: translateX(-100%);
     transition: transform 0.3s ease;
-    z-index: 100;
+    z-index: 9999;
     overflow-y: auto;
+    overflow-x: hidden;
     box-shadow: 4px 0 20px rgba(0, 0, 0, 0.1);
   }
   
   nav.open {
     transform: translateX(0);
+  }
+  
+  body.menu-open {
+    overflow: hidden !important;
+    position: fixed;
+    width: 100%;
+    height: 100%;
+  }
+  
+  body.menu-open #app {
+    overflow: hidden;
   }
   
   nav a {
@@ -524,23 +596,46 @@ header:hover {
     font-size: 18px;
     border-radius: 8px;
     margin-bottom: 4px;
+    
   }
   
   nav a:hover {
     background: rgba(0, 0, 0, 0.05);
   }
   
-  nav > div {
+  .nav-settings {
     flex-direction: column;
     gap: 12px;
     padding-top: 16px;
     margin-top: 16px;
     border-top: 2px solid #e5e7eb;
     align-items: stretch;
+    display: flex;
   }
-  
-  nav > div select,
-  nav > div button {
+
+  nav #bdeco {
+    
+    width: 20%;
+    
+    position: relative;
+    left: 50%;
+    margin-left: -10%;
+    
+    background: linear-gradient(135deg, #ef4444, #dc2626);
+    height: auto;
+    padding: 14px 20px;
+    font-size: 1rem;
+    border-radius: 12px;
+    font-weight: 600;
+    color: white;
+    border: none;
+    cursor: pointer;
+    box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+    text-align: center;
+  }
+
+  .nav-settings select,
+  .nav-settings button {
     width: 100%;
     justify-content: center;
   }
@@ -554,7 +649,7 @@ header:hover {
     border-bottom-color: #444;
   }
   
-  .dark nav > div {
+  .dark .nav-settings {
     border-top-color: #444;
   }
   
