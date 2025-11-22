@@ -562,6 +562,7 @@ header:hover {
     justify-content: flex-start;
     padding: 24px 20px 40px 20px;
     gap: 12px;
+    margin-top: 20px;
     border-left: none;
     border-top: none;
     transform: translateX(-100%);
@@ -615,16 +616,16 @@ header:hover {
 
   nav #bdeco {
     
-    width: 20%;
+    width: 40%;
     
     position: relative;
     left: 50%;
-    margin-left: -10%;
+    margin-left: -20%;
     
     background: linear-gradient(135deg, #ef4444, #dc2626);
     height: auto;
     padding: 14px 20px;
-    font-size: 1rem;
+    font-size: 20px;
     border-radius: 12px;
     font-weight: 600;
     color: white;

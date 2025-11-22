@@ -1,9 +1,3 @@
-import type { CapacitorConfig } from '@capacitor/cli';
-
-const config: CapacitorConfig = {
-  appId: 'com.office1789.app',
-  appName: 'Office1789',
-  webDir: 'dist'
-};
-
-export default config;
+// Stub file: Capacitor has been removed from this project.
+// Left in place only to avoid accidental tooling references.
+export {}; // no-op
