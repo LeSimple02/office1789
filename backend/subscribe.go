@@ -250,12 +250,14 @@ func Sub(c *gin.Context) {
 	sessionToken := uuid.NewString()
 	expiresAtTime := time.Now().Add(24 * time.Hour)
 	
-	// Créer session en mémoire
+	// Créer session en mémoire avec mutex
+	sessionsMutex.Lock()
 	sessions[sessionToken] = session{
 		UserID:   userID,
 		Username: subi.Username,
 		expiry:   expiresAtTime,
 	}
+	sessionsMutex.Unlock()
 	
 	// Créer session en DB
 	_ = createSessionInDB(userID, subi.Username, sessionToken, expiresAtTime)

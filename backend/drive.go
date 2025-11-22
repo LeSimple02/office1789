@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
 )
 
@@ -1651,6 +1652,25 @@ func saveDownloadTokens() {
 	_ = os.Rename(tmpFile, tokenFile)
 }
 
+// signOnlyOfficePayload signs the OnlyOffice configuration with JWT
+// OnlyOffice expects the config itself as JWT claims, not wrapped in "payload"
+func signOnlyOfficePayload(config map[string]interface{}) (string, error) {
+	jwtSecret := os.Getenv("ONLYOFFICE_JWT_SECRET")
+	if jwtSecret == "" {
+		return "", fmt.Errorf("ONLYOFFICE_JWT_SECRET not configured")
+	}
+
+	// OnlyOffice expects the entire config as claims directly
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims(config))
+
+	tokenString, err := token.SignedString([]byte(jwtSecret))
+	if err != nil {
+		return "", err
+	}
+
+	return tokenString, nil
+}
+
 func onlyofficeConfig(c *gin.Context) {
 	fileID := c.Query("file_id")
 	token := c.Query("token")
@@ -1783,15 +1803,83 @@ func onlyofficeConfig(c *gin.Context) {
 		"type": "desktop",
 	}
 
+	// Sign the config with JWT for OnlyOffice DocumentServer
+	configMap := make(map[string]interface{})
+	for k, v := range config {
+		configMap[k] = v
+	}
+	
+	jwtToken, err := signOnlyOfficePayload(configMap)
+	if err != nil {
+		log.Printf("⚠️ Warning: Failed to sign OnlyOffice config with JWT: %v", err)
+		// Continue without JWT for backwards compatibility
+	} else {
+		config["token"] = jwtToken
+		log.Printf("✅ OnlyOffice config signed with JWT for user=%s file_id=%s", username, fileID)
+	}
+
 	log.Printf("onlyoffice config OK: user=%s (id=%s) file_id=%s token=%s", username, userIdentifier, fileID, dtok)
 	c.JSON(http.StatusOK, config)
 }
 
+// verifyOnlyOfficeJWT verifies the JWT token sent by OnlyOffice DocumentServer
+func verifyOnlyOfficeJWT(c *gin.Context) (map[string]interface{}, error) {
+	jwtSecret := os.Getenv("ONLYOFFICE_JWT_SECRET")
+	if jwtSecret == "" {
+		return nil, nil // JWT not configured, skip verification
+	}
+
+	// OnlyOffice sends JWT in Authorization header as "Bearer <token>"
+	authHeader := c.GetHeader("Authorization")
+	if authHeader == "" {
+		return nil, fmt.Errorf("missing Authorization header")
+	}
+
+	tokenString := strings.TrimPrefix(authHeader, "Bearer ")
+	if tokenString == authHeader {
+		return nil, fmt.Errorf("invalid Authorization format")
+	}
+
+	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
+		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
+		}
+		return []byte(jwtSecret), nil
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
+		// OnlyOffice sends the data directly in claims, not wrapped in "payload"
+		payload := make(map[string]interface{})
+		for k, v := range claims {
+			payload[k] = v
+		}
+		return payload, nil
+	}
+
+	return nil, fmt.Errorf("invalid JWT token")
+}
+
 // onlyofficeCallback gère les callbacks envoyés par DocumentServer (OnlyOffice).
 // - Valide download_token (présent dans la query string)
+// - Valide JWT si configuré
 // - Selon le status, télécharge le fichier depuis l'URL fournie par DocumentServer et remplace le fichier sur le disque
 // - Répond { "error": 0 } à DocumentServer en cas de succès
 func onlyofficeCallback(c *gin.Context) {
+	// Verify JWT if configured
+	jwtPayload, err := verifyOnlyOfficeJWT(c)
+	if err != nil {
+		log.Printf("⚠️ OnlyOffice callback JWT verification failed: %v", err)
+		c.JSON(http.StatusUnauthorized, gin.H{"error": 1, "message": "invalid JWT token"})
+		return
+	}
+	if jwtPayload != nil {
+		log.Printf("✅ OnlyOffice callback JWT verified successfully")
+	}
+
 	// Query params
 	downloadTokenStr := c.Query("download_token")
 	fileIDQ := c.Query("file_id")
@@ -1870,7 +1958,7 @@ func onlyofficeCallback(c *gin.Context) {
 
 	// Retrieve file meta from DB (path, name)
 	var file DriveFile
-	err := db.QueryRow(`
+	err = db.QueryRow(`
         SELECT file_id, user_id, file_name, file_path, file_type
         FROM DriveFiles
         WHERE file_id = $1

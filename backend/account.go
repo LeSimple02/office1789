@@ -241,16 +241,20 @@ func ChangeI(c *gin.Context) {
 		sessionToken := uuid.NewString()
 		expiresAtTime := time.Now().Add(24 * time.Hour)
 		
-		// Supprimer l'ancienne session
+		// Supprimer l'ancienne session avec mutex
+		sessionsMutex.Lock()
 		delete(sessions, cha.Token)
+		sessionsMutex.Unlock()
 		deleteSessionFromDB(cha.Token)
 		
-		// Créer nouvelle session en mémoire
+		// Créer nouvelle session en mémoire avec mutex
+		sessionsMutex.Lock()
 		sessions[sessionToken] = session{
 			UserID:   sess.UserID,
 			Username: newUsername,
 			expiry:   expiresAtTime,
 		}
+		sessionsMutex.Unlock()
 		
 		// Créer nouvelle session en DB
 		_ = createSessionInDB(sess.UserID, newUsername, sessionToken, expiresAtTime)

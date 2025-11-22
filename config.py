@@ -240,6 +240,9 @@ MATRIX_ADMIN_TOKEN={secrets['matrix_admin_token']}
 MAIL_SERVER={domains.get('mail', 'mail.office1789.com')}
 MAIL_ADMIN_USER={secrets['mail_admin_user']}
 MAIL_ADMIN_PASSWORD={secrets['mail_admin_password']}
+
+# OnlyOffice JWT Secret (for document server token signing)
+ONLYOFFICE_JWT_SECRET={secrets.get('onlyoffice_jwt_secret', '')}
 """
     
     BACKEND_ENV.parent.mkdir(parents=True, exist_ok=True)
