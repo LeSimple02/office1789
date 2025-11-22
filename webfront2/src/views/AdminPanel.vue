@@ -191,7 +191,7 @@ onMounted(async () => {
 
 async function loadStats() {
   try {
-    const response = await fetch('http://localhost:8080/api/admin/stats', {
+    const response = await fetch(`${import.meta.env.VITE_APP_API}/api/admin/stats`, {
       headers: {
         'Authorization': gls().sessionT
       }
@@ -207,7 +207,7 @@ async function loadStats() {
 
 async function loadUsers() {
   try {
-    const response = await fetch('http://localhost:8080/api/admin/users', {
+    const response = await fetch(`${import.meta.env.VITE_APP_API}/api/admin/users`, {
       headers: {
         'Authorization': gls().sessionT
       }
@@ -295,7 +295,7 @@ async function toggleRole(user) {
   }
   
   try {
-    const response = await fetch('http://localhost:8080/api/admin/users/role', {
+    const response = await fetch(`${import.meta.env.VITE_APP_API}/api/admin/users/role`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -321,7 +321,7 @@ async function toggleRole(user) {
 
 async function verifyContact(userId, contactType) {
   try {
-    const response = await fetch('http://localhost:8080/api/admin/users/verify-contact', {
+    const response = await fetch(`${import.meta.env.VITE_APP_API}/api/admin/users/verify-contact`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

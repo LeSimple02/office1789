@@ -175,7 +175,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue';
+import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router';
 import { gls } from '@/stores/global.js';
 
@@ -204,7 +204,7 @@ async function fetchDomainInfo() {
   }
 
   try {
-    const response = await fetch('http://localhost:8080/api/domain/info', {
+    const response = await fetch(`${import.meta.env.VITE_APP_API}/api/domain/info`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ username: user, token })
@@ -235,7 +235,7 @@ async function addDomain() {
   message.value = '';
 
   try {
-    const response = await fetch('http://localhost:8080/api/domain/add', {
+    const response = await fetch(`${import.meta.env.VITE_APP_API}/api/domain/add`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -278,7 +278,7 @@ async function verifyDomain() {
   message.value = '';
 
   try {
-    const response = await fetch('http://localhost:8080/api/domain/verify', {
+    const response = await fetch(`${import.meta.env.VITE_APP_API}/api/domain/verify`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ username: user, token })
@@ -317,7 +317,7 @@ async function removeDomain() {
   message.value = '';
 
   try {
-    const response = await fetch('http://localhost:8080/api/domain/remove', {
+    const response = await fetch(`${import.meta.env.VITE_APP_API}/api/domain/remove`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ username: user, token })

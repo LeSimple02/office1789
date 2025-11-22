@@ -22,7 +22,7 @@ const events = ref([])
 // Charger les événements depuis le backend
 async function loadEvents() {
   try {
-    const response = await fetch('http://localhost:8080/api/calendar/events/get', {
+    const response = await fetch(`${import.meta.env.VITE_APP_API}/api/calendar/events/get`, {
       method: 'POST',
       credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
@@ -66,7 +66,7 @@ async function addEvent() {
     console.log('Envoi événement:', newEvent)
     
     try {
-      const response = await fetch('http://localhost:8080/api/calendar/events/create', {
+      const response = await fetch(`${import.meta.env.VITE_APP_API}/api/calendar/events/create`, {
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
@@ -93,7 +93,7 @@ async function addEvent() {
 async function deleteEvent() {
   if (selectedEvent.value) {
     try {
-      const response = await fetch('http://localhost:8080/api/calendar/events/delete', {
+      const response = await fetch(`${import.meta.env.VITE_APP_API}/api/calendar/events/delete`, {
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },

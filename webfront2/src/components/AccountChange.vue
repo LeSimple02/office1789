@@ -150,7 +150,7 @@ fetch(`${import.meta.env.VITE_APP_API}/api/2fa/status`, {
   })
 
 // Récupère les infos utilisateur
-fetch(import.meta.env.VITE_APP_API_INFO_USER, {
+fetch(import.meta.env.VITE_APP_API_GETINFOP, {
   method: "POST",
   mode: "cors",
   body: JSON.stringify({ "username": gls().username, "token": gls().sessionT })
@@ -238,7 +238,7 @@ function send() {
 
   saving.value = true
 
-  fetch(import.meta.env.VITE_APP_API_INFO_CHANGE, {
+  fetch(import.meta.env.VITE_APP_API_CHANGEINFO, {
     method: "POST",
     mode: "cors",
     body: JSON.stringify({
@@ -509,7 +509,7 @@ async function processSubscription() {
 
   try {
     // Créer une session de paiement Stripe
-    const response = await fetch('http://localhost:8080/api/stripe/checkout', {
+    const response = await fetch(`${import.meta.env.VITE_APP_API}/api/stripe/checkout`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',
@@ -552,7 +552,7 @@ async function processSubscription() {
 
 async function updateSubscription(planId) {
   try {
-    const response = await fetch('http://localhost:8080/api/subscription/change', {
+    const response = await fetch(`${import.meta.env.VITE_APP_API}/api/subscription/change`, {
       method: "POST",
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',

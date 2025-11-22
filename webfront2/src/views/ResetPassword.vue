@@ -164,7 +164,7 @@ async function resetPassword() {
   errorMessage.value = ''
 
   try {
-    const response = await fetch('http://localhost:8080/api/password/reset/confirm', {
+    const response = await fetch(import.meta.env.VITE_APP_API_PASSWORD_RESET_CONFIRM, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'

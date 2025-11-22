@@ -24,7 +24,7 @@ function connect(){
 		payload.totp_code = totpCode.value
 	}
 
-	fetch(import.meta.env.VITE_API_LOGIN, {
+	fetch(import.meta.env.VITE_APP_API_LOGIN, {
 		method: "POST", 
 		mode: "cors", 
 		headers: { "Content-Type": "application/json"}, 

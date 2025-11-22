@@ -65,7 +65,7 @@ async function loadStorageInfo() {
   error.value = null
   
   try {
-    const response = await fetch('http://localhost:8080/api/drive/storage', {
+    const response = await fetch(`${import.meta.env.VITE_APP_API}/api/drive/storage-info`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'

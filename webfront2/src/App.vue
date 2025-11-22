@@ -439,18 +439,6 @@ select {
   cursor: pointer;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
 }
-select option {
-  background: white;
-  color: #333;
-  padding: 8px;
-}
-.dark select option {
-  background: #1C1C1E;
-  color: white;
-}
-.dark select option:hover {
-  background: #2C2C2E;
-}
 select:hover {
   transform: translateY(-2px);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);

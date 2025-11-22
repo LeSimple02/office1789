@@ -47,6 +47,7 @@ services:
       - "5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
+      - ../backend/office1789-db/init.sql:/docker-entrypoint-initdb.d/init.sql
     networks:
       - office_network
 

@@ -64,7 +64,7 @@ async function send(){
   sendm.value = false
 
   try {
-    const response = await fetch('http://localhost:8080/api/password/reset/request', {
+    const response = await fetch(import.meta.env.VITE_APP_API_PASSWORD_RESET_REQUEST, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'

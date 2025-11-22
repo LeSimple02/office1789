@@ -1,7 +1,12 @@
 export const API_CONFIG = {
   // Configuration multi-environnement
   getBaseURL() {
-    // Détection de l'environnement
+    // 1. Vérifier les variables d'environnement Vite en priorité
+    if (import.meta.env.VITE_APP_API) {
+      return import.meta.env.VITE_APP_API
+    }
+    
+    // 2. Détection de l'environnement
     const protocol = window.location.protocol
     const hostname = window.location.hostname
     

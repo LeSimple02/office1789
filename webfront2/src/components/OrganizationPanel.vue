@@ -411,7 +411,7 @@ async function fetchOrganizationData() {
 
   try {
     // Get user info first
-    const userResponse = await fetch('http://localhost:8080/api/getinfop', {
+    const userResponse = await fetch(import.meta.env.VITE_APP_API_GETINFOP, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ username, token })
@@ -424,7 +424,7 @@ async function fetchOrganizationData() {
 
     // Only fetch organization data if user has Pro or Enterprise
     if (userData.Nboffer >= 2) {
-      const orgResponse = await fetch('http://localhost:8080/api/organization/members', {
+      const orgResponse = await fetch(`${import.meta.env.VITE_APP_API}/api/organization/members`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username, token })
@@ -460,7 +460,7 @@ async function createSubAccount() {
   message.value = '';
 
   try {
-    const response = await fetch('http://localhost:8080/api/organization/create-subaccount', {
+    const response = await fetch(`${import.meta.env.VITE_APP_API}/api/organization/create-subaccount`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -516,7 +516,7 @@ async function deleteSubAccount(subAccountId) {
   message.value = '';
 
   try {
-    const response = await fetch('http://localhost:8080/api/organization/delete-member', {
+    const response = await fetch(`${import.meta.env.VITE_APP_API}/api/organization/delete-member`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({

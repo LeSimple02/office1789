@@ -14,7 +14,7 @@ let matrixMessage = ref('')
 let showMatrixModal = ref(false)
 let matrixPassword = ref('')
 
-fetch(import.meta.env.VITE_APP_API_INFO_USER, {
+fetch(import.meta.env.VITE_APP_API_GETINFOP, {
   method: "POST",
   mode: "cors",
   body: JSON.stringify({ 
