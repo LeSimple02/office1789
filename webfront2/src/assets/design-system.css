@@ -767,3 +767,16 @@
     padding: 3rem 1.5rem;
   }
 }
+
+/* ========================================
+   Global Modal Layer Fix (ensure topmost everywhere)
+   ======================================== */
+.modal-overlay {
+  position: fixed !important;
+  inset: 0 !important;
+  z-index: 20000 !important; /* Force above any stacking context */
+}
+.modal, .modal-content {
+  position: relative;
+  z-index: 20001; /* Ensure content above overlay */
+}
