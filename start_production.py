@@ -203,7 +203,7 @@ def start_backend():
     # Build
     run_command(f"{go_cmd} build -o office1789-backend", cwd=backend_path)
     
-    # Créer service systemd
+    # Créer service systemd avec sudo
     service_content = f"""[Unit]
 Description=Office1789 Backend API
 After=network.target docker.service
@@ -220,15 +220,17 @@ RestartSec=10
 WantedBy=multi-user.target
 """
     
-    service_path = Path("/etc/systemd/system/office1789-backend.service")
-    service_path.write_text(service_content)
+    # Écrire dans un fichier temporaire puis copier avec sudo
+    temp_service = ROOT / "office1789-backend.service"
+    temp_service.write_text(service_content)
     
+    run_command(f"sudo mv {temp_service} /etc/systemd/system/office1789-backend.service")
     run_command("sudo systemctl daemon-reload")
     run_command("sudo systemctl enable office1789-backend")
-    run_command("sudo systemctl start office1789-backend")
+    run_command("sudo systemctl restart office1789-backend")
     
     print("   ✅ Backend démarré (systemd)")
-    run_command("sudo systemctl status office1789-backend --no-pager")
+    run_command("sudo systemctl status office1789-backend --no-pager", check=False)
 
 def configure_nginx():
     """Configure nginx reverse proxy."""
@@ -317,13 +319,17 @@ server {{
 """
     
     nginx_path = Path(f"/etc/nginx/sites-available/office1789")
-    nginx_path.write_text(nginx_config)
+    
+    # Écrire dans un fichier temporaire puis copier avec sudo
+    temp_nginx = ROOT / "office1789-nginx.conf"
+    temp_nginx.write_text(nginx_config)
+    
+    run_command(f"sudo mv {temp_nginx} {nginx_path}")
     
     # Activer le site
     link = Path("/etc/nginx/sites-enabled/office1789")
-    if link.exists():
-        link.unlink()
-    link.symlink_to(nginx_path)
+    run_command(f"sudo rm -f {link}", check=False)
+    run_command(f"sudo ln -s {nginx_path} {link}")
     
     # Tester et recharger
     run_command("sudo /usr/sbin/nginx -t")
