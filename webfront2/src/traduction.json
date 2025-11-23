@@ -519,7 +519,7 @@
         "hereToHelp": "Nous sommes là pour vous aider",
         "fullName": "Nom complet",
         "yourName": "Votre nom",
-        "yourEmail": "votre@email.com",
+        "yourEmail": "votre{'@'}email.com",
         "phoneOptional": "Téléphone (optionnel)",
         "selectSubject": "Sélectionnez un sujet",
         "generalQuestion": "Question générale",
