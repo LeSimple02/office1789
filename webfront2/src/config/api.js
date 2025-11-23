@@ -26,7 +26,7 @@ export const API_CONFIG = {
     }
     
     // Production
-    return 'https://api.office1789.com'
+    return 'https://backend.office1789.com'
   },
   
   // Permet de changer l'URL API à la volée
@@ -40,7 +40,7 @@ export const API_CONFIG = {
     local: 'http://localhost:8080',
     wifi: 'http://192.168.56.1:8080', // sera mis à jour par setup-ip.ps1
     ngrok: 'https://your-ngrok-url.ngrok.io',
-    production: 'https://api.office1789.com'
+    production: 'https://backend.office1789.com'
   }
 }
 

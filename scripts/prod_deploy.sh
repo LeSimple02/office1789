@@ -52,6 +52,12 @@ sleep 10
 echo "✅ Mailserver lancé (vérifier logs si souci)"
 echo ""
 
+echo "🐳 Démarrage backend..."
+docker compose up -d backend
+sleep 5
+echo "✅ Backend lancé"
+echo ""
+
 echo "🐳 Démarrage Synapse + Element + Roundcube + frontend..."
 docker compose up -d synapse element roundcube frontend coturn onlyoffice
 echo "✅ Services applicatifs lancés"
@@ -61,22 +67,41 @@ echo "📊 docker compose ps:"
 docker compose ps
 echo ""
 
-echo "🧪 Logs Synapse (30 dernières lignes):"
-docker compose logs synapse --tail=30 || true
+echo "🧪 Test backend (interne):"
+curl -s http://127.0.0.1:8080/api/welcome | head -n 2 || echo "⚠️  Backend non accessible"
 echo ""
 
-echo "🧪 Logs Mailserver (30 dernières lignes):"
-docker compose logs mailserver --tail=30 || true
+echo "🧪 Logs Backend (20 dernières lignes):"
+docker compose logs backend --tail=20 || true
 echo ""
 
-echo "🧪 Logs Roundcube (30 dernières lignes):"
-docker compose logs roundcube --tail=30 || true
+echo "🧪 Logs Synapse (20 dernières lignes):"
+docker compose logs synapse --tail=20 || true
+echo ""
+
+echo "🧪 Logs Mailserver (20 dernières lignes):"
+docker compose logs mailserver --tail=20 || true
+echo ""
+
+echo "🧪 Logs Roundcube (20 dernières lignes):"
+docker compose logs roundcube --tail=20 || true
 echo ""
 
 echo "=========================================="
 echo "✅ DEPLOY PROD TERMINÉ"
-echo "À tester:"
-echo "- Mail:     https://mail.office1789.com"
-echo "- Chat:     https://chat.office1789.com"
-echo "- Frontend: https://office1789.com (via ton nginx)"
+echo ""
+echo "📝 Services déployés:"
+echo "  - Backend:   http://127.0.0.1:8080 (via backend.office1789.com)"
+echo "  - Frontend:  http://127.0.0.1:5173 (via office1789.com)"
+echo "  - Mail:      http://127.0.0.1:8081 (via mail.office1789.com)"
+echo "  - Chat:      http://127.0.0.1:8083 (via chat.office1789.com)"
+echo "  - Matrix:    http://127.0.0.1:8008 (API)"
+echo "  - OnlyOffice: http://127.0.0.1:8082"
+echo "  - Coturn:    3478 (TURN/STUN)"
+echo ""
+echo "⚠️  IMPORTANT: Configure nginx pour exposer ces services:"
+echo "  sudo systemctl start nginx"
+echo ""
+echo "Si erreurs Synapse/Roundcube, exécuter:"
+echo "  cd $REPO_DIR && ./scripts/prod_fix_services.sh"
 echo "=========================================="
