@@ -13,10 +13,9 @@ var db *sql.DB
 
 func Connectdb() {
 
-	err := godotenv.Load()
-	if err != nil {
-		panic("Erreur lors du chargement du fichier .env")
-	}
+	// Charger .env seulement si le fichier existe (dev local)
+	// En prod Docker, les variables sont injectées via env_file
+	_ = godotenv.Load()
 
 	host := os.Getenv("DB_HOST")
 	port := os.Getenv("DB_PORT")
