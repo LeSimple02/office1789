@@ -21,15 +21,15 @@ if (-not $dockerRunning) {
 Write-Host "✅ Docker actif" -ForegroundColor Green
 Write-Host ""
 
-# Créer .env si nécessaire
+# Creer .env si necessaire
 Set-Location $DOCKER_DIR
-Write-Host "🧩 Vérification .env Docker..." -ForegroundColor Cyan
+Write-Host "🧩 Verification .env Docker..." -ForegroundColor Cyan
 if (-not (Test-Path ".env")) {
     if (Test-Path ".env.example") {
-        Write-Host "📝 Création .env depuis .env.example..." -ForegroundColor Yellow
+        Write-Host "📝 Creation .env depuis .env.example..." -ForegroundColor Yellow
         Copy-Item ".env.example" ".env"
         
-        # Générer des mots de passe simples pour le dev local
+        # Generer des mots de passe simples pour le dev local
         $content = Get-Content ".env" -Raw
         $content = $content -replace "CHANGE_ME_MAIN_DB_PASSWORD", "devpass123"
         $content = $content -replace "CHANGE_ME_ROUNDCUBE_DB_PASSWORD", "devpass123"
@@ -40,17 +40,17 @@ if (-not (Test-Path ".env")) {
         $content = $content -replace "CHANGE_ME_MAIL_ADMIN_PASSWORD", "devpass123"
         
         Set-Content ".env" $content
-        Write-Host "✅ .env créé avec mots de passe dev" -ForegroundColor Green
+        Write-Host "✅ .env cree avec mots de passe dev" -ForegroundColor Green
     } else {
         Write-Host "❌ .env manquant et pas de .env.example" -ForegroundColor Red
         exit 1
     }
 } else {
-    Write-Host "✅ .env Docker existe déjà" -ForegroundColor Green
+    Write-Host "✅ .env Docker existe deja" -ForegroundColor Green
 }
 Write-Host ""
 
-# Créer backend/.env
+# Creer backend/.env
 Set-Location $BACKEND_DIR
 Write-Host "🔧 Configuration backend/.env..." -ForegroundColor Cyan
 $envContent = @"
@@ -62,24 +62,24 @@ DB_PORT=5432
 JWT_SECRET=dev_secret_key_local_only
 "@
 Set-Content ".env" $envContent
-Write-Host "✅ backend/.env créé" -ForegroundColor Green
+Write-Host "✅ backend/.env cree" -ForegroundColor Green
 Write-Host ""
 
-# Démarrer les services Docker
+# Demarrer les services Docker
 Set-Location $DOCKER_DIR
-Write-Host "🐳 Démarrage services Docker..." -ForegroundColor Cyan
+Write-Host "🐳 Demarrage services Docker..." -ForegroundColor Cyan
 Write-Host "   (postgres, mailserver, roundcube, synapse, element, onlyoffice, coturn)" -ForegroundColor Gray
 docker compose up -d postgres_db mailserver postgres_roundcube roundcube postgres_synapse synapse element onlyoffice coturn
 Write-Host ""
 
-# Attendre que Postgres soit prêt
+# Attendre que Postgres soit pret
 Write-Host "⏳ Attente PostgreSQL..." -ForegroundColor Cyan
 Start-Sleep -Seconds 5
 $retries = 0
 while ($retries -lt 30) {
     $pgReady = docker compose exec -T postgres_db pg_isready -U office1789 2>$null
     if ($LASTEXITCODE -eq 0) {
-        Write-Host "✅ PostgreSQL prêt" -ForegroundColor Green
+        Write-Host "✅ PostgreSQL pret" -ForegroundColor Green
         break
     }
     Start-Sleep -Seconds 1
@@ -90,7 +90,7 @@ Write-Host ""
 # Instructions pour backend et frontend
 Write-Host "=" -NoNewline -ForegroundColor Yellow
 Write-Host ("=" * 70) -ForegroundColor Yellow
-Write-Host "✅ Services Docker démarrés !" -ForegroundColor Green
+Write-Host "✅ Services Docker demarres !" -ForegroundColor Green
 Write-Host ""
 Write-Host "Pour lancer le BACKEND (dans un nouveau terminal):" -ForegroundColor Cyan
 Write-Host "  cd backend" -ForegroundColor White
@@ -108,7 +108,7 @@ Write-Host "  • Roundcube:   http://localhost:8081" -ForegroundColor White
 Write-Host "  • Element:     http://localhost:8083" -ForegroundColor White
 Write-Host "  • OnlyOffice:  http://localhost:8082" -ForegroundColor White
 Write-Host ""
-Write-Host "Pour arrêter:" -ForegroundColor Cyan
+Write-Host "Pour arreter:" -ForegroundColor Cyan
 Write-Host "  cd docker" -ForegroundColor White
 Write-Host "  docker compose down" -ForegroundColor White
 Write-Host "=" -NoNewline -ForegroundColor Yellow
