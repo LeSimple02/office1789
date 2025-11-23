@@ -16,25 +16,30 @@ export let gls = defineStore('main',()=>
 		lang.value = localStorage.getItem("lang")
 	}
 
-	let username = ref(0)
-	let sessionT = ref(0)
+	let username = ref("")
+	let sessionT = ref("")
 	
-	
-	let decodedCookie = decodeURIComponent(document.cookie);
-	let co = decodedCookie.split("; ");
-	
-	for (let i=0; i!=co.length; i++){
-		let aco = co[i].split("=")
+	// Fonction pour lire les cookies et mettre à jour les refs
+	const updateFromCookies = () => {
+		let decodedCookie = decodeURIComponent(document.cookie);
+		let co = decodedCookie.split("; ");
 		
-		if(aco[0]=="name"){
-			username = aco[1]
+		for (let i=0; i!=co.length; i++){
+			let aco = co[i].split("=")
 			
-		}
-		else if(aco[0]=="sessionToken"){
-			sessionT = aco[1]
+			if(aco[0]=="name"){
+				username.value = aco[1]
+			}
+			else if(aco[0]=="sessionToken"){
+				sessionT.value = aco[1]
+			}
 		}
 	}
-	return {log, lang, username, sessionT}
+	
+	// Initialiser depuis les cookies
+	updateFromCookies()
+	
+	return {log, lang, username, sessionT, updateFromCookies}
         
     }
 )

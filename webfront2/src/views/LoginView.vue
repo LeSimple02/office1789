@@ -49,12 +49,16 @@ function connect(){
 		// Successful login
 		if (a["Username"] != "no") {
 			localStorage.setItem("log", 1)
-			gls().log = 1
-			gls().sessionT = a["Token"]
-			gls().username = a["Username"]
 			
-			document.cookie = `name=${a["Username"]}; expires=${a["Expiry"]}; Secure`
-			document.cookie = `sessionToken = ${a["Token"]}; expires=${a["Expiry"]}; Secure`
+			// Définir les cookies avec path=/ pour qu'ils soient accessibles partout
+			document.cookie = `name=${a["Username"]}; expires=${a["Expiry"]}; path=/; Secure; SameSite=Lax`
+			document.cookie = `sessionToken=${a["Token"]}; expires=${a["Expiry"]}; path=/; Secure; SameSite=Lax`
+			
+			// Mettre à jour le store après avoir défini les cookies
+			const store = gls()
+			store.log = 1
+			store.updateFromCookies()
+			
 			router.push("/mail")
 		} else {
 			wrong.value = 1

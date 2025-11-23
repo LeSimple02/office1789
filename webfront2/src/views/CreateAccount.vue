@@ -230,12 +230,15 @@ function connect(){
     // Si on a un Token, c'est que la création a réussi
     if(v["Token"]){
       localStorage.setItem("log", 1)
-      gls().log = 1
-      gls().username = v["Username"]
-      gls().sessionT = v["Token"]
       
-      document.cookie = `name=${v["Username"]}; expires=${v["Expiry"]}; Secure`
-      document.cookie = `sessionToken=${v["Token"]}; expires=${v["Expiry"]}; Secure`
+      // Définir les cookies avec path=/ pour qu'ils soient accessibles partout
+      document.cookie = `name=${v["Username"]}; expires=${v["Expiry"]}; path=/; Secure; SameSite=Lax`
+      document.cookie = `sessionToken=${v["Token"]}; expires=${v["Expiry"]}; path=/; Secure; SameSite=Lax`
+      
+      // Mettre à jour le store après avoir défini les cookies
+      const store = gls()
+      store.log = 1
+      store.updateFromCookies()
       
       router.push("mail")
     }
