@@ -1,6 +1,6 @@
 <script setup>
 import {gls} from "@/stores/global"
-import {ref} from "vue"
+import {ref, nextTick} from "vue"
 import router from "@/router/index"
 import { useDark } from '@vueuse/core'
 
@@ -59,7 +59,10 @@ function connect(){
 			store.log = 1
 			store.updateFromCookies()
 			
-			router.push("/mail")
+			// Attendre le prochain tick pour garantir que le store est à jour
+			nextTick(() => {
+				router.push("/mail")
+			})
 		} else {
 			wrong.value = 1
 			require2FA.value = false

@@ -240,7 +240,10 @@ function connect(){
       store.log = 1
       store.updateFromCookies()
       
-      router.push("mail")
+      // Attendre le prochain tick pour garantir que le store est à jour
+      nextTick(() => {
+        router.push("/mail")
+      })
     }
     // Erreur de validation (champs déjà pris)
     else if(v["username"] || v["phone"] || v["email"]) {
