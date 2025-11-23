@@ -61,7 +61,7 @@ DB_NAME=office1789db
 DB_PORT=5432
 JWT_SECRET=dev_secret_key_local_only
 "@
-Set-Content ".env" $envContent
+Set-Content ".env" $envContent -Encoding UTF8
 Write-Host "✅ backend/.env cree" -ForegroundColor Green
 Write-Host ""
 
