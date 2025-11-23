@@ -86,6 +86,23 @@ else
 fi
 echo ""
 
+echo "🧩 Création webfront2/.env.production pour build..."
+BACKEND_URL=$(grep BACKEND_URL "$DOCKER_DIR/.env" | cut -d '=' -f2)
+FRONTEND_URL=$(grep FRONTEND_URL "$DOCKER_DIR/.env" | cut -d '=' -f2)
+MAIL_URL=$(grep MAIL_URL "$DOCKER_DIR/.env" | cut -d '=' -f2)
+CHAT_URL=$(grep CHAT_URL "$DOCKER_DIR/.env" | cut -d '=' -f2)
+DOCS_URL=$(grep DOCS_URL "$DOCKER_DIR/.env" | cut -d '=' -f2)
+
+cat > "$FRONTEND_DIR/.env.production" << EOF
+VITE_APP_API=$BACKEND_URL
+VITE_APP_MAIL_URL=$MAIL_URL
+VITE_APP_CHAT_URL=$CHAT_URL
+VITE_APP_DOCS_URL=$DOCS_URL
+NODE_ENV=production
+EOF
+echo "✅ webfront2/.env.production créé avec URLs de production"
+echo ""
+
 echo "🔧 Fix Synapse (permissions media_store)..."
 sudo mkdir -p "$DOCKER_DIR/synapse/conf/media_store"
 sudo chown -R 991:991 "$DOCKER_DIR/synapse/conf"
