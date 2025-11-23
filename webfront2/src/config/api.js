@@ -3,12 +3,15 @@ export const API_CONFIG = {
   getBaseURL() {
     // 1. Vérifier les variables d'environnement Vite en priorité
     if (import.meta.env.VITE_APP_API) {
+      console.log('[API] Using VITE_APP_API:', import.meta.env.VITE_APP_API)
       return import.meta.env.VITE_APP_API
     }
     
     // 2. Détection de l'environnement
     const protocol = window.location.protocol
     const hostname = window.location.hostname
+    
+    console.log('[API] No VITE_APP_API, detecting from hostname:', hostname)
     
     // Cordova (file://)
     if (protocol === 'file:' || window.cordova) {
@@ -20,12 +23,17 @@ export const API_CONFIG = {
       return localStorage.getItem('api_url') || 'http://localhost:8080'
     }
     
-    // Web development
+    // Web development local
     if (hostname === 'localhost' || hostname === '127.0.0.1') {
       return 'http://localhost:8080'
     }
     
-    // Production
+    // Production - si on est sur office1789.com
+    if (hostname.includes('office1789.com')) {
+      return 'https://backend.office1789.com'
+    }
+    
+    // Fallback production
     return 'https://backend.office1789.com'
   },
   
