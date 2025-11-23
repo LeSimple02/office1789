@@ -18,21 +18,19 @@ services:
   #   networks:
   #     - office_network
 
-  # Frontend (Vue.js) - DÉSACTIVÉ, lancé en local via startOffice1789.py
-  # frontend:
-  #   build:
-  #     context: ../webfront2
-  #     dockerfile: Dockerfile
-  #     args:
-  #       - NODE_ENV=production
-  #   container_name: office1789_frontend
-  #   ports:
-  #     - "5173:80"
-  #   depends_on:
-  #     - backend
-  #   restart: unless-stopped
-  #   networks:
-  #     - office_network
+  # Frontend (Vue.js) - Production ready avec nginx
+  frontend:
+    build:
+      context: ../webfront2
+      dockerfile: Dockerfile
+      args:
+        - NODE_ENV=production
+    container_name: office1789_frontend
+    ports:
+      - "80:80"
+    restart: unless-stopped
+    networks:
+      - office_network
 
   postgres_db:
     image: postgres:16
