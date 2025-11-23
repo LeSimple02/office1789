@@ -212,6 +212,7 @@ After=network.target docker.service
 Type=simple
 User=debian
 WorkingDirectory={backend_path}
+EnvironmentFile={backend_path}/.env
 ExecStart={backend_path}/office1789-backend
 Restart=always
 RestartSec=10
