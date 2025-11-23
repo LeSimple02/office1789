@@ -25,6 +25,10 @@ services:
       dockerfile: Dockerfile
       args:
         - NODE_ENV=production
+        - VITE_APP_API=${BACKEND_URL}
+        - VITE_APP_MAIL_URL=${MAIL_URL}
+        - VITE_APP_CHAT_URL=${CHAT_URL}
+        - VITE_APP_DOCS_URL=${DOCS_URL}
     container_name: office1789_frontend
     ports:
       - "5173:80"

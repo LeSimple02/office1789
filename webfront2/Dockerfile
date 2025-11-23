@@ -12,6 +12,19 @@ RUN npm ci
 # Copy source code
 COPY . .
 
+# Build arguments pour les URLs de production
+ARG VITE_APP_API
+ARG VITE_APP_MAIL_URL
+ARG VITE_APP_CHAT_URL
+ARG VITE_APP_DOCS_URL
+
+# Les exporter comme variables d'environnement pour le build
+ENV VITE_APP_API=$VITE_APP_API
+ENV VITE_APP_MAIL_URL=$VITE_APP_MAIL_URL
+ENV VITE_APP_CHAT_URL=$VITE_APP_CHAT_URL
+ENV VITE_APP_DOCS_URL=$VITE_APP_DOCS_URL
+ENV NODE_ENV=production
+
 # Build the application
 RUN npm run build
 
