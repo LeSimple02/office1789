@@ -2,7 +2,7 @@
 set -e
 
 DOMAIN_BASE="office1789.com"
-DOMAINS="-d office1789.com -d mail.office1789.com -d chat.office1789.com"
+DOMAINS="-d office1789.com -d www.office1789.com -d backend.office1789.com -d mail.office1789.com -d chat.office1789.com -d docs.office1789.com"
 
 echo "=========================================="
 echo "🔐 Génération / renouvellement certificats Let's Encrypt"
