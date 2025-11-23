@@ -132,12 +132,21 @@ sleep 10
 echo "✅ Services UP"
 echo ""
 
-echo "🌐 Configuration nginx..."
+echo "🌐 Configuration nginx avec HTTPS..."
 sudo tee /etc/nginx/sites-available/office1789 > /dev/null << 'NGINXCONF'
 # Backend API
 server {
     listen 80;
     server_name backend.office1789.com;
+    return 301 https://$server_name$request_uri;
+}
+
+server {
+    listen 443 ssl http2;
+    server_name backend.office1789.com;
+    
+    ssl_certificate /etc/letsencrypt/live/office1789.com/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/office1789.com/privkey.pem;
     
     location / {
         proxy_pass http://127.0.0.1:8080;
@@ -152,6 +161,15 @@ server {
 server {
     listen 80;
     server_name office1789.com www.office1789.com;
+    return 301 https://$server_name$request_uri;
+}
+
+server {
+    listen 443 ssl http2;
+    server_name office1789.com www.office1789.com;
+    
+    ssl_certificate /etc/letsencrypt/live/office1789.com/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/office1789.com/privkey.pem;
     
     location / {
         proxy_pass http://127.0.0.1:5173;
@@ -166,6 +184,15 @@ server {
 server {
     listen 80;
     server_name mail.office1789.com;
+    return 301 https://$server_name$request_uri;
+}
+
+server {
+    listen 443 ssl http2;
+    server_name mail.office1789.com;
+    
+    ssl_certificate /etc/letsencrypt/live/office1789.com/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/office1789.com/privkey.pem;
     
     location / {
         proxy_pass http://127.0.0.1:8081;
@@ -180,6 +207,15 @@ server {
 server {
     listen 80;
     server_name chat.office1789.com;
+    return 301 https://$server_name$request_uri;
+}
+
+server {
+    listen 443 ssl http2;
+    server_name chat.office1789.com;
+    
+    ssl_certificate /etc/letsencrypt/live/office1789.com/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/office1789.com/privkey.pem;
     
     location / {
         proxy_pass http://127.0.0.1:8083;
