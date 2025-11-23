@@ -19,9 +19,16 @@ func main() {
 	// CORS configuration with credentials support
 	config := cors.DefaultConfig()
 	config.AllowOrigins = []string{
-		"http://localhost:8082", // OnlyOffice DocumentServer
-		"http://localhost:5173", // Vite dev server
-		"http://localhost:8081", // or your frontend production URL
+		"http://localhost:8082",          // OnlyOffice DocumentServer (dev)
+		"http://localhost:5173",          // Vite dev server
+		"http://localhost:8081",          // Roundcube (dev)
+		"https://office1789.com",         // Production frontend
+		"http://office1789.com",          // Production frontend (HTTP)
+		"https://docs.office1789.com",    // Production OnlyOffice
+		"https://mail.office1789.com",    // Production Roundcube
+		"https://chat.office1789.com",    // Production Element
+		"capacitor://localhost",          // Capacitor mobile app
+		"http://localhost",               // Capacitor mobile app
 	}
 	config.AllowMethods = []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"}
 	config.AllowHeaders = []string{
