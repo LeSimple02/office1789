@@ -121,7 +121,7 @@ echo "🔐 Préparation certificats SSL..."
 bash "$DOCKER_DIR/prepare_certs.sh"
 echo ""
 
-echo "🐳 Build des images..."
+echo "🐳 Build des images (avec .env.production pour frontend)..."
 docker compose build backend frontend element roundcube synapse
 echo "✅ Build terminé"
 echo ""
