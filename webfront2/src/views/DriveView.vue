@@ -507,6 +507,7 @@
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
 import { gls } from '@/stores/global.js'
+import { SERVICES_CONFIG } from '../config/services'
 
 
 // ---------- helpers pour résolution d'URL API ----------
