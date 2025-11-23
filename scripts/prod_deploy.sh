@@ -22,15 +22,31 @@ cd "$DOCKER_DIR"
 echo "🧩 Vérification .env Docker..."
 if [ ! -f ".env" ]; then
   if [ -f ".env.example" ]; then
+    echo "🔐 Génération des mots de passe sécurisés..."
+    
+    # Fonction pour générer un mot de passe aléatoire
+    gen_pass() {
+      openssl rand -base64 32 | tr -d '/+=' | head -c 32
+    }
+    
+    # Copier le template et remplacer les placeholders
     cp .env.example .env
-    echo "⚠️  .env créé depuis .env.example - édite les secrets avant de continuer"
-    exit 1
+    sed -i "s/CHANGE_ME_MAIN_DB_PASSWORD/$(gen_pass)/g" .env
+    sed -i "s/CHANGE_ME_ROUNDCUBE_DB_PASSWORD/$(gen_pass)/g" .env
+    sed -i "s/CHANGE_ME_SYNapse_DB_PASSWORD/$(gen_pass)/g" .env
+    sed -i "s/CHANGE_ME_COTURN_SECRET/$(gen_pass)/g" .env
+    sed -i "s/CHANGE_ME_ONLYOFFICE_JWT_SECRET/$(gen_pass)/g" .env
+    sed -i "s/CHANGE_ME_MATRIX_ADMIN_TOKEN/$(gen_pass)/g" .env
+    sed -i "s/CHANGE_ME_MAIL_ADMIN_PASSWORD/$(gen_pass)/g" .env
+    
+    echo "✅ .env créé avec mots de passe générés automatiquement"
   else
     echo "❌ .env manquant et pas de .env.example"
     exit 1
   fi
+else
+  echo "✅ .env Docker existe déjà"
 fi
-echo "✅ .env Docker présent"
 echo ""
 
 echo "🧩 Création backend/.env si manquant..."
