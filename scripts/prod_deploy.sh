@@ -4,6 +4,7 @@ set -e
 REPO_DIR="/home/debian/office1789"
 DOCKER_DIR="$REPO_DIR/docker"
 BACKEND_DIR="$REPO_DIR/backend"
+FRONTEND_DIR="$REPO_DIR/webfront2"
 
 echo "=========================================="
 echo "🚀 DEPLOY PROD OFFICE1789 - COMPLET"
