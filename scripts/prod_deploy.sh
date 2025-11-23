@@ -121,8 +121,18 @@ echo "🔐 Préparation certificats SSL..."
 bash "$DOCKER_DIR/prepare_certs.sh"
 echo ""
 
-echo "🐳 Build des images (avec .env.production pour frontend)..."
-docker compose build backend frontend element roundcube synapse
+echo "🐳 Build des images (avec variables .env forcées)..."
+# Charger les variables du .env pour le build
+export $(grep -v '^#' .env | xargs)
+
+# Afficher les URLs pour debug
+echo "   BACKEND_URL=$BACKEND_URL"
+echo "   MAIL_URL=$MAIL_URL"
+echo "   CHAT_URL=$CHAT_URL"
+echo "   DOCS_URL=$DOCS_URL"
+
+# Build avec --no-cache pour forcer la reconstruction
+docker compose build --no-cache backend frontend element roundcube synapse
 echo "✅ Build terminé"
 echo ""
 
