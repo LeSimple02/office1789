@@ -31,11 +31,13 @@ function createWindow() {
       responseHeaders: {
         ...details.responseHeaders,
         'Content-Security-Policy': [
-          "default-src 'self' 'unsafe-inline' 'unsafe-eval' data: blob:; " +
-          "connect-src 'self' http://localhost:* https://*.office1789.com; " +
-          "img-src 'self' data: blob: http://localhost:* https://*.office1789.com; " +
-          "script-src 'self' 'unsafe-inline' 'unsafe-eval'; " +
-          "style-src 'self' 'unsafe-inline';"
+          "default-src 'self' 'unsafe-inline' 'unsafe-eval' data: blob: https://*.office1789.com; " +
+          "connect-src 'self' http://localhost:* https://office1789.com https://backend.office1789.com https://*.office1789.com wss://*.office1789.com; " +
+          "img-src 'self' data: blob: http://localhost:* https://office1789.com https://backend.office1789.com https://*.office1789.com; " +
+          "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://*.office1789.com; " +
+          "style-src 'self' 'unsafe-inline' https://*.office1789.com; " +
+          "font-src 'self' data: https://*.office1789.com; " +
+          "media-src 'self' data: blob: https://*.office1789.com;"
         ]
       }
     })

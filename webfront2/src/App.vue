@@ -113,7 +113,7 @@ function decof(){
     <button @click="popup=0" id="Cancel">{{ $t('cancel') }}</button>
     <button @click="decof" id="Yes">{{ $t('yes') }}</button>
   </div>
-  <RouterView></RouterView>
+  <RouterView :key="$route.fullPath"></RouterView>
   <footer>
     <RouterLink to="/legalesmentions">{{ $t('legal') }}</RouterLink>
     <RouterLink to="/contact">Contact</RouterLink>

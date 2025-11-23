@@ -2,7 +2,7 @@
 <widget id="com.office1789.app" version="0.0.1" xmlns="http://www.w3.org/ns/widgets" xmlns:cdv="http://cordova.apache.org/ns/1.0">
   <name>Office1789</name>
   <description>Office1789 mobile wrapper (Cordova)</description>
-  <author email="dev@office1789.local" href="https://office1789.example">Office1789 Team</author>
+  <author email="dev@office1789.com" href="https://office1789.com">Office1789 Team</author>
   <content src="index.html" />
   <!-- Single icon (same file copied to densities) -->
   <platform name="android">
@@ -14,8 +14,16 @@
   <preference name="Orientation" value="portrait" />
   <preference name="AndroidInsecureFileModeEnabled" value="false" />
   <preference name="AllowInlineMediaPlayback" value="true" />
-  <access origin="*" />
-  <allow-navigation href="*" />
+  <!-- Autoriser l'accès aux domaines Office1789 -->
+  <access origin="https://office1789.com" />
+  <access origin="https://backend.office1789.com" />
+  <access origin="https://mail.office1789.com" />
+  <access origin="https://chat.office1789.com" />
+  <access origin="https://docs.office1789.com" />
+  <access origin="https://matrix.office1789.com" />
+  <allow-navigation href="https://office1789.com/*" />
+  <allow-navigation href="https://backend.office1789.com/*" />
+  <allow-navigation href="https://*.office1789.com/*" />
   <platform name="android">
     <preference name="AndroidXEnabled" value="true" />
     <preference name="ShowSplashScreenSpinner" value="false" />

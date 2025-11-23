@@ -10,7 +10,7 @@ require (
 	github.com/lib/pq v1.10.9
 	github.com/pquerna/otp v1.5.0
 	github.com/stripe/stripe-go/v81 v81.4.0
-	golang.org/x/crypto v0.36.0
+	golang.org/x/crypto v0.28.0
 )
 
 require (
