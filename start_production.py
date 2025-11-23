@@ -65,7 +65,7 @@ def check_dependencies():
         "docker": "docker --version",
         "docker-compose": "docker compose version",
         "go": "/usr/local/go/bin/go version",
-        "nginx": "nginx -v"
+        "nginx": "/usr/sbin/nginx -v"
     }
     
     missing = []
@@ -325,8 +325,8 @@ server {{
     link.symlink_to(nginx_path)
     
     # Tester et recharger
-    run_command("nginx -t")
-    run_command("systemctl reload nginx")
+    run_command("sudo /usr/sbin/nginx -t")
+    run_command("sudo systemctl reload nginx")
     
     print("   ✅ nginx configuré")
 
