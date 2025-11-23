@@ -1654,13 +1654,8 @@ function loadOnlyOfficeScript() {
         // strip possible trailing /web-apps/.../api.js if user provided full path
         docserverBase = cfg.replace(/\/web-apps\/apps\/api\/documents\/api\.js\/?$/i, '').replace(/\/+$/, '')
       } else {
-        // Fallback: use docs subdomain or localhost for dev
-        const isDev = import.meta.env.VITE_ENV === 'local' || import.meta.env.DEV
-        if (isDev) {
-          docserverBase = `${window.location.protocol}//${window.location.hostname}:8082`
-        } else {
-          docserverBase = 'https://docs.office1789.com'
-        }
+        // Utiliser la config centralisée
+        docserverBase = SERVICES_CONFIG.getDocsURL()
       }
       const src = `${docserverBase}/web-apps/apps/api/documents/api.js`
 
