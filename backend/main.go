@@ -27,8 +27,6 @@ func main() {
 		"https://docs.office1789.com",    // Production OnlyOffice
 		"https://mail.office1789.com",    // Production Roundcube
 		"https://chat.office1789.com",    // Production Element
-		"capacitor://localhost",          // Capacitor mobile app
-		"http://localhost",               // Capacitor mobile app
 	}
 	config.AllowMethods = []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"}
 	config.AllowHeaders = []string{
