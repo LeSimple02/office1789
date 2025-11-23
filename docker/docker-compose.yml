@@ -1,22 +1,22 @@
 # Load all environment variables from .env file
 services:
-  # Backend API (Go) - DÉSACTIVÉ, lancé en local via startOffice1789.py
-  # backend:
-  #   build:
-  #     context: ../backend
-  #     dockerfile: Dockerfile
-  #   container_name: office1789_backend
-  #   env_file:
-  #     - ../backend/.env
-  #   ports:
-  #     - "8080:8080"
-  #   volumes:
-  #     - ../backend/uploads:/root/uploads
-  #   depends_on:
-  #     - postgres_db
-  #   restart: unless-stopped
-  #   networks:
-  #     - office_network
+  # Backend API (Go) - production en Docker
+  backend:
+    build:
+      context: ../backend
+      dockerfile: Dockerfile
+    container_name: office1789_backend
+    env_file:
+      - ../backend/.env
+    ports:
+      - "8080:8080"
+    volumes:
+      - ../backend/uploads:/root/uploads
+    depends_on:
+      - postgres_db
+    restart: unless-stopped
+    networks:
+      - office_network
 
   # Frontend (Vue.js) - Production ready avec nginx
   frontend:
@@ -233,6 +233,24 @@ services:
       - "49160-49170:49160-49170/udp"
     volumes:
       - ./coturn/turnserver.conf:/etc/coturn/turnserver.conf
+    networks:
+      - office_network
+
+  # Nginx reverse proxy (HTTP, TLS géré en frontal ou par un autre conteneur)
+  nginx:
+    image: nginx:stable-alpine
+    container_name: office1789_nginx
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx/nginx.conf/nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - backend
+      - frontend
+      - roundcube
+      - element
+      - synapse
+    restart: unless-stopped
     networks:
       - office_network
 
