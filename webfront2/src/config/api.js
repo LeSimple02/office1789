@@ -30,6 +30,13 @@ export const API_CONFIG = {
     
     // Production - si on est sur office1789.com
     if (hostname.includes('office1789.com')) {
+      // En production on ignore toute valeur locale forcée dans localStorage
+      const forced = localStorage.getItem('api_url') || ''
+      if (forced.startsWith('http://localhost')) {
+        localStorage.removeItem('api_url')
+        localStorage.removeItem('auto_api_url')
+        console.log('[API] Cleared localhost api_url in production')
+      }
       return 'https://backend.office1789.com'
     }
     

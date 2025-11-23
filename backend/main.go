@@ -4,6 +4,7 @@ import (
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	_ "github.com/lib/pq"
+	"os"
 )
 
 func welcome(c *gin.Context) {
@@ -22,8 +23,9 @@ func main() {
 		"http://localhost:8082",          // OnlyOffice DocumentServer (dev)
 		"http://localhost:5173",          // Vite dev server
 		"http://localhost:8081",          // Roundcube (dev)
+		"http://localhost:8080",          // Backend direct (dev)
 		"https://office1789.com",         // Production frontend
-		"http://office1789.com",          // Production frontend (HTTP)
+		"https://backend.office1789.com", // Production backend direct
 		"https://docs.office1789.com",    // Production OnlyOffice
 		"https://mail.office1789.com",    // Production Roundcube
 		"https://chat.office1789.com",    // Production Element
@@ -131,5 +133,7 @@ func main() {
 		admin.POST("/users/verify-contact", VerifyUserContact)
 	}
 
-	r.Run(":8080")
+	port := os.Getenv("PORT")
+	if port == "" { port = "8080" }
+	r.Run(":" + port)
 }
