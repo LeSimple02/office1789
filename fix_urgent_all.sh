@@ -88,28 +88,19 @@ echo "Redémarrage postgres_synapse..."
 docker compose restart postgres_synapse
 sleep 10
 
-# Créer utilisateur et base
-echo "Création utilisateur et base..."
-docker compose exec -T postgres_synapse psql -U postgres <<EOF
--- Supprimer et recréer proprement
+# Le container PostgreSQL est créé avec POSTGRES_USER=${SYNAPSE_DB_USER}
+# Donc le superuser est directement synapse_user, pas postgres
+echo "Création base avec superuser $SYNAPSE_DB_USER..."
+docker compose exec -T postgres_synapse psql -U "$SYNAPSE_DB_USER" <<EOF
+-- Supprimer et recréer la base proprement
 DROP DATABASE IF EXISTS $SYNAPSE_DB_NAME;
-DROP USER IF EXISTS $SYNAPSE_DB_USER;
-
--- Créer utilisateur
-CREATE USER $SYNAPSE_DB_USER WITH PASSWORD '$SYNAPSE_DB_PASSWORD';
-
--- Créer base avec bon owner
 CREATE DATABASE $SYNAPSE_DB_NAME 
-  OWNER $SYNAPSE_DB_USER 
   ENCODING 'UTF8' 
   LC_COLLATE 'C' 
   LC_CTYPE 'C' 
   TEMPLATE template0;
 
--- Accorder tous les privilèges
-GRANT ALL PRIVILEGES ON DATABASE $SYNAPSE_DB_NAME TO $SYNAPSE_DB_USER;
-
--- Se connecter à la base pour créer l'extension
+-- Se connecter à la base
 \c $SYNAPSE_DB_NAME
 ALTER SCHEMA public OWNER TO $SYNAPSE_DB_USER;
 GRANT ALL ON SCHEMA public TO $SYNAPSE_DB_USER;
