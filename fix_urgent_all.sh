@@ -70,11 +70,13 @@ echo ""
 # ============================================
 echo "🗄️  4. Réparation base PostgreSQL Synapse..."
 
-# Charger les variables
-source .env
+# Charger les variables PROPREMENT (éviter source .env qui peut casser avec caractères spéciaux)
+SYNAPSE_DB_USER=$(grep "^SYNAPSE_DB_USER=" .env | cut -d= -f2)
+SYNAPSE_DB_PASSWORD=$(grep "^SYNAPSE_DB_PASSWORD=" .env | cut -d= -f2)
+SYNAPSE_DB_NAME=$(grep "^SYNAPSE_DB_NAME=" .env | cut -d= -f2)
 
+# Valeurs par défaut si vide
 SYNAPSE_DB_USER=${SYNAPSE_DB_USER:-synapse_user}
-SYNAPSE_DB_PASSWORD=${SYNAPSE_DB_PASSWORD}
 SYNAPSE_DB_NAME=${SYNAPSE_DB_NAME:-synapse}
 
 echo "Configuration:"
