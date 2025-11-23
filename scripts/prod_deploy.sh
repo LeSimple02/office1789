@@ -22,7 +22,7 @@ cd "$DOCKER_DIR"
 echo "🧩 Vérification .env Docker..."
 if [ ! -f ".env" ]; then
   if [ -f ".env.example" ]; then
-    echo "🔐 Génération des mots de passe sécurisés..."
+    echo "🔐 Génération des mots de passe et URLs..."
     
     # Fonction pour générer un mot de passe aléatoire
     gen_pass() {
@@ -31,6 +31,8 @@ if [ ! -f ".env" ]; then
     
     # Copier le template et remplacer les placeholders
     cp .env.example .env
+    
+    # Générer les mots de passe
     sed -i "s/CHANGE_ME_MAIN_DB_PASSWORD/$(gen_pass)/g" .env
     sed -i "s/CHANGE_ME_ROUNDCUBE_DB_PASSWORD/$(gen_pass)/g" .env
     sed -i "s/CHANGE_ME_SYNapse_DB_PASSWORD/$(gen_pass)/g" .env
@@ -39,7 +41,19 @@ if [ ! -f ".env" ]; then
     sed -i "s/CHANGE_ME_MATRIX_ADMIN_TOKEN/$(gen_pass)/g" .env
     sed -i "s/CHANGE_ME_MAIL_ADMIN_PASSWORD/$(gen_pass)/g" .env
     
-    echo "✅ .env créé avec mots de passe générés automatiquement"
+    # Ajouter les URLs des services
+    cat >> .env << 'ENVURLS'
+
+# Service URLs
+DOMAIN_BASE=office1789.com
+BACKEND_URL=https://backend.office1789.com
+FRONTEND_URL=https://office1789.com
+MAIL_URL=https://mail.office1789.com
+CHAT_URL=https://chat.office1789.com
+DOCS_URL=https://docs.office1789.com
+ENVURLS
+    
+    echo "✅ .env créé avec mots de passe et URLs générés"
   else
     echo "❌ .env manquant et pas de .env.example"
     exit 1
