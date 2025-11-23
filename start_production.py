@@ -40,10 +40,12 @@ def run_command(cmd, cwd=None, check=True):
 
 def check_root():
     """Vérifie si le script est exécuté en root."""
-    if os.geteuid() != 0:
-        print("❌ Ce script doit être exécuté avec sudo!")
-        print("   Usage: sudo python3 start_production.py")
-        sys.exit(1)
+    # Ne plus exiger root - on utilisera sudo uniquement quand nécessaire
+    if os.geteuid() == 0:
+        print("⚠️  Attention: Script exécuté en root")
+        print("   Les commandes npm/node utiliseront l'environnement root")
+    else:
+        print("✓ Script exécuté en utilisateur normal (recommandé)")
 
 def load_config():
     """Charge config.json."""
@@ -62,8 +64,6 @@ def check_dependencies():
     deps = {
         "docker": "docker --version",
         "docker-compose": "docker compose version",
-        "node": "node --version",
-        "npm": "npm --version",
         "go": "/usr/local/go/bin/go version",
         "nginx": "nginx -v"
     }
@@ -77,6 +77,31 @@ def check_dependencies():
         else:
             print(f"   ✅ {name}")
     
+    # Vérification spéciale pour Node.js (version minimum requise: 18)
+    node_result = run_command("node --version", check=False)
+    if node_result.returncode == 0:
+        node_version = node_result.stdout.strip()
+        # Extraire le numéro de version majeure (ex: v20.11.0 -> 20)
+        version_match = node_version.replace('v', '').split('.')[0]
+        try:
+            major_version = int(version_match)
+            if major_version >= 18:
+                print(f"   ✅ node ({node_version})")
+            else:
+                print(f"   ❌ node ({node_version}) - Version trop ancienne, >=18 requis")
+                print("\n🔄 Installation de Node.js 20 LTS...")
+                run_command("curl -fsSL https://deb.nodesource.com/setup_20.x | bash -")
+                run_command("apt install -y nodejs")
+                print("   ✅ Node.js 20 installé")
+        except:
+            missing.append("node")
+    else:
+        print(f"   ❌ node non installé")
+        print("\n🔄 Installation de Node.js 20 LTS...")
+        run_command("curl -fsSL https://deb.nodesource.com/setup_20.x | bash -")
+        run_command("apt install -y nodejs")
+        print("   ✅ Node.js 20 installé")
+    
     if missing:
         print(f"\n❌ Dépendances manquantes: {', '.join(missing)}")
         print("   Installer avec: sudo bash install_linux.sh")
@@ -89,8 +114,8 @@ def setup_permissions():
     # Synapse
     synapse_path = ROOT / "docker" / "synapse" / "conf"
     if synapse_path.exists():
-        run_command(f"chown -R 991:991 {synapse_path}")
-        run_command(f"chmod -R 755 {synapse_path}")
+        run_command(f"sudo chown -R 991:991 {synapse_path}")
+        run_command(f"sudo chmod -R 755 {synapse_path}")
         print("   ✅ Synapse")
     
     # Mailserver SSL
@@ -197,12 +222,12 @@ WantedBy=multi-user.target
     service_path = Path("/etc/systemd/system/office1789-backend.service")
     service_path.write_text(service_content)
     
-    run_command("systemctl daemon-reload")
-    run_command("systemctl enable office1789-backend")
-    run_command("systemctl start office1789-backend")
+    run_command("sudo systemctl daemon-reload")
+    run_command("sudo systemctl enable office1789-backend")
+    run_command("sudo systemctl start office1789-backend")
     
     print("   ✅ Backend démarré (systemd)")
-    run_command("systemctl status office1789-backend --no-pager")
+    run_command("sudo systemctl status office1789-backend --no-pager")
 
 def configure_nginx():
     """Configure nginx reverse proxy."""
@@ -319,10 +344,10 @@ def configure_firewall():
     ]
     
     for port, desc in ports:
-        run_command(f"ufw allow {port}/tcp", check=False)
+        run_command(f"sudo ufw allow {port}/tcp", check=False)
         print(f"   ✅ {port}/tcp ({desc})")
     
-    run_command("ufw --force enable")
+    run_command("sudo ufw --force enable")
     print("   ✅ Firewall actif")
 
 def print_status():
