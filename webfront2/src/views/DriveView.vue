@@ -1647,14 +1647,20 @@ function loadOnlyOfficeScript() {
 
   _onlyofficeScriptLoading = new Promise((resolve, reject) => {
     try {
-      // determine base: either env VITE_API_ONLYOFFICE (can be full api.js URL or base) or fallback to localhost:8082
-      let cfg = (import.meta.env.VITE_API_ONLYOFFICE || '').trim()
+      // Determine OnlyOffice base URL from environment or fallback
+      let cfg = (import.meta.env.VITE_ONLYOFFICE_URL || '').trim()
       let docserverBase = ''
       if (cfg) {
         // strip possible trailing /web-apps/.../api.js if user provided full path
         docserverBase = cfg.replace(/\/web-apps\/apps\/api\/documents\/api\.js\/?$/i, '').replace(/\/+$/, '')
       } else {
-        docserverBase = `${window.location.protocol}//${window.location.hostname}:8082`
+        // Fallback: use docs subdomain or localhost for dev
+        const isDev = import.meta.env.VITE_ENV === 'local' || import.meta.env.DEV
+        if (isDev) {
+          docserverBase = `${window.location.protocol}//${window.location.hostname}:8082`
+        } else {
+          docserverBase = 'https://docs.office1789.com'
+        }
       }
       const src = `${docserverBase}/web-apps/apps/api/documents/api.js`
 

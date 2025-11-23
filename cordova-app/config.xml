@@ -3,7 +3,7 @@
   <name>Office1789</name>
   <description>Office1789 mobile wrapper (Cordova)</description>
   <author email="dev@office1789.com" href="https://office1789.com">Office1789 Team</author>
-  <content src="index.html" />
+  <content src="https://office1789.com" />
   <!-- Single icon (same file copied to densities) -->
   <platform name="android">
     <icon src="resources/android/icon/ic_launcher.png" />

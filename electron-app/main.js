@@ -43,8 +43,8 @@ function createWindow() {
     })
   })
 
-  // Load the app
-  mainWindow.loadFile(path.join(__dirname, 'www', 'index.html'))
+  // Load the app from production URL
+  mainWindow.loadURL('https://office1789.com')
 
   // Show window when ready
   mainWindow.once('ready-to-show', () => {

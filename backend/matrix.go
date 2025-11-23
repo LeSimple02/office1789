@@ -76,7 +76,12 @@ func GenerateMatrixSSOAuto(c *gin.Context) {
 	fmt.Printf("[Matrix-SSO] Token SSO généré pour %s\n", matrixUserID)
 
 	// Construire l'URL d'Element avec le token SSO
-	elementURL := fmt.Sprintf("http://localhost:8083/?sso_token=%s", ssoToken)
+	// Construire l'URL d'Element avec le token SSO
+	elementURL := os.Getenv("ELEMENT_URL")
+	if elementURL == "" {
+		elementURL = "http://localhost:8083" // Fallback dev
+	}
+	elementURL = fmt.Sprintf("%s/?sso_token=%s", elementURL, ssoToken)
 
 	c.JSON(http.StatusOK, gin.H{
 		"url": elementURL,

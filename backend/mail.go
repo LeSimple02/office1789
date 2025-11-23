@@ -174,7 +174,11 @@ func GenerateMailSSOAuto(c *gin.Context) {
 	fmt.Printf("[SSO-Auto] Token SSO généré avec authentification\n")
 
 	// Construire l'URL de Roundcube avec le token SSO
-	roundcubeURL := "http://localhost:8081/?sso_token=" + ssoToken
+	roundcubeURL := os.Getenv("ROUNDCUBE_URL")
+	if roundcubeURL == "" {
+		roundcubeURL = "http://localhost:8081" // Fallback dev
+	}
+	roundcubeURL += "/?sso_token=" + ssoToken
 
 	c.JSON(http.StatusOK, MailAuthResponse{
 		URL: roundcubeURL,
