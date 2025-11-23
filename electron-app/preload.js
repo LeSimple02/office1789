@@ -10,3 +10,9 @@ contextBridge.exposeInMainWorld('electron', {
     electron: process.versions.electron
   }
 })
+
+// Expose APIs for opening Mail and Chat windows
+contextBridge.exposeInMainWorld('electronAPI', {
+  openMailWindow: (url) => ipcRenderer.send('open-mail-window', url),
+  openChatWindow: (url) => ipcRenderer.send('open-chat-window', url)
+})

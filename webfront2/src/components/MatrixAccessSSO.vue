@@ -94,7 +94,16 @@ const openMatrix = async () => {
       const data = await response.json()
       console.log('[Matrix SSO] ✅ Token généré - Ouverture Element')
       
-      window.open(data.url, '_blank', 'noopener,noreferrer')
+      // Détecter si on est dans Electron
+      const isElectron = window.navigator.userAgent.toLowerCase().includes('electron')
+      
+      if (isElectron && window.electronAPI?.openChatWindow) {
+        // Dans Electron: ouvrir une nouvelle fenêtre interne
+        window.electronAPI.openChatWindow(data.url)
+      } else {
+        // Dans le navigateur: ouvrir un nouvel onglet
+        window.open(data.url, '_blank', 'noopener,noreferrer')
+      }
     } else {
       const data = await response.json()
       console.log(`[Matrix SSO] ❌ Erreur (${response.status}): ${data.error}`)

@@ -91,7 +91,17 @@ const openMail = async () => {
     if (response.ok) {
       const data = await response.json()
       console.log('[Mail SSO] ✅ Succès - Ouverture de Roundcube')
-      window.open(data.url, '_blank', 'noopener,noreferrer')
+      
+      // Détecter si on est dans Electron
+      const isElectron = window.navigator.userAgent.toLowerCase().includes('electron')
+      
+      if (isElectron && window.electronAPI?.openMailWindow) {
+        // Dans Electron: ouvrir une nouvelle fenêtre interne
+        window.electronAPI.openMailWindow(data.url)
+      } else {
+        // Dans le navigateur: ouvrir un nouvel onglet
+        window.open(data.url, '_blank', 'noopener,noreferrer')
+      }
     } else {
       const data = await response.json()
       console.log(`[Mail SSO] ❌ Erreur (${response.status}): ${data.error}`)

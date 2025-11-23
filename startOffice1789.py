@@ -118,11 +118,27 @@ def start_docker_containers():
             "onlyoffice"
         ]
         
-        # Lancer docker compose up pour créer/démarrer tous les conteneurs
-        print(f"   📦 Lancement de docker compose (cela peut prendre quelques minutes)...")
+        # Lancer docker-compose up pour créer/démarrer tous les conteneurs
+        # Essayer docker compose (v2) puis docker-compose (v1) en fallback
+        print(f"   📦 Lancement de docker-compose (cela peut prendre quelques minutes)...")
+        
+        # Détecter quelle commande utiliser
+        compose_cmd = None
+        try:
+            subprocess.run(['docker', 'compose', 'version'], capture_output=True, check=True)
+            compose_cmd = ['docker', 'compose', 'up', '-d', '--build']
+        except (subprocess.CalledProcessError, FileNotFoundError):
+            try:
+                subprocess.run(['docker-compose', '--version'], capture_output=True, check=True)
+                compose_cmd = ['docker-compose', 'up', '-d', '--build']
+            except (subprocess.CalledProcessError, FileNotFoundError):
+                print("   ❌ Ni 'docker compose' ni 'docker-compose' trouvé!")
+                print("   💡 Installez: sudo apt install docker-compose")
+                return False
+        
         try:
             process = subprocess.Popen(
-                ['docker', 'compose', 'up', '-d', '--build'],
+                compose_cmd,
                 cwd=docker_dir,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT,
@@ -160,9 +176,6 @@ def start_docker_containers():
                 print("   ✅ Conteneurs créés avec succès!")
             else:
                 print(f"   ⚠️  Quelques warnings (c'est normal lors de la première création)")
-        except FileNotFoundError:
-            print("   ❌ 'docker compose' introuvable. Installez Docker Desktop.")
-            return False
         except Exception as e:
             print(f"   ⚠️  Erreur: {e}")
         

@@ -1,7 +1,9 @@
-const { app, BrowserWindow, session } = require('electron')
+const { app, BrowserWindow, session, ipcMain } = require('electron')
 const path = require('path')
 
 let mainWindow = null
+let mailWindow = null
+let chatWindow = null
 
 function createWindow() {
   mainWindow = new BrowserWindow({
@@ -28,7 +30,13 @@ function createWindow() {
     callback({
       responseHeaders: {
         ...details.responseHeaders,
-        'Content-Security-Policy': ["default-src 'self' 'unsafe-inline' 'unsafe-eval' data: blob:"]
+        'Content-Security-Policy': [
+          "default-src 'self' 'unsafe-inline' 'unsafe-eval' data: blob:; " +
+          "connect-src 'self' http://localhost:* https://*.office1789.com; " +
+          "img-src 'self' data: blob: http://localhost:* https://*.office1789.com; " +
+          "script-src 'self' 'unsafe-inline' 'unsafe-eval'; " +
+          "style-src 'self' 'unsafe-inline';"
+        ]
       }
     })
   })
@@ -76,3 +84,60 @@ app.on('window-all-closed', () => {
 
 // Handle app protocol for better security
 app.setAsDefaultProtocolClient('office1789')
+
+// IPC handlers for opening Mail and Chat windows
+ipcMain.on('open-mail-window', (event, url) => {
+  if (mailWindow && !mailWindow.isDestroyed()) {
+    mailWindow.focus()
+    mailWindow.loadURL(url)
+    return
+  }
+
+  mailWindow = new BrowserWindow({
+    width: 1200,
+    height: 800,
+    title: 'Office1789 - Mail',
+    webPreferences: {
+      nodeIntegration: false,
+      contextIsolation: true,
+      webSecurity: true,
+      partition: 'persist:office1789'
+    },
+    parent: mainWindow,
+    modal: false
+  })
+
+  mailWindow.loadURL(url)
+  
+  mailWindow.on('closed', () => {
+    mailWindow = null
+  })
+})
+
+ipcMain.on('open-chat-window', (event, url) => {
+  if (chatWindow && !chatWindow.isDestroyed()) {
+    chatWindow.focus()
+    chatWindow.loadURL(url)
+    return
+  }
+
+  chatWindow = new BrowserWindow({
+    width: 1200,
+    height: 800,
+    title: 'Office1789 - Chat',
+    webPreferences: {
+      nodeIntegration: false,
+      contextIsolation: true,
+      webSecurity: true,
+      partition: 'persist:office1789'
+    },
+    parent: mainWindow,
+    modal: false
+  })
+
+  chatWindow.loadURL(url)
+  
+  chatWindow.on('closed', () => {
+    chatWindow = null
+  })
+})

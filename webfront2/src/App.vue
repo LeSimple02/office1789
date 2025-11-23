@@ -438,7 +438,28 @@ select {
   transition: all 0.3s ease;
   cursor: pointer;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  color-scheme: light;
 }
+
+.dark select {
+  color-scheme: dark;
+}
+
+.dark select {
+  color-scheme: dark;
+}
+
+/* Style des options pour qu'elles s'adaptent au thème du système */
+select option {
+  background-color: white;
+  color: black;
+}
+
+.dark select option {
+  background-color: #2d2d2d;
+  color: white;
+}
+
 select:hover {
   transform: translateY(-2px);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
