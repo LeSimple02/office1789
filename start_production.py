@@ -64,7 +64,7 @@ def check_dependencies():
         "docker-compose": "docker compose version",
         "node": "node --version",
         "npm": "npm --version",
-        "go": "go version",
+        "go": "/usr/local/go/bin/go version",
         "nginx": "nginx -v"
     }
     
@@ -121,11 +121,16 @@ def install_backend_deps():
         print("   ❌ go.mod introuvable!")
         return
     
-    run_command("go mod download", cwd=backend_path)
+    # Utiliser le chemin absolu de Go
+    go_cmd = "/usr/local/go/bin/go"
+    if not Path(go_cmd).exists():
+        go_cmd = "go"  # Fallback
+    
+    run_command(f"{go_cmd} mod download", cwd=backend_path)
     print("   ✅ Dépendances Go installées")
 
 def install_frontend_deps():
-    """Installe les dépendances npm."""
+    """Installe les dépendances npm et build le frontend."""
     print("\n📦 Installation dépendances Frontend (npm)...")
     frontend_path = ROOT / "webfront2"
     
@@ -135,6 +140,17 @@ def install_frontend_deps():
     
     run_command("npm install", cwd=frontend_path)
     print("   ✅ Dépendances npm installées")
+    
+    # Build production Vue.js
+    print("\n🏗️  Build production Vue.js...")
+    run_command("npm run build", cwd=frontend_path)
+    
+    dist_path = frontend_path / "dist"
+    if dist_path.exists():
+        file_count = len(list(dist_path.glob("**/*")))
+        print(f"   ✅ Build terminé: {file_count} fichiers dans dist/")
+    else:
+        print("   ⚠️  Dossier dist/ non trouvé après build")
 
 def start_docker_services():
     """Démarre les services Docker."""
@@ -153,8 +169,13 @@ def start_backend():
     print("\n🚀 Démarrage Backend Go...")
     backend_path = ROOT / "backend"
     
+    # Utiliser le chemin absolu de Go
+    go_cmd = "/usr/local/go/bin/go"
+    if not Path(go_cmd).exists():
+        go_cmd = "go"  # Fallback
+    
     # Build
-    run_command("go build -o office1789-backend", cwd=backend_path)
+    run_command(f"{go_cmd} build -o office1789-backend", cwd=backend_path)
     
     # Créer service systemd
     service_content = f"""[Unit]
