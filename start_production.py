@@ -341,6 +341,13 @@ def configure_firewall():
     """Configure le firewall ufw."""
     print("\n🔥 Configuration firewall...")
     
+    # Vérifier si ufw est installé
+    check_ufw = run_command("which ufw", check=False)
+    if check_ufw.returncode != 0:
+        print("   ⚠️  ufw non installé, installation...")
+        run_command("sudo apt update", check=False)
+        run_command("sudo apt install -y ufw")
+    
     ports = [
         ("22", "SSH"),
         ("80", "HTTP"),
@@ -354,8 +361,8 @@ def configure_firewall():
         run_command(f"sudo ufw allow {port}/tcp", check=False)
         print(f"   ✅ {port}/tcp ({desc})")
     
-    run_command("sudo ufw --force enable")
-    print("   ✅ Firewall actif")
+    run_command("sudo ufw --force enable", check=False)
+    print("   ✅ Firewall configuré")
 
 def print_status():
     """Affiche l'état final."""
