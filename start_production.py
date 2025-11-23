@@ -151,6 +151,7 @@ def install_backend_deps():
     if not Path(go_cmd).exists():
         go_cmd = "go"  # Fallback
     
+    run_command(f"{go_cmd} mod tidy", cwd=backend_path)
     run_command(f"{go_cmd} mod download", cwd=backend_path)
     print("   ✅ Dépendances Go installées")
 
