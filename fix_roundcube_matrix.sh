@@ -30,32 +30,31 @@ echo "🔧 Étape 2: Réparation PostgreSQL Synapse..."
 echo "Arrêt de Synapse..."
 docker compose stop synapse
 
-# Récupérer le mot de passe de la base
+# Récupérer les variables de la base
 POSTGRES_PASSWORD=$(grep "^POSTGRES_PASSWORD=" .env | cut -d= -f2)
-SYNAPSE_POSTGRES_PASSWORD=$(grep "^SYNAPSE_POSTGRES_PASSWORD=" .env | cut -d= -f2)
+SYNAPSE_DB_USER=$(grep "^SYNAPSE_DB_USER=" .env | cut -d= -f2 || echo "synapse")
+SYNAPSE_DB_PASSWORD=$(grep "^SYNAPSE_DB_PASSWORD=" .env | cut -d= -f2)
+SYNAPSE_DB_NAME=$(grep "^SYNAPSE_DB_NAME=" .env | cut -d= -f2 || echo "synapse")
 
 echo "POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:0:3}***"
-echo "SYNAPSE_POSTGRES_PASSWORD: ${SYNAPSE_POSTGRES_PASSWORD:0:3}***"
-
-# Vérifier si les mots de passe correspondent
-if [ "$POSTGRES_PASSWORD" != "$SYNAPSE_POSTGRES_PASSWORD" ]; then
-    echo "⚠️  Les mots de passe ne correspondent pas!"
-    echo "Mise à jour de SYNAPSE_POSTGRES_PASSWORD..."
-    sed -i "s/^SYNAPSE_POSTGRES_PASSWORD=.*/SYNAPSE_POSTGRES_PASSWORD=$POSTGRES_PASSWORD/" .env
-    echo "✅ Mot de passe mis à jour"
-fi
+echo "SYNAPSE_DB_USER: $SYNAPSE_DB_USER"
+echo "SYNAPSE_DB_PASSWORD: ${SYNAPSE_DB_PASSWORD:0:3}***"
+echo "SYNAPSE_DB_NAME: $SYNAPSE_DB_NAME"
 
 # Redémarrer PostgreSQL Synapse
 echo "Redémarrage de postgres_synapse..."
 docker compose restart postgres_synapse
 sleep 10
 
-# Vérifier la connexion PostgreSQL
+# Vérifier la connexion PostgreSQL avec le bon utilisateur
 echo "Test de connexion PostgreSQL..."
-docker compose exec -T postgres_synapse psql -U synapse -d synapse -c "SELECT version();" || {
-    echo "❌ Échec de connexion PostgreSQL"
-    echo "Tentative de réinitialisation du mot de passe..."
-    docker compose exec -T postgres_synapse psql -U postgres -d synapse -c "ALTER USER synapse WITH PASSWORD '$POSTGRES_PASSWORD';"
+docker compose exec -T postgres_synapse psql -U "$SYNAPSE_DB_USER" -d "$SYNAPSE_DB_NAME" -c "SELECT version();" 2>&1 | head -5 || {
+    echo "⚠️  Échec de connexion avec $SYNAPSE_DB_USER"
+    echo "Tentative de création de l'utilisateur et de la base..."
+    docker compose exec -T postgres_synapse psql -U postgres -c "CREATE USER $SYNAPSE_DB_USER WITH PASSWORD '$SYNAPSE_DB_PASSWORD';" 2>/dev/null || echo "Utilisateur existe déjà"
+    docker compose exec -T postgres_synapse psql -U postgres -c "CREATE DATABASE $SYNAPSE_DB_NAME OWNER $SYNAPSE_DB_USER;" 2>/dev/null || echo "Base existe déjà"
+    docker compose exec -T postgres_synapse psql -U postgres -c "GRANT ALL PRIVILEGES ON DATABASE $SYNAPSE_DB_NAME TO $SYNAPSE_DB_USER;" 2>/dev/null
+    echo "✅ Utilisateur et base configurés"
 }
 
 # Étape 3: Configuration du homeserver Synapse
@@ -84,9 +83,9 @@ listeners:
 database:
   name: psycopg2
   args:
-    user: synapse
-    password: ${POSTGRES_PASSWORD}
-    database: synapse
+    user: ${SYNAPSE_DB_USER}
+    password: ${SYNAPSE_DB_PASSWORD}
+    database: ${SYNAPSE_DB_NAME}
     host: postgres_synapse
     cp_min: 5
     cp_max: 10
