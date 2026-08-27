@@ -1,0 +1,223 @@
+services:
+  # ====================================
+  # PostgreSQL (DB principale)
+  # ====================================
+  postgres_db:
+    image: postgres:16
+    container_name: postgres_db
+    env_file:
+      - .env
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    ports:
+      - "5432:5432"
+    volumes:
+      - docker_pgdata:/var/lib/postgresql/data
+      - ../backend/office1789-db/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    networks:
+      - office_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # ====================================
+  # Backend Go
+  # ====================================
+  backend:
+    build:
+      context: ../backend
+      dockerfile: Dockerfile
+    container_name: backend
+    env_file:
+      - .env
+    depends_on:
+      postgres_db:
+        condition: service_healthy
+    ports:
+      - "8080:8080"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    networks:
+      - office_network
+
+  # ====================================
+  # Frontend Vue.js (Nginx)
+  # ====================================
+  frontend:
+    build:
+      context: ../webfront2
+      dockerfile: Dockerfile
+    container_name: frontend
+    ports:
+      - "5173:80"
+    networks:
+      - office_network
+
+  # ====================================
+  # PostgreSQL Roundcube
+  # ====================================
+  postgres_roundcube:
+    image: postgres:16
+    container_name: postgres_roundcube
+    env_file:
+      - .env
+    environment:
+      POSTGRES_DB: ${ROUNDCUBE_DB_NAME}
+      POSTGRES_USER: ${ROUNDCUBE_DB_USER}
+      POSTGRES_PASSWORD: ${ROUNDCUBE_DB_PASSWORD}
+    volumes:
+      - docker_roundcube_db:/var/lib/postgresql/data
+    networks:
+      - office_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${ROUNDCUBE_DB_USER}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  roundcube:
+    build:
+      context: ./DockerfileRC
+      dockerfile: Dockerfile
+    container_name: roundcube
+    env_file:
+      - .env
+    depends_on:
+      postgres_roundcube:
+        condition: service_healthy
+      mailserver:
+        condition: service_started
+    ports:
+      - "8081:80"
+    networks:
+      - office_network
+
+  # ====================================
+  # Mailserver (DMS)
+  # ====================================
+  mailserver:
+    image: mailserver/docker-mailserver:latest
+    container_name: mailserver
+    env_file:
+      - .env
+    hostname: mail.office1789.com
+    domainname: office1789.com
+    ports:
+      - "25:25"
+      - "587:587"
+      - "993:993"
+      - "143:143"
+    volumes:
+      - docker_maildata:/var/mail
+      - docker_mailstate:/var/mail-state
+      - docker_maillogs:/var/log/mail
+      - ./config:/tmp/docker-mailserver/
+    networks:
+      - office_network
+
+  # ====================================
+  # PostgreSQL Synapse
+  # ====================================
+  postgres_synapse:
+    image: postgres:16
+    container_name: postgres_synapse
+    env_file:
+      - .env
+    environment:
+      POSTGRES_DB: ${SYNAPSE_DB_NAME}
+      POSTGRES_USER: ${SYNAPSE_DB_USER}
+      POSTGRES_PASSWORD: ${SYNAPSE_DB_PASSWORD}
+    volumes:
+      - docker_synapse_db:/var/lib/postgresql/data
+    networks:
+      - office_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${SYNAPSE_DB_USER}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  synapse:
+    image: matrixdotorg/synapse:latest
+    container_name: synapse
+    env_file:
+      - .env
+    depends_on:
+      postgres_synapse:
+        condition: service_healthy
+    ports:
+      - "8008:8008"
+    volumes:
+      - ./synapse/conf:/data
+      - docker_synapse_data:/data/media_store
+    networks:
+      - office_network
+
+  # TURN
+  coturn:
+    image: instrumentisto/coturn:latest
+    container_name: coturn
+    ports:
+      - "3478:3478/tcp"
+      - "3478:3478/udp"
+    volumes:
+      - ./coturn/turnserver.conf:/etc/coturn/turnserver.conf
+    networks:
+      - office_network
+
+  # Element Web
+  element:
+    build:
+      context: ./DockerfileElement
+      dockerfile: Dockerfile
+    container_name: element
+    depends_on:
+      synapse:
+        condition: service_started
+    ports:
+      - "8083:80"
+    networks:
+      - office_network
+
+
+
+
+
+# ====================================
+# OnlyOffice DocumentServer
+# ====================================
+  onlyoffice:
+    image: onlyoffice/documentserver:latest
+    container_name: onlyoffice
+    ports:
+      - "8082:80"
+    environment:
+      - JWT_ENABLED=false
+      - ALLOW_PRIVATE_IP_ADDRESS=true
+      - ALLOW_META_IP_ADDRESS=true
+    restart: always
+    networks:
+      - office_network
+
+# ====================================
+# Réseau
+# ====================================
+networks:
+  office_network:
+    driver: bridge
+
+# ====================================
+# Volumes
+# ====================================
+volumes:
+  docker_pgdata:
+  docker_roundcube_db:
+  docker_synapse_db:
+  docker_maildata:
+  docker_mailstate:
+  docker_maillogs:
+  docker_synapse_data:

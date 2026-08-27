@@ -1,0 +1,430 @@
+package main
+
+import (
+	"bytes"
+	crand "crypto/rand"
+	"crypto/sha1"
+	"encoding/json"
+	"fmt"
+	"math/big"
+	mrand "math/rand"
+	"net/http"
+	"net/smtp"
+	"os"
+	"strings"
+	"time"
+
+	"github.com/gin-gonic/gin"
+)
+
+// SendVerificationCodeRequest représente une demande d'envoi de code
+type SendVerificationCodeRequest struct {
+	Contact string `json:"contact"` // Email ou téléphone
+	Type    string `json:"type"`    // "email" ou "phone"
+}
+
+// VerifyCodeRequest représente une demande de vérification de code
+type VerifyCodeRequest struct {
+	Contact string `json:"contact"` // Email ou téléphone
+	Code    string `json:"code"`    // Code à 6 chiffres
+	Type    string `json:"type"`    // "email" ou "phone"
+}
+
+// SendVerificationCode envoie un code de vérification par email ou SMS
+func SendVerificationCode(c *gin.Context) {
+	var req SendVerificationCodeRequest
+	if err := c.BindJSON(&req); err != nil {
+		c.JSON(400, gin.H{
+			"success": false,
+			"message": "Données invalides",
+		})
+		return
+	}
+
+	// Valider le type
+	if req.Type != "email" && req.Type != "phone" {
+		c.JSON(400, gin.H{
+			"success": false,
+			"message": "Type invalide (email ou phone)",
+		})
+		return
+	}
+
+	// Vérifier que le contact n'est pas déjà utilisé par un autre utilisateur
+	var count int
+	if req.Type == "email" {
+		db.QueryRow("SELECT COUNT(*) FROM Users WHERE recovery_email=$1", req.Contact).Scan(&count)
+	} else {
+		db.QueryRow("SELECT COUNT(*) FROM Users WHERE phonenumber=$1", req.Contact).Scan(&count)
+	}
+
+	if count > 0 {
+		c.JSON(400, gin.H{
+			"success": false,
+			"message": "Ce " + map[string]string{"email": "email", "phone": "numéro"}[req.Type] + " est déjà utilisé",
+		})
+		return
+	}
+
+	// Générer un code à 6 chiffres
+	code := generateVerificationCode()
+
+	// Sauvegarder dans la DB avec expiration (10 minutes)
+	expiresAt := time.Now().Add(10 * time.Minute)
+
+	// Invalider les anciens codes pour ce contact
+	_, err := db.Exec(`
+		UPDATE verification_codes 
+		SET verified = true 
+		WHERE contact = $1 AND verified = false
+	`, req.Contact)
+
+	if err != nil {
+		fmt.Printf("Error invalidating old codes: %v\n", err)
+	}
+
+	// Créer un nouveau code
+	_, err = db.Exec(`
+		INSERT INTO verification_codes (contact, code, type, expires_at)
+		VALUES ($1, $2, $3, $4)
+	`, req.Contact, code, req.Type, expiresAt)
+
+	if err != nil {
+		fmt.Printf("Error saving verification code: %v\n", err)
+		c.JSON(500, gin.H{
+			"success": false,
+			"message": "Erreur lors de la génération du code",
+		})
+		return
+	}
+
+	// Envoyer le code
+	if req.Type == "email" {
+		err = sendVerificationEmail(req.Contact, code)
+		if err != nil {
+			fmt.Printf("Error sending verification email: %v\n", err)
+			c.JSON(500, gin.H{
+				"success": false,
+				"message": "Erreur lors de l'envoi de l'email",
+			})
+			return
+		}
+	} else {
+		// Envoyer par SMS via Twilio
+		err = sendVerificationSMS(req.Contact, code)
+		if err != nil {
+			fmt.Printf("Error sending verification SMS: %v\n", err)
+			c.JSON(500, gin.H{
+				"success": false,
+				"message": "Erreur lors de l'envoi du SMS",
+			})
+			return
+		}
+	}
+
+	c.JSON(200, gin.H{
+		"success":    true,
+		"message":    "Code de vérification envoyé. Un email vient de vous être envoyé.",
+		"expires_in": 600, // 10 minutes en secondes
+	})
+}
+
+// VerifyCode vérifie un code de vérification
+func VerifyCode(c *gin.Context) {
+	var req VerifyCodeRequest
+	if err := c.BindJSON(&req); err != nil {
+		c.JSON(400, gin.H{
+			"success": false,
+			"message": "Données invalides",
+		})
+		return
+	}
+
+	// Chercher le code dans la DB
+	var id int
+	var expiresAt time.Time
+	var verified bool
+
+	err := db.QueryRow(`
+		SELECT id, expires_at, verified
+		FROM verification_codes
+		WHERE contact = $1 AND code = $2 AND type = $3
+		ORDER BY created_at DESC
+		LIMIT 1
+	`, req.Contact, req.Code, req.Type).Scan(&id, &expiresAt, &verified)
+
+	if err != nil {
+		c.JSON(400, gin.H{
+			"success": false,
+			"message": "Code invalide",
+		})
+		return
+	}
+
+	// Vérifier si le code a déjà été utilisé
+	if verified {
+		c.JSON(400, gin.H{
+			"success": false,
+			"message": "Ce code a déjà été utilisé",
+		})
+		return
+	}
+
+	// Vérifier si le code a expiré
+	if time.Now().After(expiresAt) {
+		c.JSON(400, gin.H{
+			"success": false,
+			"message": "Ce code a expiré",
+		})
+		return
+	}
+
+	// Marquer le code comme vérifié
+	_, err = db.Exec(`
+		UPDATE verification_codes 
+		SET verified = true 
+		WHERE id = $1
+	`, id)
+
+	if err != nil {
+		fmt.Printf("Error marking code as verified: %v\n", err)
+		c.JSON(500, gin.H{
+			"success": false,
+			"message": "Erreur lors de la vérification",
+		})
+		return
+	}
+
+	c.JSON(200, gin.H{
+		"success":  true,
+		"message":  "Code vérifié avec succès",
+		"verified": true,
+		"contact":  req.Contact,
+		"type":     req.Type,
+	})
+}
+
+// CheckVerificationStatus vérifie si un contact a été vérifié récemment (dans les 30 minutes)
+func CheckVerificationStatus(contact string, contactType string) bool {
+	var count int
+	thirtyMinutesAgo := time.Now().Add(-30 * time.Minute)
+
+	err := db.QueryRow(`
+		SELECT COUNT(*) 
+		FROM verification_codes 
+		WHERE contact = $1 
+		AND type = $2 
+		AND verified = true 
+		AND created_at > $3
+	`, contact, contactType, thirtyMinutesAgo).Scan(&count)
+
+	if err != nil {
+		fmt.Printf("Error checking verification status: %v\n", err)
+		return false
+	}
+
+	return count > 0
+}
+
+// generateVerificationCode génère un code aléatoire à 6 chiffres
+func generateVerificationCode() string {
+	max := big.NewInt(1000000)
+	n, err := crand.Int(crand.Reader, max)
+	if err != nil {
+		// Fallback sur time-based si erreur
+		return fmt.Sprintf("%06d", time.Now().UnixNano()%1000000)
+	}
+	return fmt.Sprintf("%06d", n.Int64())
+}
+
+// sendVerificationEmail envoie un email avec le code de vérification
+func sendVerificationEmail(to, code string) error {
+	smtpHost := os.Getenv("SMTP_HOST")
+	if smtpHost == "" {
+		smtpHost = "mailserver" // docker-compose service name for local dev
+	}
+
+	smtpPort := os.Getenv("SMTP_PORT")
+	if smtpPort == "" {
+		smtpPort = "25"
+	}
+
+	from := os.Getenv("SMTP_FROM")
+	if from == "" {
+		from = "noreply@office1789.com"
+	}
+
+	smtpUser := os.Getenv("SMTP_USERNAME")
+	smtpPass := os.Getenv("SMTP_PASSWORD")
+	if smtpUser == "" && smtpPass == "" {
+		smtpUser = os.Getenv("MAIL_ADMIN_USER")
+		smtpPass = os.Getenv("MAIL_ADMIN_PASSWORD")
+	}
+
+	var auth smtp.Auth
+	if smtpUser != "" && smtpPass != "" {
+		// Allow auth even when STARTTLS is not advertised (internal network)
+		auth = &plainAuthInsecure{identity: "", username: smtpUser, password: smtpPass, host: smtpHost}
+	}
+
+	subject := "Code de vérification Office1789"
+	body := fmt.Sprintf(`
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <style>
+        body { font-family: 'Segoe UI', Arial, sans-serif; background-color: #f5f5f7; margin: 0; padding: 20px; }
+        .container { max-width: 600px; margin: 0 auto; background: white; border-radius: 16px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); overflow: hidden; }
+        .header { background: linear-gradient(135deg, #667eea 0%%, #764ba2 100%%); color: white; padding: 40px 20px; text-align: center; }
+        .header h1 { margin: 0; font-size: 28px; font-weight: 700; }
+        .content { padding: 40px 30px; text-align: center; }
+        .content p { color: #333; line-height: 1.6; margin: 16px 0; }
+        .code-box { background: #f0f0f5; border: 3px dashed #667eea; border-radius: 12px; padding: 30px; margin: 30px 0; }
+        .code { font-size: 48px; font-weight: bold; letter-spacing: 10px; color: #667eea; font-family: 'Courier New', monospace; }
+        .footer { background: #f8f9fa; padding: 20px; text-align: center; color: #666; font-size: 12px; }
+        .warning { background: #fff3cd; border-left: 4px solid #ffc107; padding: 12px; margin: 20px 0; border-radius: 4px; color: #856404; text-align: left; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔐 Office1789</h1>
+            <p>Code de Vérification</p>
+        </div>
+        <div class="content">
+            <p>Voici votre code de vérification :</p>
+            <div class="code-box">
+                <div class="code">%s</div>
+            </div>
+            <p>Entrez ce code dans l'application pour confirmer votre adresse email.</p>
+            <div class="warning">
+                <strong>⚠️ Important :</strong> Ce code expire dans 10 minutes et ne peut être utilisé qu'une seule fois.
+            </div>
+            <p>Si vous n'avez pas demandé ce code, ignorez cet email.</p>
+        </div>
+        <div class="footer">
+            <p>© 2025 Office1789 - Solution collaborative française</p>
+            <p>Cet email a été envoyé automatiquement, merci de ne pas y répondre.</p>
+        </div>
+    </div>
+</body>
+</html>
+`, code)
+
+	message := fmt.Sprintf("From: Office1789 <%s>\r\n", from)
+	message += fmt.Sprintf("To: %s\r\n", to)
+	message += fmt.Sprintf("Subject: %s\r\n", subject)
+	message += fmt.Sprintf("Date: %s\r\n", time.Now().Format(time.RFC1123Z))
+	message += fmt.Sprintf("Message-ID: <%d-%d@office1789.com>\r\n", time.Now().UnixNano(), mrand.Int63())
+	message += "MIME-Version: 1.0\r\n"
+	message += "Content-Type: text/html; charset=UTF-8\r\n"
+	message += "\r\n"
+	message += body
+
+	err := sendSMTP(smtpHost, smtpPort, from, []string{to}, []byte(message), auth)
+	if err != nil && (strings.Contains(err.Error(), "doesn't support AUTH") || strings.Contains(err.Error(), "unencrypted")) {
+		// Fall back to no-auth/plain when server does not advertise AUTH or refuses STARTTLS
+		err = sendSMTP(smtpHost, smtpPort, from, []string{to}, []byte(message), nil)
+	}
+
+	return err
+}
+
+// sendVerificationSMS envoie un SMS avec le code de vérification via OVH SMS API
+func sendVerificationSMS(to, code string) error {
+	// Récupérer les credentials OVH depuis les variables d'environnement
+	applicationKey := os.Getenv("OVH_SMS_APPLICATION_KEY")
+	applicationSecret := os.Getenv("OVH_SMS_APPLICATION_SECRET")
+	consumerKey := os.Getenv("OVH_SMS_CONSUMER_KEY")
+	serviceName := os.Getenv("OVH_SMS_SERVICE_NAME")
+	sender := os.Getenv("OVH_SMS_SENDER") // Nom de l'expéditeur (max 11 caractères)
+
+	// Si les credentials ne sont pas configurés, logger et retourner une erreur
+	if applicationKey == "" || applicationSecret == "" || consumerKey == "" || serviceName == "" {
+		fmt.Println("⚠️  OVH SMS credentials not configured. Set OVH_SMS_APPLICATION_KEY, OVH_SMS_APPLICATION_SECRET, OVH_SMS_CONSUMER_KEY, and OVH_SMS_SERVICE_NAME")
+		fmt.Printf("📱 SMS Code for %s: %s\n", to, code)
+		// En mode développement, on accepte quand même (le code est loggé)
+		return nil
+	}
+
+	// Définir un expéditeur par défaut si non configuré
+	if sender == "" {
+		sender = "Office1789"
+	}
+
+	// Message SMS
+	message := fmt.Sprintf("Office1789 - Votre code de vérification : %s\n\nCe code expire dans 10 minutes.", code)
+
+	// Formater le numéro de téléphone (OVH attend le format international sans +)
+	// Ex: +33612345678 -> 0033612345678
+	phoneNumber := strings.TrimPrefix(to, "+")
+	if !strings.HasPrefix(phoneNumber, "00") {
+		phoneNumber = "00" + phoneNumber
+	}
+
+	// URL de l'API OVH
+	urlStr := fmt.Sprintf("https://eu.api.ovh.com/1.0/sms/%s/jobs", serviceName)
+
+	// Créer le body JSON
+	smsData := map[string]interface{}{
+		"message":   message,
+		"receivers": []string{phoneNumber},
+		"sender":    sender,
+		"charset":   "UTF-8",
+	}
+	jsonData, err := json.Marshal(smsData)
+	if err != nil {
+		return fmt.Errorf("failed to marshal JSON: %v", err)
+	}
+
+	// Timestamp pour la signature OVH
+	timestamp := fmt.Sprintf("%d", time.Now().Unix())
+
+	// Créer la signature OVH (SHA1)
+	// Signature = "$1$" + SHA1_HEX(AS+"+"+CK+"+"+METHOD+"+"+QUERY+"+"+BODY+"+"+TSTAMP)
+	signatureData := fmt.Sprintf("%s+%s+POST+%s+%s+%s",
+		applicationSecret,
+		consumerKey,
+		urlStr,
+		string(jsonData),
+		timestamp,
+	)
+	h := sha1.New()
+	h.Write([]byte(signatureData))
+	signature := fmt.Sprintf("$1$%x", h.Sum(nil))
+
+	// Créer la requête HTTP
+	client := &http.Client{}
+	req, err := http.NewRequest("POST", urlStr, bytes.NewBuffer(jsonData))
+	if err != nil {
+		return fmt.Errorf("failed to create request: %v", err)
+	}
+
+	// Ajouter les headers OVH
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("X-Ovh-Application", applicationKey)
+	req.Header.Set("X-Ovh-Consumer", consumerKey)
+	req.Header.Set("X-Ovh-Signature", signature)
+	req.Header.Set("X-Ovh-Timestamp", timestamp)
+
+	// Envoyer la requête
+	resp, err := client.Do(req)
+	if err != nil {
+		return fmt.Errorf("failed to send SMS: %v", err)
+	}
+	defer resp.Body.Close()
+
+	// Vérifier la réponse
+	if resp.StatusCode >= 200 && resp.StatusCode < 300 {
+		fmt.Printf("✅ SMS sent successfully to %s\n", to)
+		return nil
+	}
+
+	// En cas d'erreur, lire la réponse pour le debugging
+	var result map[string]interface{}
+	json.NewDecoder(resp.Body).Decode(&result)
+	fmt.Printf("❌ OVH SMS error: %v\n", result)
+
+	return fmt.Errorf("ovh SMS API error: status %d", resp.StatusCode)
+}

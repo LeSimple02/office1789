@@ -1,0 +1,47 @@
+{
+  "domains": {
+    "main": "office1789.com",
+    "mail": "mail.office1789.com",
+    "matrix": "matrix.office1789.com",
+    "element": "chat.office1789.com",
+    "onlyoffice": "docs.office1789.com"
+  },
+  "ports": {
+    "frontend": 5173,
+    "backend": 8080,
+    "roundcube": 8081,
+    "onlyoffice": 8082,
+    "element": 8083,
+    "postgres": 5432,
+    "mailserver_smtp": 25,
+    "mailserver_imap": 143,
+    "mailserver_submission": 587,
+    "mailserver_imaps": 993,
+    "synapse": 8008,
+    "coturn": 3478
+  },
+  "autostart": {
+    "docker_containers": true,
+    "backend": true,
+    "frontend": true,
+    "open_browser": true
+  },
+  "secrets": {
+    "postgres_user": "office1789_user",
+    "postgres_password": "OqYzMMXkVDhLsW7emIn6JW0jSNYBPCuk",
+    "postgres_db": "office1789",
+    "roundcube_db_user": "roundcube_user",
+    "roundcube_db_password": "E5M1Z0XkFJrkW1ndTpIeOavMVHMWUM0h",
+    "roundcube_db_name": "roundcube",
+    "synapse_db_user": "synapse_user",
+    "synapse_db_password": "5GoCd2BQLoA3Pq0xLLPJpzdFGzhFXnyL",
+    "synapse_db_name": "synapse",
+    "coturn_secret": "Mx90qhxjoZwpQPVddkWdZw7vwarDbqWzOmBBQlgmqpCHbjuG",
+    "onlyoffice_jwt_secret": "_pjYn]A.$-An@GIoOeBYqo[{sGTz-7noM:?Lalc0to8vTz=N",
+    "aes_key": "3e16edeed75698b83becca80dba0d0f3e35b6ccf414676034e5a2a81500178fd",
+    "matrix_admin_token": "kV7VQ9d4FqJHnWIkTtGJ8CwBZKIQZeJKCIYYbRQGYERp6iTKoQEKtX9pdafl4PqQ",
+    "mail_admin_user": "admin",
+    "mail_admin_password": "&]CAUo#B<?BlZgWv04%(BeUZ{UDM8HL>"
+  },
+  "environment": "local"
+}
