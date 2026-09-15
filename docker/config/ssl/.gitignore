@@ -1,0 +1,5 @@
+# Ignore generated TLS materials for local dev
+*.pem
+*.key
+*.crt
+*.csr

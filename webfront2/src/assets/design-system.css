@@ -1,0 +1,533 @@
+/* ========================================
+   Office1789 — Design System v2
+   Noir & Blanc · Animé · Moderne
+   ======================================== */
+
+/* ---------- 1. Tokens ---------- */
+:root {
+  --ink: #0a0a0a;
+  --ink-soft: #1a1a1a;
+  --ink-mid: #404040;
+  --gray-1: #525252;
+  --gray-2: #737373;
+  --gray-3: #a3a3a3;
+  --gray-4: #d4d4d4;
+  --gray-5: #e5e5e5;
+  --gray-6: #f5f5f5;
+  --paper: #ffffff;
+  --paper-soft: #fafafa;
+
+  --primary: var(--ink);
+  --primary-light: var(--ink-mid);
+  --primary-lighter: var(--gray-2);
+  --primary-dark: #000;
+  --secondary: var(--ink-mid);
+  --accent: var(--ink);
+  --danger: var(--ink);
+  --royal-blue: var(--ink);
+  --royal-blue-light: var(--ink);
+  --royal-blue-dark: var(--ink);
+  --royal-blue-darker: var(--ink);
+  --primary-darker: #000;
+
+  --bg-primary: var(--paper);
+  --bg-secondary: var(--paper-soft);
+  --bg-tertiary: var(--gray-6);
+  --bg-dark: var(--ink);
+  --bg-overlay: rgba(0, 0, 0, 0.45);
+  --bg-glass: rgba(255, 255, 255, 0.72);
+  --bg-glass-strong: rgba(255, 255, 255, 0.9);
+
+  --text-primary: var(--ink);
+  --text-secondary: var(--gray-1);
+  --text-muted: var(--gray-2);
+  --text-white: #fff;
+
+  --border: var(--gray-5);
+  --border-strong: var(--gray-4);
+  --border-color: var(--gray-5);
+  --border-color-strong: var(--gray-4);
+
+  --r-sm: 6px;
+  --r: 10px;
+  --r-md: 12px;
+  --r-lg: 16px;
+  --r-xl: 22px;
+  --r-2xl: 28px;
+  --r-full: 9999px;
+  --border-radius-sm: var(--r-sm);
+  --border-radius: var(--r);
+  --border-radius-lg: var(--r-lg);
+  --border-radius-xl: var(--r-xl);
+  --border-radius-2xl: var(--r-2xl);
+  --border-radius-full: var(--r-full);
+
+  --sh-xs: 0 1px 2px rgba(0,0,0,.05);
+  --sh-sm: 0 1px 3px rgba(0,0,0,.08);
+  --sh-md: 0 4px 12px rgba(0,0,0,.08);
+  --sh-lg: 0 8px 28px rgba(0,0,0,.10);
+  --sh-xl: 0 20px 50px rgba(0,0,0,.14);
+  --sh-2xl: 0 30px 70px rgba(0,0,0,.18);
+  --shadow-xs: var(--sh-xs);
+  --shadow-sm: var(--sh-sm);
+  --shadow-md: var(--sh-md);
+  --shadow-lg: var(--sh-lg);
+  --shadow-xl: var(--sh-xl);
+  --shadow-2xl: var(--sh-2xl);
+  --shadow-royal: var(--sh-sm);
+
+  --sp-1: .25rem;
+  --sp-2: .5rem;
+  --sp-3: .75rem;
+  --sp-4: 1rem;
+  --sp-5: 1.5rem;
+  --sp-6: 2rem;
+  --sp-7: 3rem;
+  --sp-8: 4rem;
+  --spacing-xs: var(--sp-1);
+  --spacing-sm: var(--sp-2);
+  --spacing-md: var(--sp-4);
+  --spacing-lg: var(--sp-5);
+  --spacing-xl: var(--sp-6);
+  --spacing-2xl: var(--sp-7);
+
+  --ease: cubic-bezier(.4, 0, .2, 1);
+  --ease-out: cubic-bezier(.16, 1, .3, 1);
+  --ease-spring: cubic-bezier(.34, 1.56, .64, 1);
+  --tf: 120ms var(--ease);
+  --tb: 220ms var(--ease);
+  --ts: 340ms var(--ease);
+  --tl: 500ms var(--ease);
+  --transition-fast: var(--tf);
+  --transition-base: var(--tb);
+  --transition-slow: var(--ts);
+  --transition-smooth: var(--tl);
+
+  --z-dropdown: 1000;
+  --z-sticky: 1020;
+  --z-fixed: 1030;
+  --z-modal-backdrop: 1040;
+  --z-modal: 1050;
+  --z-popover: 1060;
+  --z-tooltip: 1070;
+
+  --header-h: 64px;
+  --content-max: 1080px;
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  --font-mono: 'SF Mono', 'Fira Code', Consolas, monospace;
+}
+
+/* ---------- 2. Dark Mode ---------- */
+@media (prefers-color-scheme: dark) {
+  :root:not(.light) {
+    --ink: #fafafa;
+    --ink-soft: #e5e5e5;
+    --ink-mid: #d4d4d4;
+    --gray-1: #a3a3a3;
+    --gray-2: #737373;
+    --gray-3: #525252;
+    --gray-4: #3a3a3a;
+    --gray-5: #2a2a2a;
+    --gray-6: #1a1a1a;
+    --paper: #0a0a0a;
+    --paper-soft: #121212;
+
+    --bg-primary: #0a0a0a;
+    --bg-secondary: #121212;
+    --bg-tertiary: #1a1a1a;
+    --bg-overlay: rgba(0, 0, 0, .6);
+    --bg-glass: rgba(10, 10, 10, .72);
+    --bg-glass-strong: rgba(10, 10, 10, .9);
+
+    --text-primary: #fafafa;
+    --text-secondary: #a3a3a3;
+    --text-muted: #737373;
+
+    --border: #262626;
+    --border-strong: #3a3a3a;
+    --border-color: #262626;
+    --border-color-strong: #3a3a3a;
+
+    --sh-xs: 0 1px 2px rgba(0,0,0,.4);
+    --sh-sm: 0 1px 3px rgba(0,0,0,.5);
+    --sh-md: 0 4px 12px rgba(0,0,0,.5);
+    --sh-lg: 0 8px 28px rgba(0,0,0,.55);
+    --sh-xl: 0 20px 50px rgba(0,0,0,.65);
+    --sh-2xl: 0 30px 70px rgba(0,0,0,.75);
+  }
+}
+.dark {
+  --ink: #fafafa;
+  --ink-soft: #e5e5e5;
+  --ink-mid: #d4d4d4;
+  --gray-1: #a3a3a3;
+  --gray-2: #737373;
+  --gray-3: #525252;
+  --gray-4: #3a3a3a;
+  --gray-5: #2a2a2a;
+  --gray-6: #1a1a1a;
+  --paper: #0a0a0a;
+  --paper-soft: #121212;
+  --bg-primary: #0a0a0a;
+  --bg-secondary: #121212;
+  --bg-tertiary: #1a1a1a;
+  --bg-overlay: rgba(0, 0, 0, .6);
+  --bg-glass: rgba(10, 10, 10, .72);
+  --bg-glass-strong: rgba(10, 10, 10, .9);
+  --text-primary: #fafafa;
+  --text-secondary: #a3a3a3;
+  --text-muted: #737373;
+  --border: #262626;
+  --border-strong: #3a3a3a;
+  --border-color: #262626;
+  --border-color-strong: #3a3a3a;
+  --sh-xs: 0 1px 2px rgba(0,0,0,.4);
+  --sh-sm: 0 1px 3px rgba(0,0,0,.5);
+  --sh-md: 0 4px 12px rgba(0,0,0,.5);
+  --sh-lg: 0 8px 28px rgba(0,0,0,.55);
+  --sh-xl: 0 20px 50px rgba(0,0,0,.65);
+  --sh-2xl: 0 30px 70px rgba(0,0,0,.75);
+}
+
+/* ---------- 3. Base ---------- */
+*, *::before, *::after { box-sizing: border-box; }
+html { -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; text-rendering: optimizeLegibility; scroll-behavior: smooth; }
+body {
+  margin: 0;
+  font-family: var(--font-sans);
+  font-size: 15px;
+  line-height: 1.6;
+  color: var(--text-primary);
+  background: var(--bg-primary);
+  transition: background var(--tb), color var(--tb);
+  overflow-x: hidden;
+}
+#app { width: 100%; min-height: 100vh; overflow-x: hidden; }
+
+h1, h2, h3, h4, h5, h6 {
+  font-weight: 800;
+  letter-spacing: -.025em;
+  line-height: 1.15;
+  margin: 0;
+  color: var(--text-primary);
+}
+h1 { font-size: clamp(1.75rem, 4vw, 2.75rem); }
+h2 { font-size: clamp(1.375rem, 3vw, 2rem); }
+h3 { font-size: 1.25rem; }
+h4 { font-size: 1.0625rem; font-weight: 700; }
+p { margin: 0; }
+a { color: inherit; text-decoration: none; transition: opacity var(--tb); }
+a:hover { opacity: .72; }
+button { font-family: inherit; cursor: pointer; }
+input, textarea, select { font-family: inherit; font-size: inherit; }
+img { display: block; max-width: 100%; }
+ul { list-style: none; padding: 0; margin: 0; }
+::selection { background: var(--ink); color: var(--paper); }
+
+/* ---------- 4. Animations ---------- */
+@keyframes fadeIn { from { opacity: 0 } to { opacity: 1 } }
+@keyframes fadeInUp { from { opacity: 0; transform: translateY(16px) } to { opacity: 1; transform: translateY(0) } }
+@keyframes fadeInDown { from { opacity: 0; transform: translateY(-16px) } to { opacity: 1; transform: translateY(0) } }
+@keyframes fadeInLeft { from { opacity: 0; transform: translateX(-20px) } to { opacity: 1; transform: translateX(0) } }
+@keyframes fadeInRight { from { opacity: 0; transform: translateX(20px) } to { opacity: 1; transform: translateX(0) } }
+@keyframes scaleIn { from { opacity: 0; transform: scale(.95) } to { opacity: 1; transform: scale(1) } }
+@keyframes popIn { 0% { opacity: 0; transform: scale(.92) } 60% { transform: scale(1.02) } 100% { opacity: 1; transform: scale(1) } }
+@keyframes slideUp { from { transform: translateY(100%) } to { transform: translateY(0) } }
+@keyframes spin { to { transform: rotate(360deg) } }
+@keyframes pulse { 0%, 100% { opacity: 1 } 50% { opacity: .5 } }
+@keyframes pulseScale { 0%, 100% { transform: scale(1) } 50% { transform: scale(1.05) } }
+@keyframes bounce { 0%, 100% { transform: translateY(0) } 50% { transform: translateY(-8px) } }
+@keyframes float { 0%, 100% { transform: translateY(0) } 50% { transform: translateY(-6px) } }
+@keyframes shimmer { 0% { background-position: -200% 0 } 100% { background-position: 200% 0 } }
+@keyframes shimmerBorder { 0% { background-position: 0% 50% } 100% { background-position: 200% 50% } }
+@keyframes growBar { from { width: 0 } }
+@keyframes countUp { from { opacity: 0; transform: translateY(8px) } to { opacity: 1; transform: translateY(0) } }
+@keyframes drawLine { from { stroke-dashoffset: 100 } to { stroke-dashoffset: 0 } }
+
+.anim-fade { animation: fadeIn var(--tb) var(--ease) both; }
+.anim-up { animation: fadeInUp var(--ts) var(--ease) both; }
+.anim-down { animation: fadeInDown var(--ts) var(--ease) both; }
+.anim-left { animation: fadeInLeft var(--ts) var(--ease) both; }
+.anim-right { animation: fadeInRight var(--ts) var(--ease) both; }
+.anim-scale { animation: scaleIn var(--tb) var(--ease) both; }
+.anim-pop { animation: popIn var(--ts) var(--ease-spring) both; }
+.anim-spin { animation: spin .8s linear infinite; }
+.anim-pulse { animation: pulseScale 2.4s var(--ease) infinite; }
+.anim-float { animation: float 3s var(--ease) infinite; }
+.anim-bounce { animation: bounce 2s var(--ease) infinite; }
+
+/* Stagger delays */
+.stagger > * { animation: fadeInUp var(--ts) var(--ease) both; }
+.stagger > *:nth-child(1) { animation-delay: 40ms; }
+.stagger > *:nth-child(2) { animation-delay: 80ms; }
+.stagger > *:nth-child(3) { animation-delay: 120ms; }
+.stagger > *:nth-child(4) { animation-delay: 160ms; }
+.stagger > *:nth-child(5) { animation-delay: 200ms; }
+.stagger > *:nth-child(6) { animation-delay: 240ms; }
+.stagger > *:nth-child(7) { animation-delay: 280ms; }
+.stagger > *:nth-child(8) { animation-delay: 320ms; }
+
+/* ---------- 5. Layout ---------- */
+.container {
+  max-width: var(--content-max);
+  margin: 0 auto;
+  padding: 0 var(--sp-5);
+}
+.page {
+  width: 100%;
+  max-width: var(--content-max);
+  margin: 0 auto;
+  padding: var(--sp-6) var(--sp-5) var(--sp-8);
+  animation: fadeInUp .5s var(--ease) both;
+}
+
+/* ---------- 6. Buttons ---------- */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: .5rem;
+  padding: .625rem 1.25rem;
+  font-size: .875rem;
+  font-weight: 600;
+  line-height: 1.4;
+  border-radius: var(--r);
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: transform var(--tb), box-shadow var(--tb), background var(--tb), border-color var(--tb), color var(--tb);
+  text-decoration: none;
+  white-space: nowrap;
+  position: relative;
+  overflow: hidden;
+}
+.btn:active { transform: scale(.97); }
+.btn-primary {
+  background: var(--ink);
+  color: var(--paper);
+  border-color: var(--ink);
+}
+.btn-primary:hover {
+  background: var(--ink-soft);
+  box-shadow: var(--sh-md);
+  transform: translateY(-2px);
+}
+.btn-secondary {
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  border-color: var(--border-strong);
+}
+.btn-secondary:hover {
+  border-color: var(--ink);
+  background: var(--bg-secondary);
+  transform: translateY(-2px);
+  box-shadow: var(--sh-sm);
+}
+.btn-ghost {
+  background: transparent;
+  color: var(--text-secondary);
+  border-color: transparent;
+}
+.btn-ghost:hover { background: var(--bg-tertiary); color: var(--text-primary); }
+.btn-lg { padding: .875rem 2rem; font-size: 1rem; }
+.btn-sm { padding: .375rem .875rem; font-size: .8125rem; }
+.btn:disabled { opacity: .4; cursor: not-allowed; transform: none; }
+
+/* Ripple effect */
+.btn::after {
+  content: '';
+  position: absolute;
+  top: 50%; left: 50%;
+  width: 0; height: 0;
+  border-radius: 50%;
+  background: rgba(255,255,255,.25);
+  transform: translate(-50%, -50%);
+  transition: width .5s var(--ease), height .5s var(--ease);
+}
+.btn:hover::after { width: 300px; height: 300px; }
+
+/* ---------- 7. Cards ---------- */
+.card {
+  background: var(--bg-primary);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  transition: border-color var(--tb), box-shadow var(--tb), transform var(--tb);
+  overflow: hidden;
+}
+.card-hover:hover {
+  border-color: var(--border-strong);
+  box-shadow: var(--sh-md);
+  transform: translateY(-3px);
+}
+.card-glass {
+  background: var(--bg-glass);
+  backdrop-filter: blur(16px) saturate(180%);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+}
+
+/* ---------- 8. Badges ---------- */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: .3rem;
+  padding: .2rem .65rem;
+  font-size: .75rem;
+  font-weight: 600;
+  border-radius: var(--r-full);
+  background: var(--ink);
+  color: var(--paper);
+  letter-spacing: .02em;
+}
+.badge-outline { background: transparent; color: var(--text-secondary); border: 1px solid var(--border-strong); }
+.badge-muted { background: var(--bg-tertiary); color: var(--text-secondary); }
+
+/* ---------- 9. Inputs ---------- */
+.input, .form-input, .form-control, input[type="text"], input[type="email"], input[type="password"], input[type="tel"], input[type="number"], input[type="url"], textarea, select {
+  width: 100%;
+  padding: .625rem .875rem;
+  font-size: .9375rem;
+  line-height: 1.5;
+  color: var(--text-primary);
+  background: var(--bg-primary);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--r);
+  transition: border-color var(--tb), box-shadow var(--tb), background var(--tb);
+  font-family: inherit;
+}
+input:focus, textarea:focus, select:focus {
+  outline: none;
+  border-color: var(--ink);
+  box-shadow: 0 0 0 3.5px var(--bg-tertiary);
+}
+input::placeholder, textarea::placeholder { color: var(--text-muted); }
+textarea { resize: vertical; min-height: 80px; }
+select { cursor: pointer; color-scheme: light; appearance: none; -webkit-appearance: none; }
+.dark select { color-scheme: dark; }
+
+.form-label {
+  display: block;
+  font-size: .8125rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin-bottom: .375rem;
+  letter-spacing: .01em;
+}
+
+/* ---------- 10. Hero ---------- */
+.hero-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: var(--sp-8) var(--sp-6);
+  position: relative;
+  overflow: hidden;
+}
+.hero-title {
+  font-size: clamp(2.25rem, 5vw, 3.75rem);
+  font-weight: 800;
+  letter-spacing: -.035em;
+  line-height: 1.05;
+  margin-bottom: var(--sp-4);
+  animation: fadeInUp .6s var(--ease) both;
+}
+.hero-subtitle {
+  font-size: clamp(1.0625rem, 2vw, 1.25rem);
+  color: var(--text-secondary);
+  max-width: 560px;
+  line-height: 1.65;
+  margin-bottom: var(--sp-5);
+  animation: fadeInUp .6s var(--ease) .1s both;
+}
+
+/* ---------- 11. Feature Cards ---------- */
+.features-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: var(--sp-5);
+}
+.feature-card {
+  background: var(--bg-primary);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  padding: var(--sp-5);
+  transition: transform var(--tb), border-color var(--tb), box-shadow var(--tb);
+  cursor: pointer;
+  animation: fadeInUp .5s var(--ease) both;
+}
+.feature-card:hover {
+  border-color: var(--border-strong);
+  box-shadow: var(--sh-md);
+  transform: translateY(-4px);
+}
+.feature-icon {
+  width: 48px; height: 48px;
+  margin-bottom: var(--sp-3);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.5rem;
+  border-radius: var(--r);
+  background: var(--bg-tertiary);
+  transition: transform var(--tb);
+}
+.feature-card:hover .feature-icon { transform: scale(1.1) rotate(-4deg); }
+.feature-title { font-size: 1.0625rem; font-weight: 700; margin-bottom: .375rem; }
+.feature-description { font-size: .9375rem; color: var(--text-secondary); line-height: 1.6; }
+
+/* ---------- 12. Utilities ---------- */
+.text-center { text-align: center; }
+.text-muted { color: var(--text-muted); }
+.text-secondary { color: var(--text-secondary); }
+.text-primary { color: var(--text-primary); }
+.font-mono { font-family: var(--font-mono); }
+.full-w { width: 100%; }
+.hidden { display: none !important; }
+.divider { height: 1px; background: var(--border); border: 0; margin: var(--sp-5) 0; }
+
+.skeleton {
+  background: linear-gradient(90deg, var(--bg-tertiary) 25%, var(--border) 50%, var(--bg-tertiary) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+  border-radius: var(--r);
+}
+.loader {
+  width: 28px; height: 28px;
+  border: 2.5px solid var(--border);
+  border-top-color: var(--ink);
+  border-radius: 50%;
+  animation: spin .7s linear infinite;
+  display: inline-block;
+}
+
+/* ---------- 13. Modal ---------- */
+.modal-overlay {
+  position: fixed !important;
+  inset: 0 !important;
+  z-index: 20000 !important;
+  background: var(--bg-overlay);
+  backdrop-filter: blur(6px);
+  animation: fadeIn .2s var(--ease) both;
+}
+.modal, .modal-content {
+  position: relative;
+  z-index: 20001;
+  animation: popIn .25s var(--ease-spring) both;
+}
+
+/* ---------- 14. Scrollbar ---------- */
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: var(--r-full); border: 2px solid var(--bg-primary); }
+::-webkit-scrollbar-thumb:hover { background: var(--gray-2); }
+
+/* ---------- 15. Responsive ---------- */
+@media (max-width: 768px) {
+  .features-grid { grid-template-columns: 1fr; }
+  .hide-mobile { display: none !important; }
+  .page { padding: var(--sp-5) var(--sp-4) var(--sp-7); }
+}
+@media (min-width: 769px) {
+  .hide-desktop { display: none !important; }
+}

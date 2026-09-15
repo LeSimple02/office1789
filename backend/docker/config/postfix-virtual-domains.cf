@@ -1,0 +1,5 @@
+# Virtual domains configuration for custom domains
+# Format: domain (one per line)
+# This file is automatically updated by Office1789 when users add custom domains
+
+office1789.com

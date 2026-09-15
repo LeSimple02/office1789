@@ -1,0 +1,20 @@
+# Example compose override for local development.
+# Copy to docker-compose.override.yml to apply locally (Git ignored by default).
+# This file demonstrates how to force Roundcube to use localhost instead of
+# the compose 'mailserver' service (useful if you run a local mailserver).
+
+services:
+  roundcube:
+    environment:
+      # Set to 'localhost:143' if you want Roundcube to connect to a host
+      # IMAP server instead of the 'mailserver' service in compose.
+      - ROUNDCUBE_IMAP_HOST=localhost:143
+      - ROUNDCUBE_SMTP_HOST=localhost:587
+
+# Notes:
+# - By default the code uses 'mailserver:143' and 'mailserver:587' when the
+#   env vars are not present, so compose setups that run mailserver as a
+#   service will keep working without changes.
+# - To use this override, copy this file to the same directory and rename it
+#   to 'docker-compose.override.yml' before running `docker compose up`.
+# - Alternately you can set the vars inside your local 'docker/.env'.

@@ -1,0 +1,15 @@
+{
+  "default_server_config": {
+    "m.homeserver": {
+      "base_url": "http://localhost:8008",
+      "server_name": "office1789.com"
+    }
+  },
+  "brand": "Office1789",
+  "disable_custom_urls": true,
+  "disable_guests": true,
+  "default_theme": "light",
+  "features": {
+    "voip": true
+  }
+}

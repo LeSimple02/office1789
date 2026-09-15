@@ -1,0 +1,44 @@
+{
+  "name": "office1789-electron",
+  "version": "1.0.0",
+  "description": "Office1789 Desktop Application",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "build": "cd ../webfront2 && npm run build",
+    "copy-dist": "node copy-dist.js",
+    "electron:dev": "npm run build && npm run copy-dist && electron .",
+    "electron:build": "npm run build && npm run copy-dist && electron-builder"
+  },
+  "keywords": ["office1789", "electron", "desktop"],
+  "author": "Office1789 Team",
+  "license": "MIT",
+  "devDependencies": {
+    "electron": "^28.0.0",
+    "electron-builder": "^24.9.1"
+  },
+  "build": {
+    "appId": "com.office1789.desktop",
+    "productName": "Office1789",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "www/**/*",
+      "main.js",
+      "preload.js"
+    ],
+    "win": {
+      "target": "nsis",
+      "icon": "www/logo.png"
+    },
+    "mac": {
+      "target": "dmg",
+      "icon": "www/logo.png"
+    },
+    "linux": {
+      "target": "AppImage",
+      "icon": "www/logo.png"
+    }
+  }
+}

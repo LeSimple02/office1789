@@ -1,0 +1,23 @@
+# Node.js
+node_modules/
+
+# Uploads
+backend/uploads
+
+# Environment variables (IMPORTANT: Never commit!)
+.env
+.env.local
+.env.production
+backend/.env
+backend/.env.local
+backend/.env.production
+
+# Secrets and API keys
+*.key
+*.pem
+*.p12
+*secret*
+!*secret*.example
+
+# Docker image archives (local builds)
+*.tar

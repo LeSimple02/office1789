@@ -1,0 +1,16 @@
+{
+    "name": "office1789/office1789_sso",
+    "type": "roundcube-plugin",
+    "description": "Office1789 SSO authentication plugin",
+    "license": "MIT",
+    "version": "1.0.0",
+    "authors": [
+        {
+            "name": "Office1789",
+            "email": "admin@office1789.local"
+        }
+    ],
+    "require": {
+        "php": ">=7.0.0"
+    }
+}

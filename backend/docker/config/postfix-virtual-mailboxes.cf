@@ -1,0 +1,5 @@
+# Virtual mailbox mappings for custom domains
+# Format: email@custom-domain.com username@office1789.com
+# This file maps custom domain emails to actual Office1789 accounts
+# Automatically updated by Office1789 API
+
